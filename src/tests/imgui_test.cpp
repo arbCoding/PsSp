@@ -6,8 +6,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-// OS-Independent file dialogs
-#include "tinyfiledialogs.h"
+// File dialog header
+#include "ImGuiFileDialog.h"
 
 #include <iostream>
 #include <string>
@@ -27,18 +27,6 @@ struct WindowSettings
   bool show{true};
 };
 
-std::string open_file_dialog()
-{
-  const char* filters[] = {"*.SAC"};
-  const char* selected_file = tinyfd_openFileDialog("Open File", "", 5, filters, NULL, 0);
-  std::string file_string{};
-  if (selected_file)
-  {
-    file_string = selected_file;
-  }
-  return file_string;
-}
-
 // Standard file menu
 static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
 {
@@ -47,18 +35,31 @@ static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
     if (ImGui::MenuItem("New")) {}
     if (ImGui::MenuItem("Open"))
     {
-      std::string file_name = open_file_dialog();
-      if (file_name != "")
-      {
-        // Read the file
-        sac = SAC::SacStream(file_name);
-      }
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC", ".");
     }
+    /*
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+    {
+      if (ImGuiFileDialog::Instance()->IsOk())
+      {
+        sac = SAC::SacStream(ImGuiFileDialog::Instance()->GetFilePathName());
+      }
+      ImGuiFileDialog::Instance()->Close();
+    }
+  */
     if (ImGui::MenuItem("Exit"))
     {
       glfwSetWindowShouldClose(window, true);
     }
     ImGui::EndMenu();
+  }
+  if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+  {
+    if (ImGuiFileDialog::Instance()->IsOk())
+    {
+      sac = SAC::SacStream(ImGuiFileDialog::Instance()->GetFilePathName());
+    }
+    ImGuiFileDialog::Instance()->Close();
   }
 }
 

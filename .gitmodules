@@ -1,3 +1,7 @@
 [submodule "sac-format"]
 	path = sac-format
 	url = https://github.com/arbCoding/sac-format
+[submodule "ImGuiFileDialog"]
+	path = ImGuiFileDialog
+	url = https://github.com/aiekick/ImGuiFileDialog.git
+	branch = Lib_Only

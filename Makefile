@@ -18,17 +18,14 @@ debug_imgui = -fanalyzer -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
 # Release params only if debug is false
 release_param = -O2 -DNDEBUG
 # Debug (big/slow/strict) or Release (small/fast/relaxed)
-debug = false
+debug = true
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
 	params_imgui = $(param) $(debug_imgui)
 else
 	params = $(param) $(release_param)
-# Turns out tinyfiledialogs doesn't work on MacOS with any optimizations (crashes)
-# However, without it, it works just fine like this
-# I might need to move on to a different tool for handling file dialog boxes...
-	params_imgui = $(param) -O0 -DNDEBUG
+	params_imgui = $(param) $(release_param)
 endif
 # Compilation command
 cxx := $(compiler) $(params)
@@ -123,21 +120,13 @@ imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# Tiny file dialogs
+# ImGuiFileDialog
 #------------------------------------------------------------------------------
-# Version 3.13
-# https://sourceforge.net/projects/tinyfiledialogs/
-# This is what I use for OS-independent file dialogs
-# To compile tfd:
-# `cd tfd_dir`
-# `gcc -c tinyfiledialogs.c -o tinyfiledialogs.o`
-# We then link to the `tinyfiledialogs.o` file to
-# use the OS-default file dialog without needing to
-# worry about which OS is being used on our end
-tfd_dir = $(CURDIR)/../tinyfiledialogs/
-imgui_params += -I$(tfd_dir) $(tfd_dir)tinyfiledialogs.o -I$(hdr_prefix)
+im_file_diag_dir = $(CURDIR)/ImGuiFileDialog/
+imgui_params += -I$(im_file_diag_dir)
+imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
-# End tiny file dialogs
+# End ImGuiFileDialog
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -187,18 +176,41 @@ $(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules)
 	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(spectral_obj) $(fftw_params)
 	@echo -e "Build finish: $$(date)\n"
 
+#------------------------------------------------------------------------------
+# Special for ImGuiFileDialog
+#------------------------------------------------------------------------------
+# It was seeing the directory for ImGuiFileDialog and thought it was done compiling...
+ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp | $(im_file_diag_dir)
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	$(imgui_file_cxx) -c -o $(im_file_diag_dir)$@.o $<
+
+.PHONY: ImGuiFileDialog
+
+$(im_file_diag_dir):
+	mkdir -p $(im_file_diag_dir)
+
+ImGuiFileDialog: FORCE
+
+FORCE:
+
+#------------------------------------------------------------------------------
+# End special for ImGuiFileDialog
+#------------------------------------------------------------------------------
+
 # imgui_srcs are all needed
 imgui_srcs := $(imgui_dir)imgui.cpp $(imgui_dir)imgui_draw.cpp $(imgui_dir)imgui_tables.cpp $(imgui_dir)imgui_widgets.cpp
 # GUI backends
 imgui_srcs += $(imgui_dir)backends/imgui_impl_glfw.cpp $(imgui_dir)backends/imgui_impl_opengl3.cpp
+imgui_file_srcs = $(im_file_diag_dir)ImGuiFileDialog.cpp
 # Name of ImGui object files
 imgui_raw_objs = $(addsuffix .o, $(basename $(notdir $(imgui_srcs))))
 # Where they exist in our build
 imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
-imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(stream_modules)
+imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_modules)
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_params) $(stream_obj)
+	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(stream_obj)
 #------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
@@ -207,7 +219,7 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(stream_modules)
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------

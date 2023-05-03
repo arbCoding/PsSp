@@ -26,9 +26,9 @@ To also download the sac-format submodule
 
 This project uses [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This is necessary for compilation of the GUI. Specifically, the [OpenGL3](https://www.opengl.org/) and the [GLFW](https://www.glfw.org/) backends.
 
-This project uses [sac-format](https://github.com/arbCoding/sac-format). This is necessary for compilation of any seismic processing methods.
+This project uses [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog.git), Lib_Only branch. This is necessary for file dialogs in Dear ImGui.
 
-This project uses [tinyfiledialogs](https://sourceforge.net/projects/tinyfiledialogs/) v3.13. This is necessary for native-OS file dialogs.
+This project uses [sac-format](https://github.com/arbCoding/sac-format). This is necessary for compilation of any seismic processing methods.
 
 This project uses [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
 
