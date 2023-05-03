@@ -7,6 +7,14 @@ The purpose of this is to provide an OS-independent processing software with a G
 
 ---
 
+After cloning this repository, remember to run:
+```shell
+git submodule update --init
+```
+To also download the sac-format submodule
+
+---
+
 ## Dependencies
 
 This project uses [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This is necessary for compilation of the GUI. Specifically, the [OpenGL3](https://www.opengl.org/) and the [GLFW](https://www.glfw.org/) backends.
