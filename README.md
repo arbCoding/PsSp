@@ -1,9 +1,16 @@
 # PsSp
+
 Passive-source Seismic-processing with a GUI (Graphical User Interface)
 
 This project depends on my [sac-format](https://github.com/arbCoding/seismic) library.
 
 The purpose of this is to provide an OS-independent processing software with a GUI.
+
+---
+
+## Current status
+
+This is extremely early in development. ./src/tests/imgui_test.cpp is currently my playground for setting up the GUI.
 
 ---
 

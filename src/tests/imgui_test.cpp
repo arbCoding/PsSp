@@ -17,7 +17,17 @@
 
 #include <GLFW/glfw3.h>
 
-std::string open_file_dialog() {
+struct WindowSettings
+{
+  int x{};
+  int y{};
+  int width{};
+  int height{};
+  bool set{false};
+};
+
+std::string open_file_dialog()
+{
   const char* filters[] = {"*.SAC"};
   const char* selected_file = tinyfd_openFileDialog("Open File", "", 5, filters, NULL, 0);
   std::string file_string{};
@@ -29,7 +39,7 @@ std::string open_file_dialog() {
 }
 
 // Standard file menu
-static void file_menu(GLFWwindow* window)
+static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
 {
   if (ImGui::BeginMenu("File"))
   {
@@ -39,8 +49,8 @@ static void file_menu(GLFWwindow* window)
       std::string file_name = open_file_dialog();
       if (file_name != "")
       {
-        SAC::SacStream sac(file_name);
-        std::cout << sac.kstnm << '\n';
+        // Read the file
+        sac = SAC::SacStream(file_name);
       }
     }
     if (ImGui::MenuItem("Exit"))
@@ -61,10 +71,10 @@ static void help_menu()
 }
 
 // Function that handles the main menu bar
-static void main_menu_bar(GLFWwindow* window)
+static void main_menu_bar(GLFWwindow* window, SAC::SacStream& sac)
 {
   ImGui::BeginMainMenuBar();
-  file_menu(window);
+  file_menu(window, sac);
   help_menu();
   ImGui::EndMainMenuBar();
 }
@@ -82,16 +92,47 @@ static void main_window()
   ImGui::End();
 }
 
+// Info window
+static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
+{
+  if (!w_settings->set)
+  {
+    ImGui::SetNextWindowSize(ImVec2(w_settings->width, w_settings->height));
+    ImGui::SetNextWindowPos(ImVec2(w_settings->x, w_settings->y));
+    w_settings->set = true;
+  }
+  ImGui::Begin("Sac Info", nullptr);
+  ImGui::Text("Station Name: %s", sac.kstnm.c_str());
+  ImGui::Text("Component: %s", sac.kcmpnm.c_str());
+  ImGui::Text("Station Lat: %f", sac.stla);
+  ImGui::Text("Station Lon: %f", sac.stlo);
+  ImGui::Text("Station Elv: %f", sac.stel);
+  ImGui::Text("Event Lat: %f", sac.evla);
+  ImGui::Text("Event Lon: %f", sac.evlo);
+  ImGui::Text("Event Depth: %f", sac.evdp);
+  ImGui::Text("N Points: %i", sac.npts);
+  if (sac.npts != -12345)
+  {
+    ImGui::Text("data[0]: %f", sac.data1[0]);
+  }
+  else
+  {
+    ImGui::Text("data[0]: -12345.0");
+  }
+  ImGui::End();
+}
+
 // The draw cycle for the external (containing) window
-static void draw_cycle(GLFWwindow* window, ImVec4 clear_color)
+static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w_settings, SAC::SacStream& sac)
 {
   glfwPollEvents();
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  main_menu_bar(window);
+  main_menu_bar(window, sac);
   main_window();
+  info_window(w_settings, sac);
 
   ImGui::Render();
   int display_w{};
@@ -160,9 +201,11 @@ int main()
 
   ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
 
+  SAC::SacStream sac{};
+  WindowSettings w_settings{1000, 100, 250, 500};
   while (!glfwWindowShouldClose(window))
   {
-    draw_cycle(window, clear_color);
+    draw_cycle(window, clear_color, &w_settings, sac);
   }
 
   ImGui_ImplOpenGL3_Shutdown();
