@@ -30,3 +30,25 @@
 *.exe
 *.out
 *.app
+
+# Mac stuff
+*.dSYM
+*.DS_Store
+
+# data files
+data/*
+# Compiled stuff
+bin/*
+# Be extra sure no objects
+./src/objects/*
+# Any compressed files
+*.tar.gz
+# Any csv files
+*.csv
+# Any sac files
+*.sac
+*.SAC
+# Dumb MacOS
+.DS_Store
+# Ini files
+*.ini
