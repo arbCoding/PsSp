@@ -3,4 +3,4 @@
 	url = https://github.com/arbCoding/sac-format
 [submodule "imgui"]
 	path = imgui
-	url = ./imgui
+	url = https://github.com/ocornut/imgui/tree/v1.89.5
