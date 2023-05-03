@@ -60,7 +60,7 @@ obj_prefix = $(base_prefix)objects/
 #------------------------------------------------------------------------------
 # sac-format
 #------------------------------------------------------------------------------
-sf_lib = $(CURDIR)/sac-format/lib/
+sf_obj = $(CURDIR)/sac-format/src/objects/sac_format.o
 sf_header = $(CURDIR)/sac-format/src/header/
 #------------------------------------------------------------------------------
 # End sac-format
@@ -181,7 +181,7 @@ $(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules)
 	@echo "Building $(test_bin_prefix)$@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(cxx) -L$(sf_lib) -lsac_format -I$(sf_header) -o $(test_bin_prefix)$@ $< $(spectral_obj) $(fftw_params)
+	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(spectral_obj) $(fftw_params)
 	@echo -e "Build finish: $$(date)\n"
 
 # imgui_srcs are all needed
@@ -195,7 +195,7 @@ imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
 imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(stream_modules)
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -L$(sf_lib) -lsac_format -I$(sf_header) -o $(test_bin_prefix)$@ $< $(imgui_objs) $(imgui_params) $(stream_obj)
+	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_params) $(stream_obj)
 #------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
