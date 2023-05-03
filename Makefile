@@ -18,14 +18,17 @@ debug_imgui = -fanalyzer -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
 # Release params only if debug is false
 release_param = -O2 -DNDEBUG
 # Debug (big/slow/strict) or Release (small/fast/relaxed)
-debug = true
+debug = false
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
 	params_imgui = $(param) $(debug_imgui)
 else
 	params = $(param) $(release_param)
-	params_imgui = $(param) $(debug_imgui)
+# Turns out tinyfiledialogs doesn't work on MacOS with any optimizations (crashes)
+# However, without it, it works just fine like this
+# I might need to move on to a different tool for handling file dialog boxes...
+	params_imgui = $(param) -O0 -DNDEBUG
 endif
 # Compilation command
 cxx := $(compiler) $(params)

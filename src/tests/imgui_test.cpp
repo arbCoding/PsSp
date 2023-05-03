@@ -24,6 +24,7 @@ struct WindowSettings
   int width{};
   int height{};
   bool set{false};
+  bool show{true};
 };
 
 std::string open_file_dialog()
@@ -61,6 +62,19 @@ static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
   }
 }
 
+// Window menu
+static void window_menu(WindowSettings* w_settings)
+{
+  if (ImGui::BeginMenu("Window"))
+  {
+    if (ImGui::MenuItem("Sac Info"))
+    {
+      w_settings->show = true;
+    }
+    ImGui::EndMenu();
+  }
+}
+
 // Menu to help functions
 static void help_menu()
 {
@@ -71,10 +85,11 @@ static void help_menu()
 }
 
 // Function that handles the main menu bar
-static void main_menu_bar(GLFWwindow* window, SAC::SacStream& sac)
+static void main_menu_bar(GLFWwindow* window, WindowSettings* w_settings, SAC::SacStream& sac)
 {
   ImGui::BeginMainMenuBar();
   file_menu(window, sac);
+  window_menu(w_settings);
   help_menu();
   ImGui::EndMainMenuBar();
 }
@@ -101,7 +116,7 @@ static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
     ImGui::SetNextWindowPos(ImVec2(w_settings->x, w_settings->y));
     w_settings->set = true;
   }
-  ImGui::Begin("Sac Info", nullptr);
+  ImGui::Begin("Sac Info", &(w_settings->show), ImGuiWindowFlags_NoCollapse);
   ImGui::Text("Station Name: %s", sac.kstnm.c_str());
   ImGui::Text("Component: %s", sac.kcmpnm.c_str());
   ImGui::Text("Station Lat: %f", sac.stla);
@@ -130,9 +145,12 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  main_menu_bar(window, sac);
+  main_menu_bar(window, w_settings, sac);
   main_window();
-  info_window(w_settings, sac);
+  if (w_settings->show)
+  {
+    info_window(w_settings, sac);
+  }
 
   ImGui::Render();
   int display_w{};
