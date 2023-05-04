@@ -92,8 +92,9 @@ static void main_menu_bar(GLFWwindow* window, WindowSettings* w_settings, SAC::S
   ImGui::EndMainMenuBar();
 }
 
+
 // This handles setting up the main internal window
-static void main_window()
+static void main_window(float fps)
 {
   // Set size of next window
   ImGui::SetNextWindowSize(ImVec2(500, 400));
@@ -101,6 +102,7 @@ static void main_window()
   // Begin parent window
   ImGui::Begin("Main", nullptr);
   ImGui::Text("Welcome!");
+  ImGui::Text("FPS: %i", static_cast<int>(fps));
   // End parent window
   ImGui::End();
 }
@@ -160,7 +162,7 @@ static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
 }
 
 // The draw cycle for the external (containing) window
-static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w_settings, SAC::SacStream& sac)
+static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w_settings, SAC::SacStream& sac, float fps)
 {
   glfwPollEvents();
   ImGui_ImplOpenGL3_NewFrame();
@@ -168,7 +170,7 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   ImGui::NewFrame();
 
   main_menu_bar(window, w_settings, sac);
-  main_window();
+  main_window(fps);
   if (w_settings->show)
   {
     info_window(w_settings, sac);
@@ -248,9 +250,23 @@ int main()
 
   SAC::SacStream sac{};
   WindowSettings w_settings{1000, 100, 250, 500};
+  // FPS tracking
+  float prev_time{0.0f};
+  int frame_count{0};
+  float fps{0.0f};
+  float current_time{0};
+  
   while (!glfwWindowShouldClose(window))
   {
-    draw_cycle(window, clear_color, &w_settings, sac);
+    current_time += io.DeltaTime;
+    ++frame_count;
+    if (current_time - prev_time >= 0.025f)
+    {
+      fps = static_cast<float>(frame_count) / (current_time - prev_time);
+      frame_count = 0;
+      prev_time = current_time;
+    }
+    draw_cycle(window, clear_color, &w_settings, sac, fps);
   }
 
   ImGui_ImplOpenGL3_Shutdown();
