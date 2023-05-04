@@ -62,8 +62,10 @@ submod_prefix = $(CURDIR)/submodules/
 #------------------------------------------------------------------------------
 # sac-format
 #------------------------------------------------------------------------------
-sf_obj = $(submod_prefix)/sac-format/src/objects/sac_format.o
-sf_header = $(submod_prefix)/sac-format/src/header/
+sf_dir = $(submod_prefix)sac-format/
+sf_obj_prefix = $(sf_dir)src/objects/
+sf_obj = $(sf_obj_prefix)sac_format.o
+sf_header = $(sf_dir)src/header/
 #------------------------------------------------------------------------------
 # End sac-format
 #------------------------------------------------------------------------------
@@ -173,7 +175,7 @@ sac_spectral: $(imp_prefix)sac_spectral.cpp
 spectral_modules := sac_spectral
 spectral_obj := $(addsuffix .o, $(addprefix $(obj_prefix), $(spectral_modules)))
 spectral_sac := sac_stream_fftw_test sac_stream_lowpass_test
-$(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules)
+$(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules) $(sf_obj)
 	@echo "Building $(test_bin_prefix)$@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
@@ -213,6 +215,12 @@ imgui_raw_objs = $(addsuffix .o, $(basename $(notdir $(imgui_srcs))))
 # Where they exist in our build
 imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
+$(sf_obj): $(sf_dir)Makefile
+	@echo "Building sac-format stuff"
+	@echo "Build start:  $$(date)"
+	make -C $(sf_dir) sac_format
+	@echo -e "Build finish: $$(date)\n"
+
 $(imgui_objs): $(imgui_ex_dir)Makefile
 	@echo "Building Dear ImGui stuff"
 	@echo "Build start:  $$(date)"
@@ -236,7 +244,8 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3
+	make -C $(sf_dir) clean
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------
