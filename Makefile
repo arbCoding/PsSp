@@ -119,6 +119,20 @@ imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)b
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# ImPlot
+#------------------------------------------------------------------------------
+implot_dir = $(submod_prefix)implot/
+# This library triggers sign-conversion warnings. So we
+# should treat as a system header and ignore warnings
+# That way we're only confirming for out code
+# If this is an issue later, we can include it normally to track down
+# IT WORKS
+imgui_cxx += -isystem$(implot_dir)
+#------------------------------------------------------------------------------
+# End ImPlot
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Include my headers
 #------------------------------------------------------------------------------
 # Compilation command with inclusion of my headers
@@ -174,7 +188,7 @@ ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp
 	$(imgui_file_cxx) -c -o $(im_file_diag_dir)$@.o $<
 	@echo -e "Building finish: $$(date)\n"
 #------------------------------------------------------------------------------
-# ImGuiFileDialog
+# End ImGuiFileDialog
 #------------------------------------------------------------------------------
 
 # imgui_srcs are all needed

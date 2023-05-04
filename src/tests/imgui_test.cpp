@@ -8,6 +8,10 @@
 // File dialog header
 #include "ImGuiFileDialog.h"
 
+// ImPlot headers
+#include "implot.h"
+#include "implot_internal.h"
+
 #include <iostream>
 #include <string>
 
@@ -100,6 +104,23 @@ static void main_window()
   ImGui::End();
 }
 
+static void plot_window(WindowSettings* w_settings, SAC::SacStream& sac)
+{
+  if (!w_settings->set)
+  {
+    ImGui::SetNextWindowSize(ImVec2(w_settings->width, w_settings->height));
+    ImGui::SetNextWindowPos(ImVec2(w_settings->x, w_settings->y));
+    w_settings->set = true;
+  }
+  ImGui::SetNextWindowSize(ImVec2(500, 400));
+  ImGui::Begin("Sac Plot", &(w_settings->show), ImGuiWindowFlags_NoCollapse);
+  if (sac.npts != -12345)
+  {
+    ImGui::Text("Plot here");
+  }
+  ImGui::End();
+}
+
 // Info window
 static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
 {
@@ -143,6 +164,7 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   if (w_settings->show)
   {
     info_window(w_settings, sac);
+    plot_window(w_settings, sac);
   }
 
   ImGui::Render();
