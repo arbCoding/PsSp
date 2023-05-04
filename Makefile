@@ -62,6 +62,7 @@ submod_prefix = $(CURDIR)/submodules/
 #------------------------------------------------------------------------------
 # sac-format
 #------------------------------------------------------------------------------
+# My sac-format files for reading/writing binary seismic data
 sf_dir = $(submod_prefix)sac-format/
 sf_obj_prefix = $(sf_dir)src/objects/
 sf_obj = $(sf_obj_prefix)sac_format.o
@@ -73,10 +74,9 @@ sf_header = $(sf_dir)src/header/
 #------------------------------------------------------------------------------
 # FFTW
 #------------------------------------------------------------------------------
-# Note that FFTW is optional and only used for spectral functions
-# If you don't want to use the spectral functions don't worry about this
-# If you do, you'll need to setup fftw_params according to your installation
-# Spectral = FFT, IFFT, Filters (lowpass, highpass, bandpass)
+# I need to see if I can improve the linux version to follow a similar style to
+# what is done with glfw3, that may be more general (not needing to assume
+# x86_64 and asking the system to tell us where it ought to be)
 ifeq ($(uname_s), Linux)
 	fftw_include := /usr/include/
 	fftw_lib := /usr/lib/x86_64-linux-gnu/
@@ -93,19 +93,7 @@ fftw_params = -I$(fftw_include) -L$(fftw_lib) -lfftw3 -lm
 #------------------------------------------------------------------------------
 # Dear ImGui
 #------------------------------------------------------------------------------
-# Note you'll need to compile Dear ImGui yourself
-# How I do it:
-# Go to `$(imgui_dir)examples/example_glfw_opengl3/`
-# run `make`
-# Copy all the object files into an object directory
-# `mkdir objects`
-# `mv *.o ./objects/`
-# `mv ./objects $(imgui_dir)`
-# Note that on MacOS, Dear ImGui compiles with Clang (not G++)
-# However, I can still use those object files to compile my codes with G++
-# Just cannot use -Weffc++ on programs that depend on Dear ImGui
-# ImGui directory, needed for GUI
-#imgui_dir = $(CURDIR)/../imgui-1.89.5/
+# Dead ImGui provides the OS-independent GUI framework
 imgui_dir = $(submod_prefix)imgui/
 imgui_ex_dir = $(imgui_dir)examples/example_glfw_opengl3/
 
@@ -128,6 +116,8 @@ imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # ImGuiFileDialog
 #------------------------------------------------------------------------------
+# ImGuiFileDialog adds a Filesystem Acess GUI that is OS-independent and works
+# great with Dear ImGui
 im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
 imgui_params += -I$(im_file_diag_dir)
 imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
@@ -136,12 +126,12 @@ imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)b
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# Include my sac headers
+# Include my headers
 #------------------------------------------------------------------------------
 # Compilation command with inclusion of my headers
 cxx := $(cxx) -I$(hdr_prefix)
 #------------------------------------------------------------------------------
-# End include my sac headers
+# End include my headers
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -183,26 +173,15 @@ $(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules) $(sf_obj)
 	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------
-# Special for ImGuiFileDialog
+# ImGuiFileDialog
 #------------------------------------------------------------------------------
-# It was seeing the directory for ImGuiFileDialog and thought it was done compiling...
-ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp | $(im_file_diag_dir)
+ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	$(imgui_file_cxx) -c -o $(im_file_diag_dir)$@.o $<
 	@echo -e "Building finish: $$(date)\n"
-
-.PHONY: ImGuiFileDialog
-
-$(im_file_diag_dir):
-	mkdir -p $(im_file_diag_dir)
-
-ImGuiFileDialog: FORCE
-
-FORCE:
-
 #------------------------------------------------------------------------------
-# End special for ImGuiFileDialog
+# ImGuiFileDialog
 #------------------------------------------------------------------------------
 
 # imgui_srcs are all needed
@@ -215,12 +194,20 @@ imgui_raw_objs = $(addsuffix .o, $(basename $(notdir $(imgui_srcs))))
 # Where they exist in our build
 imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
+#------------------------------------------------------------------------------
+# sac-format
+#------------------------------------------------------------------------------
 $(sf_obj): $(sf_dir)Makefile
 	@echo "Building sac-format stuff"
 	@echo "Build start:  $$(date)"
 	make -C $(sf_dir) sac_format
-	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# end sac-format
+#------------------------------------------------------------------------------
 
+#------------------------------------------------------------------------------
+# The appropriate Dear ImGui example (glfw+opengl3)
+#------------------------------------------------------------------------------
 $(imgui_objs): $(imgui_ex_dir)Makefile
 	@echo "Building Dear ImGui stuff"
 	@echo "Build start:  $$(date)"
@@ -229,13 +216,23 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 	@echo "Moving object files to $(imgui_dir)objects/"
 	@mv $(imgui_ex_dir)*.o $(imgui_dir)objects/
 	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End Dead ImGui example (glfw+opengl3)
+#------------------------------------------------------------------------------
 
+#------------------------------------------------------------------------------
+# imgui_test
+#------------------------------------------------------------------------------
 imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_modules)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
 	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(stream_obj)
 	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# end imgui_test
+#------------------------------------------------------------------------------
+
 #------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
