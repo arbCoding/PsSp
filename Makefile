@@ -20,6 +20,12 @@ debug_imgui = -fanalyzer -Wextra -Werror -Wshadow -ggdb
 # Release params only if debug is false
 release_param = -O2 -DNDEBUG
 # Debug (big/slow/strict) or Release (small/fast/relaxed)
+# At present (4 May 2023) debug = true will compile on both
+# Linux and Mac. However, it crashes on Mac (I think it dislikes
+# the size of the vector<double> for sac data maybe)
+# On Linux it works fine
+# debug = false works fine on both!
+# Trying to resolve issue so that debug-mode can still be used on Mac...
 debug = false
 
 ifeq ($(debug), true)
