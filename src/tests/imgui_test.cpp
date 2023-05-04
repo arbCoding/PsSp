@@ -35,25 +35,18 @@ static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
     if (ImGui::MenuItem("New")) {}
     if (ImGui::MenuItem("Open"))
     {
-      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC", ".");
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".");
     }
-    /*
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
-    {
-      if (ImGuiFileDialog::Instance()->IsOk())
-      {
-        sac = SAC::SacStream(ImGuiFileDialog::Instance()->GetFilePathName());
-      }
-      ImGuiFileDialog::Instance()->Close();
-    }
-  */
     if (ImGui::MenuItem("Exit"))
     {
       glfwSetWindowShouldClose(window, true);
     }
     ImGui::EndMenu();
   }
-  if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+
+  ImVec2 maxSize = ImVec2(1000, 600);
+  ImVec2 minSize = ImVec2(maxSize.x * 0.5f, maxSize.y * 0.5f);
+  if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
     if (ImGuiFileDialog::Instance()->IsOk())
     {
@@ -212,6 +205,8 @@ int main()
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   // Make all 25% bigger (MBP screen)
   io.FontGlobalScale = 1.25f;
+  ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".SAC", ImVec4(1.0f, 0.0f, 0.0f, 0.9f));
+  ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".sac", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
 
   ImGui::StyleColorsDark();
 

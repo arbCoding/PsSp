@@ -184,6 +184,7 @@ ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp | $(im_file_diag_dir)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	$(imgui_file_cxx) -c -o $(im_file_diag_dir)$@.o $<
+	@echo -e "Building finish: $$(date)\n"
 
 .PHONY: ImGuiFileDialog
 
@@ -209,8 +210,11 @@ imgui_raw_objs = $(addsuffix .o, $(basename $(notdir $(imgui_srcs))))
 imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
 imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_modules)
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
 	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(stream_obj)
+	@echo -e "Build finish: $$(date)"
 #------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
