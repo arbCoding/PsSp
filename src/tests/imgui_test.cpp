@@ -1,4 +1,3 @@
-
 #include "sac_stream.hpp"
 
 // Dear ImGui headers
@@ -45,7 +44,7 @@ static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
   }
 
   ImVec2 maxSize = ImVec2(1000, 600);
-  ImVec2 minSize = ImVec2(maxSize.x * 0.5f, maxSize.y * 0.5f);
+  ImVec2 minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
     if (ImGuiFileDialog::Instance()->IsOk())

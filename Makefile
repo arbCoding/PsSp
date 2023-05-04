@@ -74,18 +74,10 @@ sf_header = $(sf_dir)src/header/
 #------------------------------------------------------------------------------
 # FFTW
 #------------------------------------------------------------------------------
-# I need to see if I can improve the linux version to follow a similar style to
-# what is done with glfw3, that may be more general (not needing to assume
-# x86_64 and asking the system to tell us where it ought to be)
-ifeq ($(uname_s), Linux)
-	fftw_include := /usr/include/
-	fftw_lib := /usr/lib/x86_64-linux-gnu/
-else
-	fftw_loc := /opt/homebrew/Cellar/fftw/3.3.10_1/
-	fftw_include := $(fftw_loc)include/
-	fftw_lib := $(fftw_loc)lib/
-endif
-fftw_params = -I$(fftw_include) -L$(fftw_lib) -lfftw3 -lm
+# Same between MacOS and Linux
+fftw_include = `pkg-config --cflags fftw3`
+fftw_lib = `pkg-config --static --libs fftw3`
+fftw_params = $(fftw_include) $(fftw_lib)
 #------------------------------------------------------------------------------
 # End FFTW
 #------------------------------------------------------------------------------
@@ -97,14 +89,15 @@ fftw_params = -I$(fftw_include) -L$(fftw_lib) -lfftw3 -lm
 imgui_dir = $(submod_prefix)imgui/
 imgui_ex_dir = $(imgui_dir)examples/example_glfw_opengl3/
 
+# On both MacOS and Linux we can use pkg-config to deal with *most* of this
+imgui_flags = `pkg-config --cflags glfw3`
+imgui_libs = `pkg-config --static --libs glfw3`
+
+# Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
-	imgui_libs = -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-	imgui_libs += -L/usr/local/lib -L/opt/homebrew/lib
-	imgui_libs += -lglfw
-	imgui_flags = -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
+	imgui_libs += -framework OpenGL
 else
-	imgui_libs = -lGL `pkg-config --static --libs glfw3`
-	imgui_flags = `pkg-config --cflags glfw3`
+	imgui_libs += -lGL
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
@@ -241,7 +234,7 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini
 	make -C $(sf_dir) clean
 #------------------------------------------------------------------------------
 # End cleanup

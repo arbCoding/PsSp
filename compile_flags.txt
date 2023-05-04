@@ -1,2 +1,2 @@
 -I
-./sac-format/src/header
+./submodules/sac-format/src/header

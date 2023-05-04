@@ -14,29 +14,26 @@ This is extremely early in development. ./src/tests/imgui_test.cpp is currently 
 
 ---
 
-After cloning this repository, remember to run:
-```shell
-git submodule update --init
-```
-To also download the sac-format submodule
-
----
-
 ## Dependencies
 
-The only dependencies that are **NOT** handled automatically is FFTW3 GLFW (see Compilation Instructions for information). The others are submodules and are handled automatically for you.
+The only dependencies that are **NOT** handled automatically are FFTW3, GLFW3, and OpenGL3.
+I provide information on installing them on MacOS and Linux [here](#compilation-instructions).
 
-This project uses [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This is necessary for compilation of the GUI. Specifically, the [OpenGL3](https://www.opengl.org/) and the [GLFW](https://www.glfw.org/) backends.
+The other dependencies are setup as Git submodules and handled automatically.
 
-This project uses [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog.git), Lib_Only branch. This is necessary for file dialogs in Dear ImGui.
-
-This project uses [sac-format](https://github.com/arbCoding/sac-format). This is necessary for compilation of any seismic processing methods.
-
-This project uses [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
+Info on dependencies:
+ * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This provides the OS-independent GUI.
+ * [OpenGL3](https://www.opengl.org/) this is a graphical backend for the GUI.
+ * [GLFW3](https://www.glfw.org/) this is a graphical backend for the GUI.
+ * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog.git), Lib_Only branch. This adds OS-independent File Dialogs to Dead ImGui.
+ * [sac-format](https://github.com/arbCoding/sac-format). This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
+ * [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
 
 ---
 
 ## Compilation instructions
+
+I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
 
 You'll need to install FFTW3 and GLFW yourself.
 
@@ -45,27 +42,27 @@ On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
 brew install fftw glfw
 ```
 
-On Linux (Ubuntu 22.04 confirmed, Debian based)
+On Linux (Ubuntu 22.04, Debian based)
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev
 ```
 
-After you've installed FFTW you need to clone this project and initialize the submodules
+Next you need to clone this project and initialize the submodules
 ```shell
 git clone https://github.com/arbCoding/PsSp.git
 cd PsSp
 git submodule update --init
 ```
 
-That will download the appropriate submodule dependencies, with the correct commit version, automatically from their respective GitHub repositories.
-You can confirm that by examining them inside the submodules directory (they will be empty before you initialize them and population afterward).
+That will download the appropriate submodule dependencies, with the correct commit version, automatically, from their respective GitHub repositories.
+You can confirm that by examining them inside the submodules directory (they will be empty before you initialize them and populate afterward).
 
 Then it is a simple as running
 ```shell
 make
 ```
 
-To make all the programs, which will be inside the ./bin/ directory (test programs will go inside the ./bin/test/ directory).
+To make all of the programs, which will be inside the ./bin/ directory (test programs will go inside the ./bin/test/ directory).
 
 To cleanup (including removing the compiled programs), run:
 ```shell
