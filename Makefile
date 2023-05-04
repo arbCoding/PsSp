@@ -53,6 +53,8 @@ hdr_prefix = $(base_prefix)header/
 imp_prefix = $(base_prefix)implementation/
 # Built object files will go here
 obj_prefix = $(base_prefix)objects/
+# Submodules directory
+submod_prefix = $(CURDIR)/submodules/
 #------------------------------------------------------------------------------
 # End directory structure
 #------------------------------------------------------------------------------
@@ -60,8 +62,8 @@ obj_prefix = $(base_prefix)objects/
 #------------------------------------------------------------------------------
 # sac-format
 #------------------------------------------------------------------------------
-sf_obj = $(CURDIR)/sac-format/src/objects/sac_format.o
-sf_header = $(CURDIR)/sac-format/src/header/
+sf_obj = $(submod_prefix)/sac-format/src/objects/sac_format.o
+sf_header = $(submod_prefix)/sac-format/src/header/
 #------------------------------------------------------------------------------
 # End sac-format
 #------------------------------------------------------------------------------
@@ -101,7 +103,9 @@ fftw_params = -I$(fftw_include) -L$(fftw_lib) -lfftw3 -lm
 # However, I can still use those object files to compile my codes with G++
 # Just cannot use -Weffc++ on programs that depend on Dear ImGui
 # ImGui directory, needed for GUI
-imgui_dir = $(CURDIR)/../imgui-1.89.5/
+#imgui_dir = $(CURDIR)/../imgui-1.89.5/
+imgui_dir = $(submod_prefix)imgui/
+imgui_ex_dir = $(imgui_dir)examples/example_glfw_opengl3/
 
 ifeq ($(uname_s), Darwin)
 	imgui_libs = -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
@@ -122,7 +126,7 @@ imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # ImGuiFileDialog
 #------------------------------------------------------------------------------
-im_file_diag_dir = $(CURDIR)/ImGuiFileDialog/
+im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
 imgui_params += -I$(im_file_diag_dir)
 imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
@@ -209,12 +213,21 @@ imgui_raw_objs = $(addsuffix .o, $(basename $(notdir $(imgui_srcs))))
 # Where they exist in our build
 imgui_objs = $(addprefix $(imgui_dir)objects/, $(imgui_raw_objs))
 
+$(imgui_objs): $(imgui_ex_dir)Makefile
+	@echo "Building Dear ImGui stuff"
+	@echo "Build start:  $$(date)"
+	make -C $(imgui_ex_dir)
+	@test -d $(imgui_dir)objects || mkdir -p $(imgui_dir)objects
+	@echo "Moving object files to $(imgui_dir)objects/"
+	@mv $(imgui_ex_dir)*.o $(imgui_dir)objects/
+	@echo -e "Build finish: $$(date)\n"
+
 imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_modules)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
 	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(stream_obj)
-	@echo -e "Build finish: $$(date)"
+	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
@@ -223,7 +236,7 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM *.csv $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------
