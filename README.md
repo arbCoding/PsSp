@@ -24,7 +24,7 @@ To also download the sac-format submodule
 
 ## Dependencies
 
-The only dependency that is **NOT** handled automatically is FFTW3. The others are submodules and are handled automatically for you.
+The only dependencies that are **NOT** handled automatically is FFTW3 GLFW (see Compilation Instructions for information). The others are submodules and are handled automatically for you.
 
 This project uses [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This is necessary for compilation of the GUI. Specifically, the [OpenGL3](https://www.opengl.org/) and the [GLFW](https://www.glfw.org/) backends.
 
@@ -34,22 +34,20 @@ This project uses [sac-format](https://github.com/arbCoding/sac-format). This is
 
 This project uses [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
 
-Additional dependencies are **TBD**.
-
 ---
 
 ## Compilation instructions
 
-You'll need to install FFTW3 yourself.
+You'll need to install FFTW3 and GLFW yourself.
 
 On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
 ```shell
-brew install fftw
+brew install fftw glfw
 ```
 
-On Linux (Ubuntu 22.04 confirmed, Debian based) (Double check to make sure this is correct)
+On Linux (Ubuntu 22.04 confirmed, Debian based)
 ```shell
-sudo apt install libfftw3-dev
+sudo apt install libfftw3-dev libglfw3-dev
 ```
 
 After you've installed FFTW you need to clone this project and initialize the submodules
