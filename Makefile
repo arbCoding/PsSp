@@ -14,11 +14,13 @@ param = -std=c++20 -pedantic-errors -Wall
 debug_param = -fanalyzer -Weffc++ -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
 # Specific for Dear ImGui
 # Dear ImGui fails with -Weffc++ unfortuantely
-debug_imgui = -fanalyzer -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
+#debug_imgui = -fanalyzer -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
+# ImPlot doesn't jive with -Wsign-conversion
+debug_imgui = -fanalyzer -Wextra -Werror -Wshadow -ggdb
 # Release params only if debug is false
 release_param = -O2 -DNDEBUG
 # Debug (big/slow/strict) or Release (small/fast/relaxed)
-debug = true
+debug = false
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
@@ -234,7 +236,7 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(stream_obj)
+	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(stream_obj)
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # end imgui_test

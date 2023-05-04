@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 // Silence OpenGL deprecation warnings on compile
 #define GL_SILENCE_DEPRECATION
@@ -112,10 +113,17 @@ static void plot_window(WindowSettings* w_settings, SAC::SacStream& sac)
     ImGui::SetNextWindowPos(ImVec2(w_settings->x, w_settings->y));
     w_settings->set = true;
   }
-  ImGui::SetNextWindowSize(ImVec2(500, 400));
+  // Set minimum and maximum window size constraints
+  ImGui::SetNextWindowSizeConstraints(ImVec2(500, 400), ImVec2(1000, 600));
   ImGui::Begin("Sac Plot", &(w_settings->show), ImGuiWindowFlags_NoCollapse);
   if (sac.npts != -12345)
   {
+    if (ImPlot::BeginPlot("Test Plot"))
+    {
+      // Trying to plot without giving the y-values
+      ImPlot::PlotLine("", sac.data1.data(), sac.data1.size());
+      ImPlot::EndPlot();
+    }
     ImGui::Text("Plot here");
   }
   ImGui::End();
@@ -164,7 +172,7 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   if (w_settings->show)
   {
     info_window(w_settings, sac);
-    plot_window(w_settings, sac);
+    plot_window(w_settings, sac); 
   }
 
   ImGui::Render();
@@ -221,6 +229,8 @@ int main()
   glfwSwapInterval(1);
 
   ImGui::CreateContext();
+  ImPlot::CreateContext();
+  
   ImGuiIO& io = ImGui::GetIO();
   (void) io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -245,6 +255,8 @@ int main()
 
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
+
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   glfwDestroyWindow(window);
