@@ -25,7 +25,7 @@ Info on dependencies:
  * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This provides the OS-independent GUI.
  * [OpenGL3](https://www.opengl.org/) this is a graphical backend for the GUI.
  * [GLFW3](https://www.glfw.org/) this is a graphical backend for the GUI.
- * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog.git), Lib_Only branch. This adds OS-independent File Dialogs to Dead ImGui.
+ * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog.git), Lib_Only branch. This adds OS-independent File Dialogs to Dear ImGui.
  * [sac-format](https://github.com/arbCoding/sac-format). This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
  * [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
 
@@ -35,7 +35,10 @@ Info on dependencies:
 
 I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
 
-You'll need to install FFTW3 and GLFW yourself.
+You'll need to install FFTW3 and GLFW yourself. I believe GLFW comes with OpenGL.
+
+**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of [Chocolatey](https://chocolatey.org/) or [Cygwin](https://www.cygwin.com/)
+to setup your compilation environment on Windows.
 
 On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
 ```shell
