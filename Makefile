@@ -9,7 +9,7 @@ SHELL := /bin/bash
 # Linux or mac
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = true
+debug = false
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
 #imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
-imgui_cxx = c++ $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
+imgui_cxx = $(compiler) $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End Dear ImGui
 #------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ imgui_cxx = c++ $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
 imgui_params += -I$(im_file_diag_dir)
 #imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
-imgui_file_cxx = c++ $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
+imgui_file_cxx = $(compiler) $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End ImGuiFileDialog
 #------------------------------------------------------------------------------
