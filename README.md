@@ -10,7 +10,25 @@ The purpose of this is to provide an OS-independent, graphical, seismic processi
 
 ## Current status
 
-This is extremely early in development. ./src/tests/imgui_test.cpp is currently my playground for setting up the GUI.
+This is extremely early in development.
+
+---
+
+## ToDo
+
+- [X] Read single SAC file
+- [X] Display SAC header information
+- [ ] Plot Seismogram
+- [ ] Read 3-component Seismic data (3 SAC files)
+- [ ] Plot 3-component Seismic data
+- [ ] Read Array seismic many (many 1-component or 3-component SAC files)
+- [ ] Display event epicenter on map
+- [ ] Display station/array positions on map
+- [ ] Instrument response removal
+- [ ] Filtering (1 or many)
+- [ ] Record section plotting (many stations)
+- [ ] Plot spectrogram
+- [ ] Plot Spectrum
 
 ---
 

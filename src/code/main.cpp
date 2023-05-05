@@ -19,7 +19,7 @@
 
 // std::cout, std::cerr
 #include <iostream>
-// mutex locks
+// mutex locks for thread-safe data access
 #include <mutex>
 // std::string_view
 #include <string>
@@ -80,6 +80,7 @@ struct WindowSettings
   bool is_set{false};
 };
 
+// Struct for holding all window settings
 struct AllWindowSettings
 {
   WindowSettings welcome_settings{400, 200, 500, 250};
@@ -89,6 +90,7 @@ struct AllWindowSettings
 
 AllWindowSettings aw_settings{};
 
+// Struct for handling fps tracking info
 struct fps_info
 {
   // FPS tracking
@@ -100,9 +102,20 @@ struct fps_info
   float current_interval{0.f};
 };
 
+// Struct for holding 1c sac data
+struct sac_1c
+{
+  SAC::SacStream sac{};
+  std::mutex sac_mutex{};
+  std::string file_name{};
+  std::string file_dir{};
+};
+
+// For 3C data we'll start off just with three SacStreams
+
 
 // Function that handles the main menu bar
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, SAC::SacStream& sac_file, std::mutex& sac_mutex)
+static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, sac_1c& sac)
 {
   ImGui::BeginMainMenuBar();
   // File menu
@@ -110,8 +123,14 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   {
     if (ImGui::MenuItem("Open"))
     {
-      // Nothing happens with this yet...
-      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".");
+      if (sac.file_dir != "")
+      {
+        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", sac.file_dir.c_str());
+      }
+      else
+      {
+        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".");
+      }
     }
     if (ImGui::MenuItem("Exit"))
     {
@@ -144,9 +163,11 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     // Read the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      sac_mutex.lock();
-      sac_file = SAC::SacStream(ImGuiFileDialog::Instance()->GetFilePathName());
-      sac_mutex.unlock();
+      sac.sac_mutex.lock();
+      sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
+      sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
+      sac.sac = SAC::SacStream(sac.file_name);
+      sac.sac_mutex.unlock();
       // We should show the sac header window after loading a sac file (not before)
       allwindow_settings.sac_header_settings.show = true;
     }
@@ -155,7 +176,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   ImGui::EndMainMenuBar();
 }
 
-void window_sac_header(WindowSettings& window_settings, SAC::SacStream& sac, std::mutex& sac_mutex)
+void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
 {
   if (window_settings.show)
   {
@@ -167,19 +188,19 @@ void window_sac_header(WindowSettings& window_settings, SAC::SacStream& sac, std
     }
 
     ImGui::Begin("Sac Header", &window_settings.show);
-    sac_mutex.lock();
+    sac.sac_mutex.lock();
     ImGui::Text("Station Information");
-    ImGui::Text("StNm: %s", sac.kstnm.c_str());
-    ImGui::Text("CmpNm: %s", sac.kcmpnm.c_str());
-    ImGui::Text("Stla: %.2f\u00B0N", sac.stla);
-    ImGui::Text("Stlo: %.2f\u00B0E", sac.stlo);
-    ImGui::Text("Stel: %.2f m", sac.stel);
+    ImGui::Text("StNm: %s", sac.sac.kstnm.c_str());
+    ImGui::Text("CmpNm: %s", sac.sac.kcmpnm.c_str());
+    ImGui::Text("Stla: %.2f\u00B0N", sac.sac.stla);
+    ImGui::Text("Stlo: %.2f\u00B0E", sac.sac.stlo);
+    ImGui::Text("Stel: %.2f m", sac.sac.stel);
     ImGui::Text("Event Information");
-    ImGui::Text("EvNm: %s", sac.kevnm.c_str());
-    ImGui::Text("Evla: %.2f\u00B0N", sac.evla);
-    ImGui::Text("Evlo: %.2f\u00B0E", sac.evlo);
-    ImGui::Text("Evdp: %.2f km", sac.evdp);
-    sac_mutex.unlock();
+    ImGui::Text("EvNm: %s", sac.sac.kevnm.c_str());
+    ImGui::Text("Evla: %.2f\u00B0N", sac.sac.evla);
+    ImGui::Text("Evlo: %.2f\u00B0E", sac.sac.evlo);
+    ImGui::Text("Evdp: %.2f km", sac.sac.evdp);
+    sac.sac_mutex.unlock();
     ImGui::End();
   }
 }
@@ -301,8 +322,7 @@ int main()
 
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
 
-  SAC::SacStream sac{};
-  std::mutex sac_mutex{};
+  sac_1c sac{};
 
   // The draw loop, this is ran EVERY FRAME
   // so be careful to make the stuff in here safe
@@ -311,7 +331,7 @@ int main()
   {
     // Start the frame
     prep_newframe();
-    main_menu_bar(window, aw_settings, sac, sac_mutex);
+    main_menu_bar(window, aw_settings, sac);
     // Lock the fps_tracker
     fps_mutex.lock();
     // Increase time
@@ -326,7 +346,7 @@ int main()
     // Show the FPS window if appropriate
     window_fps(fps_tracker, aw_settings.fps_settings, fps_mutex);
     // Show the Sac Header window if appropriate
-    window_sac_header(aw_settings.sac_header_settings, sac, sac_mutex);
+    window_sac_header(aw_settings.sac_header_settings, sac);
     // Finish the frame
     finish_newframe(window, clear_color);
   }
