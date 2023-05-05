@@ -1,20 +1,22 @@
-#include "sac_stream.hpp"
+#include <sac_stream.hpp>
 
 // Dear ImGui headers
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 // File dialog header
-#include "ImGuiFileDialog.h"
+#include <ImGuiFileDialog.h>
 
 // ImPlot headers
-#include "implot.h"
-#include "implot_internal.h"
+#include <implot.h>
 
-#include <iostream>
-#include <string>
-#include <vector>
+// Standard Library Stuff
+#include <algorithm> // std::min_element
+#include <iostream> // std::cout
+#include <string> // std::string
+#include <vector> // std::vector
+#include <mutex> // std::mutex
 
 // Silence OpenGL deprecation warnings on compile
 #define GL_SILENCE_DEPRECATION
@@ -30,6 +32,19 @@ struct WindowSettings
   bool set{false};
   bool show{true};
 };
+
+struct PlotSettings
+{
+  int xmin{};
+  int xmax{};
+  int ymin{};
+  int ymax{};
+  bool reset_limits{true};
+};
+
+
+// Define global mutex
+std::mutex data_mutex;
 
 // Standard file menu
 static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
@@ -54,7 +69,10 @@ static void file_menu(GLFWwindow* window, SAC::SacStream& sac)
   {
     if (ImGuiFileDialog::Instance()->IsOk())
     {
+      // Lock the data while it is being read in, unlock when finished
+      data_mutex.lock();
       sac = SAC::SacStream(ImGuiFileDialog::Instance()->GetFilePathName());
+      data_mutex.unlock();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -107,7 +125,7 @@ static void main_window(float fps)
   ImGui::End();
 }
 
-static void plot_window(WindowSettings* w_settings, SAC::SacStream& sac)
+static void plot_window(WindowSettings* w_settings, PlotSettings* p_settings, const SAC::SacStream& sac)
 {
   if (!w_settings->set)
   {
@@ -118,21 +136,33 @@ static void plot_window(WindowSettings* w_settings, SAC::SacStream& sac)
   // Set minimum and maximum window size constraints
   ImGui::SetNextWindowSizeConstraints(ImVec2(500, 400), ImVec2(1000, 600));
   ImGui::Begin("Sac Plot", &(w_settings->show), ImGuiWindowFlags_NoCollapse);
+  ImPlot::BeginPlot("Test Plot");
+  // Lock the data before checking it
+  data_mutex.lock();
   if (sac.npts != -12345)
   {
-    if (ImPlot::BeginPlot("Test Plot"))
+    // Reset limits upon loading in first bit of data
+    if (p_settings->reset_limits)
     {
-      // Trying to plot without giving the y-values
-      ImPlot::PlotLine("", sac.data1.data(), sac.data1.size());
-      ImPlot::EndPlot();
+      auto minmax = std::minmax_element(sac.data1.begin(), sac.data1.end());
+      p_settings->xmin = -10;
+      p_settings->xmax = sac.data1.size();
+      p_settings->ymin = *minmax.first;
+      p_settings->ymax = *minmax.second;
+      ImPlot::SetupAxisLimits(ImAxis_X1, p_settings->xmin, p_settings->xmax, ImPlotCond_Always);  // Set limits for the x-axis
+      ImPlot::SetupAxisLimits(ImAxis_Y1, p_settings->ymin, p_settings->ymax, ImPlotCond_Always); // Set limits for the y-axis
+      p_settings->reset_limits = false;
     }
-    ImGui::Text("Plot here");
+    ImPlot::PlotLine("", &sac.data1[0], sac.data1.size());
   }
+  // Release the lock on the data
+  data_mutex.unlock();
+  ImPlot::EndPlot();
   ImGui::End();
 }
 
 // Info window
-static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
+static void info_window(WindowSettings* w_settings, const SAC::SacStream& sac)
 {
   if (!w_settings->set)
   {
@@ -161,8 +191,7 @@ static void info_window(WindowSettings* w_settings, SAC::SacStream& sac)
   ImGui::End();
 }
 
-// The draw cycle for the external (containing) window
-static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w_settings, SAC::SacStream& sac, float fps)
+static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w_settings, PlotSettings* p_settings, SAC::SacStream& sac, float fps)
 {
   glfwPollEvents();
   ImGui_ImplOpenGL3_NewFrame();
@@ -174,7 +203,7 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   if (w_settings->show)
   {
     info_window(w_settings, sac);
-    plot_window(w_settings, sac); 
+    plot_window(w_settings, p_settings, sac); 
   }
 
   ImGui::Render();
@@ -188,12 +217,19 @@ static void draw_cycle(GLFWwindow* window, ImVec4 clear_color, WindowSettings* w
   glfwSwapBuffers(window);
 }
 
+// Helper program for errors with glfw
+static void glfw_error_callback(int error, const char *description)
+{
+  fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
 int main()
 {
+
+  // Setup window
+  glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit())
-  {
-    return 1;
-  }
+        abort();
 
     // Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -227,12 +263,16 @@ int main()
   // Maximize the window
   glfwMaximizeWindow(window);
   glfwMakeContextCurrent(window);
-  // Turn on VSync
-  glfwSwapInterval(1);
+  // Turn on VSync (or off)
+  glfwSwapInterval(0);
 
   ImGui::CreateContext();
+  // The issue appears to be related to creating and destroying the ImPlot context throughout the run
+  // when there are no optimizations active on the compiler
+  // From lldb exploration, the break occurs when this calls ImPlotContext* ctx = IM_NEW(ImPlotContext)();
+  // It seems to to have issues with how it access memory...
   ImPlot::CreateContext();
-  
+
   ImGuiIO& io = ImGui::GetIO();
   (void) io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -250,6 +290,7 @@ int main()
 
   SAC::SacStream sac{};
   WindowSettings w_settings{1000, 100, 250, 500};
+  PlotSettings p_settings{};
   // FPS tracking
   float prev_time{0.0f};
   int frame_count{0};
@@ -258,6 +299,7 @@ int main()
   
   while (!glfwWindowShouldClose(window))
   {
+    draw_cycle(window, clear_color, &w_settings, &p_settings, sac, fps);
     current_time += io.DeltaTime;
     ++frame_count;
     if (current_time - prev_time >= 0.025f)
@@ -266,7 +308,6 @@ int main()
       frame_count = 0;
       prev_time = current_time;
     }
-    draw_cycle(window, clear_color, &w_settings, sac, fps);
   }
 
   ImGui_ImplOpenGL3_Shutdown();

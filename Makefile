@@ -1,32 +1,35 @@
 #------------------------------------------------------------------------------
-# Setup compiler
+# We need to know what OS we're on as it determines which compiler we use (and 
+# therefore which compiler parameters are appropriate) and how we link to the
+# necessary libraries
 #------------------------------------------------------------------------------
 # Use the correct shell for bash scripts
 # seemed to default to /bin/sh when I use /bin/bash
 SHELL := /bin/bash
-# Compiler
-compiler = g++-12
+# Linux or mac
+uname_s := $(shell uname -s)
+# Debug mode or release mode
+debug = true
+#------------------------------------------------------------------------------
+# Setup compiler
+#------------------------------------------------------------------------------
 # Param is always used
 param = -std=c++20 -pedantic-errors -Wall
-# Debug params only if debug is true
-# G++
-# This is needed to Dear ImGui only, as it cannot compile with G++ on MacOs
-debug_param = -fanalyzer -Weffc++ -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
-# Specific for Dear ImGui
-# Dear ImGui fails with -Weffc++ unfortuantely
-#debug_imgui = -fanalyzer -Wextra -Wsign-conversion -Werror -Wshadow -ggdb
-# ImPlot doesn't jive with -Wsign-conversion
-debug_imgui = -fanalyzer -Wextra -Werror -Wshadow -ggdb
+# Common debug params regardless of clang++ or g++
+common_debug = -Wextra -Werror -Wshadow -ggdb
+# Slightly different between MacOS and Linux
+ifeq ($(uname_s), Darwin)
+    compiler = clang++
+		debug_param = $(common_debug) -Wsign-conversion -Weffc++
+else
+    compiler = g++-12
+		debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
+endif
+
+# Specific to Dear ImGui
+debug_imgui = $(common_debug)
 # Release params only if debug is false
 release_param = -O2 -DNDEBUG
-# Debug (big/slow/strict) or Release (small/fast/relaxed)
-# At present (4 May 2023) debug = true will compile on both
-# Linux and Mac. However, it crashes on Mac (I think it dislikes
-# the size of the vector<double> for sac data maybe)
-# On Linux it works fine
-# debug = false works fine on both!
-# Trying to resolve issue so that debug-mode can still be used on Mac...
-debug = false
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
@@ -44,8 +47,6 @@ cxx := $(compiler) $(params)
 #------------------------------------------------------------------------------
 # Directory structure
 #------------------------------------------------------------------------------
-# Linux or mac
-uname_s := $(shell uname -s)
 # Project directory structure
 # Code base starts here
 base_prefix = $(CURDIR)/src/
@@ -109,7 +110,8 @@ else
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
-imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
+#imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
+imgui_cxx = c++ $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End Dear ImGui
 #------------------------------------------------------------------------------
@@ -121,7 +123,8 @@ imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 # great with Dear ImGui
 im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
 imgui_params += -I$(im_file_diag_dir)
-imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
+#imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
+imgui_file_cxx = c++ $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End ImGuiFileDialog
 #------------------------------------------------------------------------------
@@ -174,7 +177,7 @@ sac_spectral: $(imp_prefix)sac_spectral.cpp
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(obj_prefix) || mkdir -p $(obj_prefix)
-	$(cxx) -c -o $(obj_prefix)$@.o $< -I$(sf_header) $(fftw_params)
+	$(cxx) -c -o $(obj_prefix)$@.o $< -I$(sf_header) $(fftw_include)
 	@echo -e "Build finish: $$(date)\n"
 
 spectral_modules := sac_spectral
@@ -242,10 +245,24 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(imgui_file_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(stream_obj)
+	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(stream_obj)
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # end imgui_test
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# implot_crash
+#------------------------------------------------------------------------------
+implot_crash: $(test_prefix)implot_crash.cpp $(imgui_objs)
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(imgui_cxx) -o $(test_bin_prefix)$@ $< $(imgui_objs) $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
+	@echo -e "Build finish: $$(date)\n"
+
+#------------------------------------------------------------------------------
+# end implot_crash
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -256,7 +273,7 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv
 	make -C $(sf_dir) clean
 #------------------------------------------------------------------------------
 # End cleanup

@@ -2,7 +2,7 @@
 #define SAC_SPECTRAL_H
 
 // SAC::SacStream
-#include "sac_stream.hpp"
+#include <sac_stream.hpp>
 
 // FFTW library
 #include <fftw3.h>

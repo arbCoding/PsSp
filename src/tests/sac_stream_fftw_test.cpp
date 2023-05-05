@@ -1,5 +1,5 @@
 // SacClass
-#include "sac_stream.hpp"
+#include <sac_stream.hpp>
 #include "sac_spectral.hpp"
 
 #include <iostream>
