@@ -9,7 +9,7 @@ SHELL := /bin/bash
 # Linux or mac
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = false
+debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -19,11 +19,11 @@ param = -std=c++20 -pedantic-errors -Wall
 common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
-    compiler = clang++
-		debug_param = $(common_debug) -Wsign-conversion -Weffc++
+  compiler = clang++
+	debug_param = $(common_debug) -Wsign-conversion -Weffc++
 else
-    compiler = g++-12
-		debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
+  compiler = g++-12
+	debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
 endif
 
 # Specific to Dear ImGui
@@ -56,6 +56,8 @@ bin_prefix = $(CURDIR)/bin/
 test_bin_prefix = $(bin_prefix)tests/
 # Where the source code files for tests are stored
 test_prefix = $(base_prefix)tests/
+# Where the source code files for PsSp are stored
+code_prefix = $(base_prefix)code/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -156,7 +158,7 @@ cxx := $(cxx) -I$(hdr_prefix)
 # Program definitions
 #------------------------------------------------------------------------------
 # All programs
-all: tests
+all: PsSp
 
 # These need sac_format.o and FFTW
 sac_spectral_tests: sac_stream_fftw_test sac_stream_lowpass_test
@@ -193,10 +195,11 @@ $(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules) $(sf_obj)
 #------------------------------------------------------------------------------
 # ImGuiFileDialog
 #------------------------------------------------------------------------------
-ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp
+#ImGuiFileDialog: $(im_file_diag_dir)ImGuiFileDialog.cpp
+$(im_file_diag_dir)ImGuiFileDialog.o: $(im_file_diag_dir)ImGuiFileDialog.cpp
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
-	$(imgui_file_cxx) -c -o $(im_file_diag_dir)$@.o $<
+	$(imgui_file_cxx) -c -o $@ $<
 	@echo -e "Building finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End ImGuiFileDialog
@@ -241,28 +244,28 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 #------------------------------------------------------------------------------
 # imgui_test
 #------------------------------------------------------------------------------
-imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) ImGuiFileDialog $(stream_modules)
+imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(stream_obj)
+	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # end imgui_test
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# implot_crash
+# PsSp
 #------------------------------------------------------------------------------
-implot_crash: $(test_prefix)implot_crash.cpp $(imgui_objs)
+PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
-	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -o $(test_bin_prefix)$@ $< $(imgui_objs) $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
+	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
+	$(imgui_cxx) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
 	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------
-# end implot_crash
+# end PsSp
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
