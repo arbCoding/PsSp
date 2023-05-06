@@ -18,7 +18,7 @@ This is extremely early in development.
 
 - [X] Read single SAC file
 - [X] Display SAC header information
-- [ ] Plot Seismogram
+- [X] Plot 1-component Seismogram
 - [ ] Read 3-component Seismic data (3 SAC files)
 - [ ] Plot 3-component Seismic data
 - [ ] Read Array seismic many (many 1-component or 3-component SAC files)
@@ -40,13 +40,27 @@ I provide information on installing them on MacOS and Linux [here](#compilation-
 The other dependencies are setup as Git submodules and handled automatically.
 
 Info on dependencies:
- * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5. This provides the OS-independent GUI.
- * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch. This adds OS-independent File Dialogs to Dear ImGui.
- * [ImPlot](https://github.com/epezent/implot). This adds OS-independent plotting functionality to Dear ImGui. (Currently implementing)
- * [OpenGL3](https://www.opengl.org/) this is a graphical backend for the GUI.
- * [GLFW3](https://www.glfw.org/) this is a graphical backend for the GUI.
- * [sac-format](https://github.com/arbCoding/sac-format). This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
- * [FFTW3](https://www.fftw.org/). This is necessary for spectral functionality (FFT, IFFT).
+ * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
+    * This provides the OS-independent GUI.
+    * Handled automatically (Git submodule).
+ * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
+    * This adds OS-independent File Dialogs to Dear ImGui.
+    * Handled automatically (Git submodule).
+ * [ImPlot](https://github.com/epezent/implot).
+    * This adds OS-independent plotting functionality to Dear ImGui.
+    * Handled automatically (Git submodule).
+ * [sac-format](https://github.com/arbCoding/sac-format)
+    * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
+    * Handled automatically.
+ * [OpenGL3](https://www.opengl.org/)
+    * This is a graphical backend for the GUI.
+    * Handled [manually](#compilation-instructions).
+ * [GLFW3](https://www.glfw.org/)
+    * This is a graphical backend for the GUI.
+    * Handled [manually](#compilation-instructions).
+ * [FFTW3](https://www.fftw.org/)
+    * This is necessary for spectral functionality (FFT, IFFT).
+    * Handled [manually](#compilation-instructions).
 
 ---
 
@@ -69,7 +83,7 @@ On Linux (Ubuntu 22.04, Debian based)
 sudo apt install libfftw3-dev libglfw3-dev
 ```
 
-Next you need to clone this project and initialize the submodules
+Next you need to clone this project and initialize the [submodules](submodules)
 ```shell
 git clone https://github.com/arbCoding/PsSp.git
 cd PsSp
@@ -84,7 +98,12 @@ Then it is a simple as running
 make
 ```
 
-To make all of the programs, which will be inside the ./bin/ directory (test programs will go inside the ./bin/test/ directory).
+To make PsSp, which will be inside the ./bin/ directory. 
+
+To make the test programs (test programs will go inside the ./bin/test/ directory) run
+```shell
+make tests
+```
 
 To cleanup (including removing the compiled programs), run:
 ```shell
