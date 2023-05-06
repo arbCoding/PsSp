@@ -262,7 +262,7 @@ PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o 
 	@echo "Build start:  $$(date)"
 	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
 	$(imgui_cxx) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
-	@test imgui.ini || rm imgui.ini
+	@test imgui.ini && rm -f imgui.ini
 	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------

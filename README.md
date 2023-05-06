@@ -51,7 +51,7 @@ Info on dependencies:
     * Handled automatically (Git submodule).
  * [sac-format](https://github.com/arbCoding/sac-format)
     * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
-    * Handled automatically.
+    * Handled automatically (Git submodule).
  * [OpenGL3](https://www.opengl.org/)
     * This is a graphical backend for the GUI.
     * Handled [manually](#compilation-instructions).

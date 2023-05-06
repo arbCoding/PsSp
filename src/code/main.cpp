@@ -33,6 +33,7 @@
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
+// Per window settings
 struct WindowSettings
 {
   // X position (left to right)
@@ -45,19 +46,18 @@ struct WindowSettings
   // if false, position and size get set
   bool is_set{false};
 };
-
+// Settings for all windows
 struct AllWindowSettings
 {
   // Window with welcome message
-  WindowSettings welcome_settings{400, 200, 475, 60};
+  WindowSettings welcome_settings{395, 340, 525, 60};
   // FPS tracker window
   WindowSettings fps_settings{5, 25, 60, 55, false};
   // Header info for a single SAC file
-  WindowSettings sac_header_settings{1160, 25, 275, 500, false};
+  WindowSettings sac_header_settings{1153, 25, 285, 730, false};
   // Plot of a single sac file (time-series only)
-  WindowSettings sac_1c_plot_settings{5, 25, 1150, 350, false};
+  WindowSettings sac_1c_plot_settings{2, 25, 1150, 350, false};
 };
-
 // Struct for handling fps tracking info
 struct fps_info
 { 
@@ -70,7 +70,6 @@ struct fps_info
   float reporting_interval{0.2f};
   std::mutex fps_mutex{};
 };
-
 // Struct for holding 1-component sac data
 struct sac_1c
 {
@@ -86,6 +85,7 @@ struct sac_1c
 //-----------------------------------------------------------------------------
 // Graphical Backend functions
 //-----------------------------------------------------------------------------
+// Setup the graphicaly libraries, figure out version info depending on OS
 const char* setup_gl()
 {
   // Unfortunately it seems that we need to use preprocessor macros to handle this
@@ -113,29 +113,40 @@ const char* setup_gl()
 #endif
   return glsl_version;
 }
-
+// Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO
+// stuff (Fonts, other things I'm sure)
 ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version)
 {
   if (window == nullptr)
   {
     std::abort();
   }
-
   // Maximize the window
   glfwMaximizeWindow(window);
   glfwMakeContextCurrent(window);
   // Turn on VSync (or off)
   glfwSwapInterval(1);
-
   // Create ImGui and ImPlot contexts
   ImGui::CreateContext();
   ImPlot::CreateContext();
-
+  // Get the ImGui IO stuff (fonts and what-not)
   ImGuiIO& io = ImGui::GetIO();
   (void) io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-  // Make all 25% bigger (MBP screen)
-  io.FontGlobalScale = 1.25f;
+  //----------------------------------------------------------------------
+  // Resize fonts
+  //----------------------------------------------------------------------
+  // Using FontGlobalScale makes for blurry fonts
+  //io.FontGlobalScale = 1.f;
+  // Create a new font with a larger size
+  ImFontAtlas* font_atlas = io.Fonts;
+  ImFontConfig font_cfg;
+  font_cfg.SizePixels = 18;
+  ImFont* font = font_atlas->AddFontDefault(&font_cfg);
+  io.FontDefault = font;
+  //----------------------------------------------------------------------
+  // End Resize fonts
+  //----------------------------------------------------------------------
   // Dark mode FTW
   ImGui::StyleColorsDark();
   // Setup ImGui to use the GLFW and OpenGL backends
@@ -143,7 +154,7 @@ ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version)
   ImGui_ImplOpenGL3_Init(glsl_version);
   return io;
 }
-
+// Cleanly destroy everything, performed just before program ends
 void end_graphics(GLFWwindow* window)
 {
   // Kill the GLFW and OpenGL backends
@@ -170,7 +181,6 @@ static void glfw_error_callback(int error, const char *description)
 {
   std::cerr << "GLFW Error " << error << ": " << description << '\n'; 
 }
-
 // Ran at beginning of new frame draw cycle
 static void prep_newframe()
 {
@@ -182,7 +192,6 @@ static void prep_newframe()
   // Tell Dear ImGui to prepare for a new frame
   ImGui::NewFrame();
 }
-
 // Ran at end of new frame draw cycle
 static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 {
@@ -338,7 +347,7 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
       window_settings.is_set = true;
     }
 
-    ImGui::Begin("Sac Header", &window_settings.show);
+    ImGui::Begin("Sac Header", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     std::lock_guard<std::mutex> guard(sac.sac_mutex);
     if (ImGui::CollapsingHeader("Station Information"))
     {
@@ -355,7 +364,7 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
     {
       ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
       ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
-      ImGui::Text("Incident:   %.2f\u00B0", sac.sac.cmpinc);
+      ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
     }
     if (ImGui::CollapsingHeader("Event Information"))
     {
@@ -400,7 +409,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(" ", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoResize);
+    ImGui::Begin(" ", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     ImGui::TextUnformatted(welcome_message.data());
     ImGui::End();
   }
@@ -436,7 +445,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
       fps_tracker.current_interval = 0;
       fps_tracker.prev_time = fps_tracker.current_time;
     }
-    ImGui::Begin("FPS", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("FPS", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     ImGui::Text("%i", static_cast<int>(fps_tracker.fps));
     ImGui::End();
   }
