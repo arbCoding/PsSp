@@ -3,6 +3,9 @@
 # therefore which compiler parameters are appropriate) and how we link to the
 # necessary libraries
 #------------------------------------------------------------------------------
+# Note, it appears that in sac-format KString's are being read in an incorrect
+# order on Linux ("Central Californ" becomes "fornCaliral Cent")
+# 
 # Use the correct shell for bash scripts
 # seemed to default to /bin/sh when I use /bin/bash
 SHELL := /bin/bash
