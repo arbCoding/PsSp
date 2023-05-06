@@ -93,6 +93,12 @@ git submodule update --init
 That will download the appropriate submodule dependencies, with the correct commit version, automatically, from their respective GitHub repositories.
 You can confirm that by examining them inside the submodules directory (they will be empty before you initialize them and populate afterward).
 
+**NOTE** if a submodule is not the correct version (detached head, but submodule was updated)
+From the base git dir (PsSp) run
+```shell
+git submodule update --init --remote submodules/
+```
+
 Then it is a simple as running
 ```shell
 make
