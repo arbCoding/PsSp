@@ -21,8 +21,8 @@ This is extremely early in development.
 - [X] Plot 1-component Seismogram
 - [ ] Read 3-component Seismic data (3 SAC files)
 - [ ] Plot 3-component Seismic data
-- [ ] Read Array seismic many (many 1-component or 3-component SAC files)
-- [ ] Display event epicenter on map
+- [ ] Read Array seismic data (many 1-component or 3-component SAC files)
+- [ ] Display event epicenter on map (excellent example [here](https://github.com/epezent/implot_demos/blob/master/demos/maps.cpp))
 - [ ] Display station/array positions on map
 - [ ] Instrument response removal
 - [ ] Filtering (1 or many)
@@ -42,25 +42,22 @@ The other dependencies are setup as Git submodules and handled automatically.
 Info on dependencies:
  * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
     * This provides the OS-independent GUI.
-    * Handled automatically (Git submodule).
+    * Git submodule.
  * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
     * This adds OS-independent File Dialogs to Dear ImGui.
-    * Handled automatically (Git submodule).
+    * Git submodule.
  * [ImPlot](https://github.com/epezent/implot).
     * This adds OS-independent plotting functionality to Dear ImGui.
-    * Handled automatically (Git submodule).
+    * Git submodule.
  * [sac-format](https://github.com/arbCoding/sac-format)
     * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
-    * Handled automatically (Git submodule).
+    * Git submodule.
  * [OpenGL3](https://www.opengl.org/)
     * This is a graphical backend for the GUI.
-    * Handled [manually](#compilation-instructions).
  * [GLFW3](https://www.glfw.org/)
     * This is a graphical backend for the GUI.
-    * Handled [manually](#compilation-instructions).
  * [FFTW3](https://www.fftw.org/)
     * This is necessary for spectral functionality (FFT, IFFT).
-    * Handled [manually](#compilation-instructions).
 
 ---
 
@@ -70,7 +67,7 @@ I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specif
 
 You'll need to install FFTW3 and GLFW yourself. I believe GLFW provides/includes OpenGL.
 
-**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of [Chocolatey](https://chocolatey.org/) or [Cygwin](https://www.cygwin.com/)
+**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/)
 to setup your compilation environment on Windows.
 
 On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
