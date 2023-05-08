@@ -184,21 +184,19 @@ tests: sac_spectral_tests imgui_test
 # By splitting into .o files I can make it so that only newly written code gets compiled
 # Therefore cutting down on compilation times
 # Also helps to simply the logic a little bit
-sac_spectral: $(imp_prefix)sac_spectral.cpp
+$(obj_prefix)sac_spectral.o: $(imp_prefix)sac_spectral.cpp
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(obj_prefix) || mkdir -p $(obj_prefix)
-	$(cxx) -c -o $(obj_prefix)$@.o $< -I$(sf_header) $(fftw_include)
+	$(cxx) -c -o $@ $< -I$(sf_header) $(fftw_include)
 	@echo -e "Build finish: $$(date)\n"
 
-spectral_modules := sac_spectral
-spectral_obj := $(addsuffix .o, $(addprefix $(obj_prefix), $(spectral_modules)))
 spectral_sac := sac_stream_fftw_test sac_stream_lowpass_test
-$(spectral_sac): %:$(test_prefix)%.cpp $(spectral_modules) $(sf_obj)
+$(spectral_sac): %:$(test_prefix)%.cpp $(obj_prefix)sac_spectral.o $(sf_obj)
 	@echo "Building $(test_bin_prefix)$@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(spectral_obj) $(fftw_params)
+	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(obj_prefix)sac_spectral.o $(fftw_params)
 	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------
@@ -266,11 +264,11 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiF
 #------------------------------------------------------------------------------
 # PsSp
 #------------------------------------------------------------------------------
-PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(spectral_modules)
+PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(obj_prefix)sac_spectral.o
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
-	$(imgui_cxx) -I$(hdr_prefix) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(spectral_obj) $(fftw_params)
+	$(imgui_cxx) -I$(hdr_prefix) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params)
 	@test imgui.ini && rm -f imgui.ini
 	@echo -e "Build finish: $$(date)\n"
 

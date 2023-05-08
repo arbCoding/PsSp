@@ -62,7 +62,7 @@ struct AllWindowSettings
   // Plot real/imag spectrum of SAC file
   WindowSettings sac_1c_spectrum_plot_settings{2, 25, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
-  WindowSettings sac_list_settings{2, 367, 347, 300, false};
+  WindowSettings sac_vector_settings{2, 367, 347, 300, false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -101,6 +101,7 @@ struct sac_1c
       file_dir = other.file_dir;
       file_name = other.file_name;
       sac = other.sac;
+      // Don't assign the mutex
     }
     return *this;
   }
@@ -125,16 +126,16 @@ void update_fps(fps_info& fps, ImGuiIO& io)
   ++fps.frame_count;
 }
 
-void cleanup_sac(std::vector<sac_1c>& sac_list, int& selected, bool& clear)
+void cleanup_sac(std::vector<sac_1c>& sac_vector, int& selected, bool& clear)
 {
   if (clear)
   {
-    if (sac_list[selected].sac_mutex.try_lock())
+    if (sac_vector[selected].sac_mutex.try_lock())
     {
-      sac_list[selected].sac_mutex.unlock();
+      sac_vector[selected].sac_mutex.unlock();
       --selected;
-      sac_list.erase(sac_list.begin() + selected + 1);
-      if (selected < 0 && sac_list.size() > 0)
+      sac_vector.erase(sac_vector.begin() + selected + 1);
+      if (selected < 0 && sac_vector.size() > 0)
       {
         selected = 0;
       }
@@ -307,7 +308,7 @@ static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Function that handles the main menu bar. Preparing to handle 3C sac data soon
 // I'll do a list of sac_1c structs, file_dir will be redundant, but I don't care at the moment.
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, std::vector<sac_1c>& sac_list)
+static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, std::vector<sac_1c>& sac_vector)
 {
   sac_1c sac{};
   ImGui::BeginMainMenuBar();
@@ -353,7 +354,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     if (ImGui::MenuItem("Sac List"))
     {
-      allwindow_settings.sac_list_settings.show = !allwindow_settings.sac_list_settings.show;
+      allwindow_settings.sac_vector_settings.show = !allwindow_settings.sac_vector_settings.show;
     }
     ImGui::EndMenu();
   }
@@ -371,12 +372,11 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
         sac.sac = SAC::SacStream(sac.file_name);
         // Add it to the list!
-        sac_list.push_back(sac);
+        sac_vector.push_back(sac);
         // We should show the sac header window after loading a sac file (not before)
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
-        allwindow_settings.sac_list_settings.show = true;
-        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+        allwindow_settings.sac_vector_settings.show = true;
         sac.sac_mutex.unlock();
       }
     }
@@ -395,7 +395,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-          // Time to read it into the list
+          // Time to read it into the vector
           if (sac.sac_mutex.try_lock())
           {
             sac_found = true;
@@ -403,7 +403,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
             sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
             sac.sac = SAC::SacStream(sac.file_name);
             // Add it to the list!
-            sac_list.push_back(sac);
+            sac_vector.push_back(sac);
             sac.sac_mutex.unlock();
           }
         }
@@ -413,8 +413,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
       {
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
-        allwindow_settings.sac_list_settings.show = true;
-        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+        allwindow_settings.sac_vector_settings.show = true;
       }
     }
     ImGuiFileDialog::Instance()->Close();
@@ -428,7 +427,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
 //------------------------------------------------------------------------
 // 1-component SAC plot window
 //------------------------------------------------------------------------
-void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_list, int& selected)
+void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_vector, int& selected)
 {
   if (window_settings.show)
   {
@@ -441,13 +440,33 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
     ImGui::Begin("Sac Plot", &window_settings.show);
     if (ImGui::BeginChild("Sac Plot"))
     {
-      if(ImPlot::BeginPlot("Seismogram"))
+      if (ImPlot::BeginPlot("Seismogram"))
       {
-        if (sac_list[selected].sac_mutex.try_lock())
+        ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
+        if (sac_vector[selected].sac_mutex.try_lock())
         {
-          ImPlot::SetupAxis(ImAxis_X1, "Time (s)");
-          ImPlot::PlotLine(sac_list[selected].sac.kcmpnm.c_str(), &sac_list[selected].sac.data1[0], sac_list[selected].sac.data1.size(), sac_list[selected].sac.delta);
-          sac_list[selected].sac_mutex.unlock();
+          ImPlot::PlotLine(sac_vector[selected].sac.kcmpnm.c_str(), &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
+          sac_vector[selected].sac_mutex.unlock();
+        }
+        // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
+        // Right-clicking is reserved for the built in context menu (which I haven't figured out how to add to without
+        // modifying ImPlot directly, which I don't want to do).
+        ImPlotContext* plot_ctx = ImPlot::GetCurrentContext();
+        if (plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+          ImGui::OpenPopup("##PlotContext2");
+        }
+        if (ImGui::BeginPopup("##PlotContext2"))
+        {
+          if (ImGui::BeginMenu("Test"))
+          {
+            if (ImGui::MenuItem("Custom 1"))
+            {
+
+            }
+            ImGui::EndMenu();
+          }
+          ImGui::EndPopup();
         }
         ImPlot::EndPlot();
       }
@@ -456,6 +475,7 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
     ImGui::End();
   }
 }
+
 //------------------------------------------------------------------------
 // End 1-component SAC plot window
 //------------------------------------------------------------------------
@@ -640,7 +660,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_list(WindowSettings& window_settings, std::vector<sac_1c>& sac_list, int& selected, bool& cleared)
+void window_sac_vector(WindowSettings& window_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
 {
   std::string option{};
   if (window_settings.show)
@@ -653,7 +673,7 @@ void window_sac_list(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
       window_settings.is_set = true;
     }
     ImGui::Begin("Sac List", &window_settings.show);
-    for (int i = 0; const auto& sac : sac_list)
+    for (int i = 0; const auto& sac : sac_vector)
     {
       const bool is_selected{selected == i};
       option = sac.file_name.substr(sac.file_name.find_last_of("\\/") + 1);
@@ -672,6 +692,26 @@ void window_sac_list(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
         {
           selected = i;
           cleared = true;
+        }
+        if (ImGui::MenuItem("Reload"))
+        {
+          selected = i;
+          if (sac_vector[selected].sac_mutex.try_lock())
+          {
+            sac_vector[selected].sac = SAC::SacStream(sac_vector[selected].file_name);
+            sac_vector[selected].sac_mutex.unlock();
+            calc_spectrum(sac_vector[selected], spectrum);
+          }
+        }
+        if (ImGui::MenuItem("LowPass"))
+        {
+          selected = i;
+          if (sac_vector[selected].sac_mutex.try_lock())
+          {
+            SAC::lowpass(sac_vector[selected].sac, 8, 2);
+            sac_vector[selected].sac_mutex.unlock();
+            calc_spectrum(sac_vector[selected], spectrum);
+          }
         }
         ImGui::EndPopup();
       }
@@ -723,7 +763,7 @@ int main()
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
   AllWindowSettings aw_settings{};
   // Time-series
-  std::vector<sac_1c> sac_list;
+  std::vector<sac_1c> sac_vector;
   // Spectrum (only 1 for now)
   sac_1c spectrum;
   // Which sac-file is active
@@ -741,10 +781,10 @@ int main()
   while (!glfwWindowShouldClose(window))
   {
     // Do we need to remove a sac_1c from the sac_vector?
-    cleanup_sac(sac_list, active_sac, clear_sac);
+    cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
     prep_newframe();
-    main_menu_bar(window, aw_settings, sac_list);
+    main_menu_bar(window, aw_settings, sac_vector);
     // Show the Welcome window if appropriate
     window_welcome(aw_settings.welcome_settings, welcome_message);
     update_fps(fps_tracker, io);
@@ -752,30 +792,32 @@ int main()
     window_fps(fps_tracker, aw_settings.fps_settings);
     // We don't want to show any of these windows if there are now sac files loaded in
     // (That would involve accessing memory that doesn't exist and crash)
-    if (sac_list.size() > 0)
+    if (sac_vector.size() > 0)
     {
+      // This fixes the issue of deleting all sac_1cs in the vector
+      // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
       {
         active_sac = 0;
       }
-      window_sac_header(aw_settings.sac_header_settings, sac_list[active_sac]);
+      window_sac_header(aw_settings.sac_header_settings, sac_vector[active_sac]);
       // Show the Sac Plot window if appropriate
-      window_plot_sac(aw_settings.sac_1c_plot_settings, sac_list, active_sac);
+      window_plot_sac(aw_settings.sac_1c_plot_settings, sac_vector, active_sac);
       // Show the Sac Spectrum window if appropriate
       // We need to see if the FFT needs to be calculated (don't want to do it
       // every frame)
       if (aw_settings.sac_1c_spectrum_plot_settings.show)
       {
         // If they're not the same, then calculate the FFT
-        if (spectrum.file_name != sac_list[active_sac].file_name)
+        if (spectrum.file_name != sac_vector[active_sac].file_name)
         {
-          calc_spectrum(sac_list[active_sac], spectrum);
+          calc_spectrum(sac_vector[active_sac], spectrum);
         }
       }
       // Finally plot the spectrum
       window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      window_sac_list(aw_settings.sac_list_settings, sac_list, active_sac, clear_sac);
+      window_sac_vector(aw_settings.sac_vector_settings, sac_vector, spectrum, active_sac, clear_sac);
     }
     else
     {

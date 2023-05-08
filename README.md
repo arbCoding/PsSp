@@ -14,6 +14,38 @@ This is extremely early in development.
 
 ---
 
+## Project Goals
+
+In the passive seismic community, there are many processing tools available. The problem, however, is the steep learning curve needed to use them.
+
+The primary issues that I see today are:
+1) There is a lack of tools available to the seismologist that have a graphical user interface (GUI).
+2) Often tools only do one or a few jobs. This makes life easier for the developer (following the KISS philosophy),
+but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
+by different persons/groups, in order to perform a given research task.
+
+The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, or underlying
+assumptions, or limitations. This tends to be discovered after much confusion and frustration. That is not how science should work.
+
+We shouldn't need to expend immense amounts of time/energy/mental-bandwidth on getting our tools to work for us. We should be focused
+on doing science.
+
+PsSp is being developed to remove that barrier. To empower the seismologist with tools that are easy to use and foster exploration.
+By enabling the scientist to do exploratory analysis quickly, easily, and visually, I hope to allow the end-user to improve their
+intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed
+with their analysis.
+
+The goal can be summarized as extending the productivity suite of the seismologist. Seismologists have their program for writing manuscripts
+(MS Word, LaTeX, whatever), their program for giving scientific presentations (MS Powerpoint, Impress Presentation, etc.), their
+program for handling emails (Outlook, Thunderbird, whatever). The gap that exists is **what does one open to do seismic anlaysis**?
+Of all the choices out there, the seismologist will **most likely** need to code their own tool (as a shell script stitching programs
+together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if desired is awesome, the need to do it
+is unfortunate as not everyone wants to (or knows how to) write their own codes. It gets worse when you consider the performance of these
+codes, or how the codes end up becoming obsolete after a short time (try using someone's old Python scripts, or Matlab codes, have them not
+work and be stuck trying to figure out what is wrong instead of making progress on your research).
+
+---
+
 ## ToDo
 
 - [X] Read single SAC file
