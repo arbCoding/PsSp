@@ -63,6 +63,7 @@ struct AllWindowSettings
   WindowSettings sac_1c_spectrum_plot_settings{2, 25, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
   WindowSettings sac_vector_settings{2, 367, 347, 300, false};
+  WindowSettings sac_lp_options_settings{50, 367, 347, 200, false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -304,6 +305,42 @@ static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //-----------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
+// Lowpass Filter Options Window
+//------------------------------------------------------------------------
+static void window_lowpass_options(WindowSettings& window_settings, sac_1c& sac, sac_1c& spectrum)
+{
+  if (window_settings.show)
+  {
+    if (!window_settings.is_set)
+    {
+      ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+      ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+      window_settings.is_set = true;
+    }
+
+    ImGui::Begin("Lowpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    static float cutoff = 1.0f;
+    static int order = 1;
+    ImGui::InputFloat("Freq (Hz)", &cutoff);
+    ImGui::InputInt("Order", &order);
+    if (ImGui::Button("Ok"))
+    {
+      if (sac.sac_mutex.try_lock())
+      {
+        SAC::lowpass(sac.sac, order, cutoff);
+        sac.sac_mutex.unlock();
+        calc_spectrum(sac, spectrum);
+        window_settings.show = false;
+      }
+    }
+    ImGui::End();
+  }
+}
+//------------------------------------------------------------------------
+// End lowpass Filter Options Window
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
 // Function that handles the main menu bar. Preparing to handle 3C sac data soon
@@ -449,18 +486,31 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
           sac_vector[selected].sac_mutex.unlock();
         }
         // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
-        // Right-clicking is reserved for the built in context menu (which I haven't figured out how to add to without
-        // modifying ImPlot directly, which I don't want to do).
+        // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
+        // directly modifying ImPlot, which I don't want to do)
         ImPlotContext* plot_ctx = ImPlot::GetCurrentContext();
         if (plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
-          ImGui::OpenPopup("##PlotContext2");
+          // Oddly, BeginPopupContextItem doesn't seem to do the job here, so we must use the based functions
+          ImGui::OpenPopup("##CustomPlotOptions");
         }
-        if (ImGui::BeginPopup("##PlotContext2"))
+        if (ImGui::BeginPopup("##CustomPlotOptions"))
         {
           if (ImGui::BeginMenu("Test"))
           {
             if (ImGui::MenuItem("Custom 1"))
+            {
+
+            }
+            ImGui::EndMenu();
+          }
+          if (ImGui::BeginMenu("Test 2"))
+          {
+            if (ImGui::MenuItem("Custom 2"))
+            {
+
+            }
+            if (ImGui::MenuItem("Custom 3"))
             {
 
             }
@@ -660,8 +710,9 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_vector(WindowSettings& window_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
 {
+  WindowSettings& window_settings = aw_settings.sac_vector_settings;
   std::string option{};
   if (window_settings.show)
   {
@@ -706,12 +757,15 @@ void window_sac_vector(WindowSettings& window_settings, std::vector<sac_1c>& sac
         if (ImGui::MenuItem("LowPass"))
         {
           selected = i;
-          if (sac_vector[selected].sac_mutex.try_lock())
-          {
-            SAC::lowpass(sac_vector[selected].sac, 8, 2);
-            sac_vector[selected].sac_mutex.unlock();
-            calc_spectrum(sac_vector[selected], spectrum);
-          }
+          aw_settings.sac_lp_options_settings.show = true;
+        }
+        if (ImGui::MenuItem("HighPass"))
+        {
+          selected = i;
+        }
+        if (ImGui::MenuItem("BandPass"))
+        {
+          selected = i;
         }
         ImGui::EndPopup();
       }
@@ -817,7 +871,8 @@ int main()
       // Finally plot the spectrum
       window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      window_sac_vector(aw_settings.sac_vector_settings, sac_vector, spectrum, active_sac, clear_sac);
+      window_sac_vector(aw_settings, sac_vector, spectrum, active_sac, clear_sac);
+      window_lowpass_options(aw_settings.sac_lp_options_settings, sac_vector[active_sac], spectrum);
     }
     else
     {
