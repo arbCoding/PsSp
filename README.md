@@ -19,9 +19,12 @@ This is extremely early in development.
 - [X] Read single SAC file
 - [X] Display SAC header information
 - [X] Plot 1-component Seismogram
+- [X] Read many 1-component seismograms
+- [X] Remove seismograms from list/memory
+- [X] Right-click context menu on sac-files in memory
 - [ ] Read 3-component Seismic data (3 SAC files)
 - [ ] Plot 3-component Seismic data
-- [ ] Read Array seismic data (many 1-component or 3-component SAC files)
+- [ ] Read Array seismic data (3-component SAC files)
 - [ ] Display event epicenter on map (excellent example [here](https://github.com/epezent/implot_demos/blob/master/demos/maps.cpp))
 - [ ] Display station/array positions on map
 - [ ] Instrument response removal

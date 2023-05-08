@@ -24,8 +24,8 @@
 #include <string>
 // Path stuff
 #include <filesystem>
-// std::list (thread-safe version of vector)
-#include <list>
+// std::vector
+#include <vector>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -56,7 +56,9 @@ struct AllWindowSettings
   // Header info for a single SAC file
   WindowSettings sac_header_settings{1153, 25, 285, 730, false};
   // Plot of a single sac file (time-series only)
-  WindowSettings sac_1c_plot_settings{2, 25, 1150, 350, false};
+  WindowSettings sac_1c_plot_settings{2, 25, 1150, 340, false};
+  // List of sac_1c's, allows user to select specific one in memory
+  WindowSettings sac_list_settings{2, 367, 347, 300, false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -77,6 +79,27 @@ struct sac_1c
   std::string file_name{};
   SAC::SacStream sac{};
   std::mutex sac_mutex{};
+
+  sac_1c() : file_dir(), file_name(), sac(), sac_mutex() {}
+  // Copy constructor
+  sac_1c(const sac_1c& other)
+  {
+    file_dir = other.file_dir;
+    file_name = other.file_name;
+    sac = other.sac;
+    // Don't copy the mutex
+  }
+  // Assignment operator
+  sac_1c& operator=(const sac_1c& other)
+  {
+    if (this != &other)
+    {
+      file_dir = other.file_dir;
+      file_name = other.file_name;
+      sac = other.sac;
+    }
+    return *this;
+  }
 };
 //-----------------------------------------------------------------------------
 // End custom structs
@@ -229,8 +252,9 @@ static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Function that handles the main menu bar. Preparing to handle 3C sac data soon
 // I'll do a list of sac_1c structs, file_dir will be redundant, but I don't care at the moment.
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, sac_1c& sac)
+static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, std::vector<sac_1c>& sac_list)
 {
+  sac_1c sac{};
   ImGui::BeginMainMenuBar();
   // File menu
   if (ImGui::BeginMenu("File"))
@@ -239,16 +263,16 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
       if (sac.file_dir != "")
       {
-        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", sac.file_dir.c_str());
+        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", sac.file_dir.c_str(), ImGuiFileDialogFlags_Modal);
       }
       else
       {
-        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".");
+        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
       }
     }
     if (ImGui::MenuItem("Open Dir"))
     {
-
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, ".", ImGuiFileDialogFlags_Modal);
     }
     if (ImGui::MenuItem("Exit"))
     {
@@ -275,6 +299,10 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
       allwindow_settings.sac_1c_plot_settings.show = !allwindow_settings.sac_1c_plot_settings.show;
     }
+    if (ImGui::MenuItem("Sac List"))
+    {
+      allwindow_settings.sac_list_settings.show = !allwindow_settings.sac_list_settings.show;
+    }
     ImGui::EndMenu();
   }
   // File Dialog
@@ -285,15 +313,47 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     // Read the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      // lock_guard unlocks at end of scope (end of function)
-      std::lock_guard<std::mutex> guard(sac.sac_mutex);
-      sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
-      sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
-      sac.sac = SAC::SacStream(sac.file_name);
-      // We should show the sac header window after loading a sac file (not before)
-      allwindow_settings.sac_header_settings.show = true;
-      allwindow_settings.sac_1c_plot_settings.show = true;
+      if (sac.sac_mutex.try_lock())
+      {
+        sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
+        sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
+        sac.sac = SAC::SacStream(sac.file_name);
+        // Add it to the list!
+        sac_list.push_back(sac);
+        // We should show the sac header window after loading a sac file (not before)
+        allwindow_settings.sac_header_settings.show = true;
+        allwindow_settings.sac_1c_plot_settings.show = true;
+        allwindow_settings.sac_list_settings.show = true;
+        sac.sac_mutex.unlock();
+      }
     }
+    ImGuiFileDialog::Instance()->Close();
+  }
+  // Directory selection Dialog
+  if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+  {
+    std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
+    // Iterate over files in directory
+    for (const auto& entry : std::filesystem::directory_iterator(directory))
+    {
+      // Check extension
+      if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
+      {
+        // Time to read it into the list
+        if (sac.sac_mutex.try_lock())
+        {
+          sac.file_name = entry.path().string();
+          sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
+          sac.sac = SAC::SacStream(sac.file_name);
+          // Add it to the list!
+          sac_list.push_back(sac);
+          sac.sac_mutex.unlock();
+        }
+      }
+    }
+    allwindow_settings.sac_header_settings.show = true;
+    allwindow_settings.sac_1c_plot_settings.show = true;
+    allwindow_settings.sac_list_settings.show = true;
     ImGuiFileDialog::Instance()->Close();
   }
   ImGui::EndMainMenuBar();
@@ -305,7 +365,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
 //------------------------------------------------------------------------
 // 1-component SAC plot window
 //------------------------------------------------------------------------
-void window_plot_sac(WindowSettings& window_settings, sac_1c& sac)
+void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_list, int& selected)
 {
   if (window_settings.show)
   {
@@ -318,10 +378,13 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c& sac)
     ImGui::Begin("Sac Plot", &window_settings.show);
     if (ImGui::BeginChild("Sac Plot"))
     {
-      if(ImPlot::BeginPlot(sac.sac.kstnm.c_str()))
+      if(ImPlot::BeginPlot("Seismogram"))
       {
-        std::lock_guard<std::mutex> guard(sac.sac_mutex);
-        ImPlot::PlotLine(sac.sac.kcmpnm.c_str(), &sac.sac.data1[0], sac.sac.data1.size());
+        if (sac_list[selected].sac_mutex.try_lock())
+        {
+          ImPlot::PlotLine(sac_list[selected].sac.kcmpnm.c_str(), &sac_list[selected].sac.data1[0], sac_list[selected].sac.data1.size());
+          sac_list[selected].sac_mutex.unlock();
+        }
         ImPlot::EndPlot();
       }
       ImGui::EndChild();
@@ -348,46 +411,50 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
     }
 
     ImGui::Begin("Sac Header", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-    std::lock_guard<std::mutex> guard(sac.sac_mutex);
-    if (ImGui::CollapsingHeader("Station Information"))
+
+    if (sac.sac_mutex.try_lock())
     {
-      ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
-      ImGui::Text("Station:    %s", sac.sac.kstnm.c_str());
-      ImGui::Text("Instrument: %s", sac.sac.kinst.c_str());
-      ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.stla);
-      ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.stlo);
-      ImGui::Text("Elevation:  %.2f m", sac.sac.stel);
-      ImGui::Text("Depth:      %.2f m", sac.sac.stdp);
-      ImGui::Text("Back Azi:   %.2f\u00B0", sac.sac.baz);
-    }
-    if (ImGui::CollapsingHeader("Component Information"))
-    {
-      ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
-      ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
-      ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
-    }
-    if (ImGui::CollapsingHeader("Event Information"))
-    {
-      ImGui::Text("Name:       %s", sac.sac.kevnm.c_str());
-      ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.evla);
-      ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.evlo);
-      ImGui::Text("Depth:      %.2f km", sac.sac.evdp);
-      ImGui::Text("Magnitude:  %.2f", sac.sac.mag);
-      ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.az);
-    }
-    if (ImGui::CollapsingHeader("DateTime Information"))
-    {
-      ImGui::Text("Year:       %i", sac.sac.nzyear);
-      ImGui::Text("Julian Day: %i", sac.sac.nzjday);
-      ImGui::Text("Hour:       %i", sac.sac.nzhour);
-      ImGui::Text("Minute:     %i", sac.sac.nzmin);
-      ImGui::Text("Second:     %i", sac.sac.nzsec);
-      ImGui::Text("MSecond:    %i", sac.sac.nzmsec);
-    }
-    if (ImGui::CollapsingHeader("Data Information"))
-    {
-      ImGui::Text("Npts:       %i", sac.sac.npts);
-      ImGui::Text("IfType:     %i", sac.sac.iftype);
+      if (ImGui::CollapsingHeader("Station Information", ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
+        ImGui::Text("Station:    %s", sac.sac.kstnm.c_str());
+        ImGui::Text("Instrument: %s", sac.sac.kinst.c_str());
+        ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.stla);
+        ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.stlo);
+        ImGui::Text("Elevation:  %.2f m", sac.sac.stel);
+        ImGui::Text("Depth:      %.2f m", sac.sac.stdp);
+        ImGui::Text("Back Azi:   %.2f\u00B0", sac.sac.baz);
+      }
+      if (ImGui::CollapsingHeader("Component Information", ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
+        ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
+        ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
+      }
+      if (ImGui::CollapsingHeader("Event Information", ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        ImGui::Text("Name:       %s", sac.sac.kevnm.c_str());
+        ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.evla);
+        ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.evlo);
+        ImGui::Text("Depth:      %.2f km", sac.sac.evdp);
+        ImGui::Text("Magnitude:  %.2f", sac.sac.mag);
+        ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.az);
+      }
+      if (ImGui::CollapsingHeader("DateTime Information", ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        ImGui::Text("Year:       %i", sac.sac.nzyear);
+        ImGui::Text("Julian Day: %i", sac.sac.nzjday);
+        ImGui::Text("Hour:       %i", sac.sac.nzhour);
+        ImGui::Text("Minute:     %i", sac.sac.nzmin);
+        ImGui::Text("Second:     %i", sac.sac.nzsec);
+        ImGui::Text("MSecond:    %i", sac.sac.nzmsec);
+      }
+      if (ImGui::CollapsingHeader("Data Information", ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        ImGui::Text("Npts:       %i", sac.sac.npts);
+        ImGui::Text("IfType:     %i", sac.sac.iftype);
+      }
+      sac.sac_mutex.unlock();
     }
     ImGui::End();
   }
@@ -455,6 +522,55 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// SAC-loaded window
+//-----------------------------------------------------------------------------
+void window_sac_list(WindowSettings& window_settings, std::vector<sac_1c>& sac_list, int& selected, bool& cleared)
+{
+  std::string option{};
+  if (window_settings.show)
+  {
+    if (!window_settings.is_set)
+    {
+      // Setup the window
+      ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+      ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+      window_settings.is_set = true;
+    }
+    ImGui::Begin("Sac List", &window_settings.show);
+    for (int i = 0; const auto& sac : sac_list)
+    {
+      const bool is_selected{selected == i};
+      option = sac.file_name.substr(sac.file_name.find_last_of("\\/") + 1);
+      if (ImGui::Selectable(option.c_str(), is_selected))
+      {
+        selected = i;
+      }
+      // Right-click menu
+      if (ImGui::BeginPopupContextItem((std::string("Context Menu##") + std::to_string(i)).c_str()))
+      {
+        if (ImGui::MenuItem("Active"))
+        {
+          selected = i;
+        }
+        if (ImGui::MenuItem("Remove"))
+        {
+          selected = i;
+          cleared = true;
+        }
+        ImGui::EndPopup();
+      }
+      ++i;
+    }
+
+    ImGui::End();
+  }
+}
+
+//-----------------------------------------------------------------------------
+// End SAC-loaded window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // End UI Windows
 //-----------------------------------------------------------------------------
 
@@ -472,6 +588,20 @@ void update_fps(fps_info& fps, ImGuiIO& io)
   fps.current_interval = fps.current_time - fps.prev_time;
   // Increase frame_count
   ++fps.frame_count;
+}
+
+void cleanup_sac(std::vector<sac_1c>& sac_list, int& selected, bool& clear)
+{
+  if (clear)
+  {
+    if (sac_list[selected].sac_mutex.try_lock())
+    {
+      sac_list[selected].sac_mutex.unlock();
+      --selected;
+      sac_list.erase(sac_list.begin() + selected + 1);
+      clear = false;
+    }
+  }
 }
 //-----------------------------------------------------------------------------
 // End Misc functions
@@ -508,8 +638,10 @@ int main()
   ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
   fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
-  sac_1c sac{};
   AllWindowSettings aw_settings{};
+  std::vector<sac_1c> sac_list;
+  int selected_sac{};
+  bool clear_sac{false};
   //---------------------------------------------------------------------------
   // End Misc Draw loop variables
   //---------------------------------------------------------------------------
@@ -521,18 +653,22 @@ int main()
   // (minimize spurious work, be thread-safe, etc.)
   while (!glfwWindowShouldClose(window))
   {
+    // Do we need to remove a sac_1c from the sac_vector?
+    cleanup_sac(sac_list, selected_sac, clear_sac);
     // Start the frame
     prep_newframe();
-    main_menu_bar(window, aw_settings, sac);
+    main_menu_bar(window, aw_settings, sac_list);
     // Show the Welcome window if appropriate
     window_welcome(aw_settings.welcome_settings, welcome_message);
     update_fps(fps_tracker, io);
     // Show the FPS window if appropriate
     window_fps(fps_tracker, aw_settings.fps_settings);
     // Show the Sac Header window if appropriate
-    window_sac_header(aw_settings.sac_header_settings, sac);
+    window_sac_header(aw_settings.sac_header_settings, sac_list[selected_sac]);
     // Show the Sac Plot window if appropriate
-    window_plot_sac(aw_settings.sac_1c_plot_settings, sac);
+    window_plot_sac(aw_settings.sac_1c_plot_settings, sac_list, selected_sac);
+    // Show the Sac List window if appropriate
+    window_sac_list(aw_settings.sac_list_settings, sac_list, selected_sac, clear_sac);
     // Finish the frame
     finish_newframe(window, clear_color);
   }
