@@ -754,6 +754,10 @@ int main()
     // (That would involve accessing memory that doesn't exist and crash)
     if (sac_list.size() > 0)
     {
+      if (active_sac < 0)
+      {
+        active_sac = 0;
+      }
       window_sac_header(aw_settings.sac_header_settings, sac_list[active_sac]);
       // Show the Sac Plot window if appropriate
       window_plot_sac(aw_settings.sac_1c_plot_settings, sac_list, active_sac);
