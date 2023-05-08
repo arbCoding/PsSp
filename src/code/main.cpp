@@ -3,6 +3,8 @@
 //-----------------------------------------------------------------------------
 // Include statements
 //-----------------------------------------------------------------------------
+// SAC:: spectral functions
+#include "sac_spectral.hpp"
 // SAC::SacStream class
 #include <sac_stream.hpp>
 // Dear ImGui header and backends
@@ -57,6 +59,8 @@ struct AllWindowSettings
   WindowSettings sac_header_settings{1153, 25, 285, 730, false};
   // Plot of a single sac file (time-series only)
   WindowSettings sac_1c_plot_settings{2, 25, 1150, 340, false};
+  // Plot real/imag spectrum of SAC file
+  WindowSettings sac_1c_spectrum_plot_settings{2, 25, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
   WindowSettings sac_list_settings{2, 367, 347, 300, false};
 };
@@ -103,6 +107,57 @@ struct sac_1c
 };
 //-----------------------------------------------------------------------------
 // End custom structs
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Misc functions
+//-----------------------------------------------------------------------------
+void update_fps(fps_info& fps, ImGuiIO& io)
+{
+  // Lock the fps_tracker
+  std::lock_guard<std::mutex> guard(fps.fps_mutex);
+  // Not using the lock_guard here
+  // Increase time
+  fps.current_time += io.DeltaTime;
+  // Update the interval
+  fps.current_interval = fps.current_time - fps.prev_time;
+  // Increase frame_count
+  ++fps.frame_count;
+}
+
+void cleanup_sac(std::vector<sac_1c>& sac_list, int& selected, bool& clear)
+{
+  if (clear)
+  {
+    if (sac_list[selected].sac_mutex.try_lock())
+    {
+      sac_list[selected].sac_mutex.unlock();
+      --selected;
+      sac_list.erase(sac_list.begin() + selected + 1);
+      if (selected < 0 && sac_list.size() > 0)
+      {
+        selected = 0;
+      }
+      clear = false;
+    }
+  }
+}
+
+void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
+{
+  if ((spectrum.sac_mutex.try_lock()) && (sac.sac_mutex.try_lock()))
+  {
+    spectrum.sac = sac.sac;
+    spectrum.file_name = sac.file_name;
+    spectrum.file_dir = sac.file_dir;
+    sac.sac_mutex.unlock();
+    // Calculate the FFT
+    SAC::fft_real_imaginary(spectrum.sac);
+    spectrum.sac_mutex.unlock();
+  }
+}
+//-----------------------------------------------------------------------------
+// End Misc functions
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -261,14 +316,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   {
     if (ImGui::MenuItem("Open 1C"))
     {
-      if (sac.file_dir != "")
-      {
-        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", sac.file_dir.c_str(), ImGuiFileDialogFlags_Modal);
-      }
-      else
-      {
         ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
-      }
     }
     if (ImGui::MenuItem("Open Dir"))
     {
@@ -299,6 +347,10 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
       allwindow_settings.sac_1c_plot_settings.show = !allwindow_settings.sac_1c_plot_settings.show;
     }
+    if (ImGui::MenuItem("Spectrum Plot 1C"))
+    {
+      allwindow_settings.sac_1c_spectrum_plot_settings.show = !allwindow_settings.sac_1c_spectrum_plot_settings.show;
+    }
     if (ImGui::MenuItem("Sac List"))
     {
       allwindow_settings.sac_list_settings.show = !allwindow_settings.sac_list_settings.show;
@@ -324,6 +376,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
         allwindow_settings.sac_list_settings.show = true;
+        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
         sac.sac_mutex.unlock();
       }
     }
@@ -361,6 +414,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
         allwindow_settings.sac_list_settings.show = true;
+        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
       }
     }
     ImGuiFileDialog::Instance()->Close();
@@ -391,7 +445,8 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
       {
         if (sac_list[selected].sac_mutex.try_lock())
         {
-          ImPlot::PlotLine(sac_list[selected].sac.kcmpnm.c_str(), &sac_list[selected].sac.data1[0], sac_list[selected].sac.data1.size());
+          ImPlot::SetupAxis(ImAxis_X1, "Time (s)");
+          ImPlot::PlotLine(sac_list[selected].sac.kcmpnm.c_str(), &sac_list[selected].sac.data1[0], sac_list[selected].sac.data1.size(), sac_list[selected].sac.delta);
           sac_list[selected].sac_mutex.unlock();
         }
         ImPlot::EndPlot();
@@ -403,6 +458,58 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
 }
 //------------------------------------------------------------------------
 // End 1-component SAC plot window
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// 1-component SAC spectrum window
+//------------------------------------------------------------------------
+void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
+{
+  if (window_settings.show)
+  {
+    if (!window_settings.is_set)
+    {
+      ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+      ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+      window_settings.is_set = true;
+    }
+    ImGui::Begin("Spectrum", &window_settings.show);
+    if (ImGui::BeginChild("Spectrum"))
+    {
+      ImGui::Columns(2);
+      if (ImPlot::BeginPlot("Real"))
+      {
+        if (spectrum.sac_mutex.try_lock())
+        {
+          ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+          const double sampling_freq{1.0 / spectrum.sac.delta};
+          const double freq_step{sampling_freq / spectrum.sac.npts};
+          ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
+          spectrum.sac_mutex.unlock();
+        }
+        ImPlot::EndPlot();
+      }
+      ImGui::NextColumn();
+      if (ImPlot::BeginPlot("Imaginary"))
+      {
+        if (spectrum.sac_mutex.try_lock())
+        {
+          ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+          const double sampling_freq{1.0 / spectrum.sac.delta};
+          const double freq_step{sampling_freq / spectrum.sac.npts};
+          ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
+          spectrum.sac_mutex.unlock();
+        }
+        ImPlot::EndPlot();
+      }
+      ImGui::Columns(1);
+      ImGui::EndChild();
+    }
+    ImGui::End();
+  }
+}
+//------------------------------------------------------------------------
+// End 1-component SAC spectrum window
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
@@ -584,39 +691,6 @@ void window_sac_list(WindowSettings& window_settings, std::vector<sac_1c>& sac_l
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Misc functions
-//-----------------------------------------------------------------------------
-void update_fps(fps_info& fps, ImGuiIO& io)
-{
-  // Lock the fps_tracker
-  std::lock_guard<std::mutex> guard(fps.fps_mutex);
-  // Not using the lock_guard here
-  // Increase time
-  fps.current_time += io.DeltaTime;
-  // Update the interval
-  fps.current_interval = fps.current_time - fps.prev_time;
-  // Increase frame_count
-  ++fps.frame_count;
-}
-
-void cleanup_sac(std::vector<sac_1c>& sac_list, int& selected, bool& clear)
-{
-  if (clear)
-  {
-    if (sac_list[selected].sac_mutex.try_lock())
-    {
-      sac_list[selected].sac_mutex.unlock();
-      --selected;
-      sac_list.erase(sac_list.begin() + selected + 1);
-      clear = false;
-    }
-  }
-}
-//-----------------------------------------------------------------------------
-// End Misc functions
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
 int main()
@@ -648,8 +722,12 @@ int main()
   fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
   AllWindowSettings aw_settings{};
+  // Time-series
   std::vector<sac_1c> sac_list;
-  int selected_sac{};
+  // Spectrum (only 1 for now)
+  sac_1c spectrum;
+  // Which sac-file is active
+  int active_sac{};
   bool clear_sac{false};
   //---------------------------------------------------------------------------
   // End Misc Draw loop variables
@@ -663,7 +741,7 @@ int main()
   while (!glfwWindowShouldClose(window))
   {
     // Do we need to remove a sac_1c from the sac_vector?
-    cleanup_sac(sac_list, selected_sac, clear_sac);
+    cleanup_sac(sac_list, active_sac, clear_sac);
     // Start the frame
     prep_newframe();
     main_menu_bar(window, aw_settings, sac_list);
@@ -672,12 +750,33 @@ int main()
     update_fps(fps_tracker, io);
     // Show the FPS window if appropriate
     window_fps(fps_tracker, aw_settings.fps_settings);
-    // Show the Sac Header window if appropriate
-    window_sac_header(aw_settings.sac_header_settings, sac_list[selected_sac]);
-    // Show the Sac Plot window if appropriate
-    window_plot_sac(aw_settings.sac_1c_plot_settings, sac_list, selected_sac);
-    // Show the Sac List window if appropriate
-    window_sac_list(aw_settings.sac_list_settings, sac_list, selected_sac, clear_sac);
+    // We don't want to show any of these windows if there are now sac files loaded in
+    // (That would involve accessing memory that doesn't exist and crash)
+    if (sac_list.size() > 0)
+    {
+      window_sac_header(aw_settings.sac_header_settings, sac_list[active_sac]);
+      // Show the Sac Plot window if appropriate
+      window_plot_sac(aw_settings.sac_1c_plot_settings, sac_list, active_sac);
+      // Show the Sac Spectrum window if appropriate
+      // We need to see if the FFT needs to be calculated (don't want to do it
+      // every frame)
+      if (aw_settings.sac_1c_spectrum_plot_settings.show)
+      {
+        // If they're not the same, then calculate the FFT
+        if (spectrum.file_name != sac_list[active_sac].file_name)
+        {
+          calc_spectrum(sac_list[active_sac], spectrum);
+        }
+      }
+      // Finally plot the spectrum
+      window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
+      // Show the Sac List window if appropriate
+      window_sac_list(aw_settings.sac_list_settings, sac_list, active_sac, clear_sac);
+    }
+    else
+    {
+      spectrum.file_name = "";
+    }
     // Finish the frame
     finish_newframe(window, clear_color);
   }
