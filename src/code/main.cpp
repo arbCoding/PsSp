@@ -332,28 +332,37 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   // Directory selection Dialog
   if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
-    std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
-    // Iterate over files in directory
-    for (const auto& entry : std::filesystem::directory_iterator(directory))
+    if (ImGuiFileDialog::Instance()->IsOk())
     {
-      // Check extension
-      if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
+      bool sac_found{false};
+      std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
+      // Iterate over files in directory
+      for (const auto& entry : std::filesystem::directory_iterator(directory))
       {
-        // Time to read it into the list
-        if (sac.sac_mutex.try_lock())
+        // Check extension
+        if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-          sac.file_name = entry.path().string();
-          sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
-          sac.sac = SAC::SacStream(sac.file_name);
-          // Add it to the list!
-          sac_list.push_back(sac);
-          sac.sac_mutex.unlock();
+          // Time to read it into the list
+          if (sac.sac_mutex.try_lock())
+          {
+            sac_found = true;
+            sac.file_name = entry.path().string();
+            sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
+            sac.sac = SAC::SacStream(sac.file_name);
+            // Add it to the list!
+            sac_list.push_back(sac);
+            sac.sac_mutex.unlock();
+          }
         }
       }
+      // Only if sac files were found and successfully loaded
+      if (sac_found)
+      {
+        allwindow_settings.sac_header_settings.show = true;
+        allwindow_settings.sac_1c_plot_settings.show = true;
+        allwindow_settings.sac_list_settings.show = true;
+      }
     }
-    allwindow_settings.sac_header_settings.show = true;
-    allwindow_settings.sac_1c_plot_settings.show = true;
-    allwindow_settings.sac_list_settings.show = true;
     ImGuiFileDialog::Instance()->Close();
   }
   ImGui::EndMainMenuBar();
