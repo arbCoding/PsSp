@@ -224,16 +224,18 @@ void bandpass(SacStream& sac, int order, double lowpass, double highpass)
   double frequency{};
   const double sampling_freq{1.0 / sac.delta};
   const double freq_step{sampling_freq / sac.npts};
+  double denominator_lp{};
+  double denominator_hp{};
   double denominator{};
   double gain{};
-  const double bandwidth = highpass - lowpass;
-  const double central_freq = lowpass + (bandwidth / 2.0);
   for (std::size_t i{0}; i < sac.data1.size(); ++i)
   {
     frequency = i * freq_step;
-    denominator = (frequency - central_freq) / (frequency - bandwidth);
-    denominator = std::pow(denominator, 2.0 * order);
-    denominator = std::sqrt(1.0 + denominator);
+    denominator_lp = std::pow(frequency / highpass, 2.0 * order);
+    denominator_lp = std::sqrt(1.0 + denominator_lp);
+    denominator_hp = std::pow(lowpass / frequency, 2.0 * order);
+    denominator_hp = std::sqrt(1.0 + denominator_hp);
+    denominator = denominator_lp * denominator_hp;
     gain = 1.0 / denominator;
     sac.data1[i] *= gain;
     sac.data2[i] *= gain;

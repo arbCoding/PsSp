@@ -68,21 +68,23 @@ struct AllWindowSettings
   // Window with welcome message
   WindowSettings welcome_settings{395, 340, 525, 60};
   // FPS tracker window
-  WindowSettings fps_settings{5, 25, 60, 55, false};
+  WindowSettings fps_settings{1, 756, 60, 55, false};
   // Header info for a single SAC file
-  WindowSettings sac_header_settings{1153, 25, 285, 730, false};
+  WindowSettings sac_header_settings{1, 25, 285, 730, false};
   // Plot of a single sac file (time-series only)
-  WindowSettings sac_1c_plot_settings{2, 25, 1150, 340, false};
+  WindowSettings sac_1c_plot_settings{287, 25, 1150, 340, false};
   // Plot real/imag spectrum of SAC file
-  WindowSettings sac_1c_spectrum_plot_settings{2, 25, 1150, 340, false};
+  WindowSettings sac_1c_spectrum_plot_settings{288, 368, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
-  WindowSettings sac_vector_settings{2, 367, 347, 300, false};
+  WindowSettings sac_vector_settings{287, 709, 347, 135, false};
   // Small window providing access to lowpass filter options
-  WindowSettings sac_lp_options_settings{50, 367, 347, 200, false};
+  WindowSettings sac_lp_options_settings{508, 297, 231, 120, false};
   // Small window providing access to highpass filter options
-  WindowSettings sac_hp_options_settings{50, 367, 347, 200, false};
+  WindowSettings sac_hp_options_settings{508, 297, 231, 120, false};
   // Small window providing access to bandpass filter options
-  WindowSettings sac_bp_options_settings{50, 367, 347, 200, false};
+  WindowSettings sac_bp_options_settings{508, 297, 276, 148, false};
+  // File Dialog positions
+  WindowSettings file_dialog_settings{337, 150, 750, 450};
 };
 // Settings for menu options
 // Defines is a menu option is enabled or disabled (separate from whether
@@ -95,9 +97,11 @@ struct AllMenuSettings
   bool sac_1c_plot{false};
   bool sac_1c_spectrum_plot{false};
   bool sac_vector{false};
-  //bool sac_lp_options{false};
-  //bool sac_hp_options{false};
-  //bool sac_bp_options{false};
+  bool sac_lp_options{false};
+  bool sac_hp_options{false};
+  bool sac_bp_options{false};
+  bool undo{false};
+  bool redo{false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -374,10 +378,12 @@ static void window_lowpass_options(WindowSettings& window_settings, filter_optio
 
     ImGui::Begin("Lowpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     lowpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)", &lowpass_settings.freq_low, lowpass_settings.freq_step))
     {
       lowpass_settings.freq_low = std::clamp(lowpass_settings.freq_low, lowpass_settings.min_freq, lowpass_settings.max_freq);
     }
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order", &lowpass_settings.order))
     {
       lowpass_settings.order = std::clamp(lowpass_settings.order, lowpass_settings.min_order, lowpass_settings.max_order);
@@ -391,6 +397,11 @@ static void window_lowpass_options(WindowSettings& window_settings, filter_optio
         calc_spectrum(sac, spectrum);
         window_settings.show = false;
       }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel"))
+    {
+      window_settings.show = false;
     }
     ImGui::End();
   }
@@ -415,10 +426,12 @@ static void window_highpass_options(WindowSettings& window_settings, filter_opti
 
     ImGui::Begin("Highpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     highpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)", &highpass_settings.freq_low, highpass_settings.freq_step))
     {
       highpass_settings.freq_low = std::clamp(highpass_settings.freq_low, highpass_settings.min_freq, highpass_settings.max_freq);
     }
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order", &highpass_settings.order))
     {
       highpass_settings.order = std::clamp(highpass_settings.order, highpass_settings.min_order, highpass_settings.max_order);
@@ -432,6 +445,11 @@ static void window_highpass_options(WindowSettings& window_settings, filter_opti
         calc_spectrum(sac, spectrum);
         window_settings.show = false;
       }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel"))
+    {
+      window_settings.show = false;
     }
     ImGui::End();
   }
@@ -456,14 +474,17 @@ static void window_bandpass_options(WindowSettings& window_settings, filter_opti
 
     ImGui::Begin("Bandpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
     bandpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Min Freq (Hz)", &bandpass_settings.freq_low, bandpass_settings.freq_step))
     {
       bandpass_settings.freq_low = std::clamp(bandpass_settings.freq_low, bandpass_settings.min_freq, bandpass_settings.max_freq);
     }
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Max Freq (Hz)", &bandpass_settings.freq_high, bandpass_settings.freq_step))
     {
       bandpass_settings.freq_high = std::clamp(bandpass_settings.freq_high, bandpass_settings.min_freq, bandpass_settings.max_freq);
     }
+    ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order", &bandpass_settings.order))
     {
       bandpass_settings.order = std::clamp(bandpass_settings.order, bandpass_settings.min_order, bandpass_settings.max_order);
@@ -477,6 +498,11 @@ static void window_bandpass_options(WindowSettings& window_settings, filter_opti
         calc_spectrum(sac, spectrum);
         window_settings.show = false;
       }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel"))
+    {
+      window_settings.show = false;
     }
     ImGui::End();
   }
@@ -501,13 +527,40 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
         ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Read a single SAC-file");
+    }
     if (ImGui::MenuItem("Open Dir"))
     {
       ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, ".", ImGuiFileDialogFlags_Modal);
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Read a directory full of SAC-files");
+    }
     if (ImGui::MenuItem("Exit"))
     {
       glfwSetWindowShouldClose(window, true);
+    }
+    ImGui::EndMenu();
+  }
+  // Edit menu
+  if (ImGui::BeginMenu("Edit"))
+  {
+    if (ImGui::MenuItem("Undo", nullptr, nullptr, am_settings.undo))
+    {
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Not implemented");
+    }
+    if (ImGui::MenuItem("Redo", nullptr, nullptr, am_settings.redo))
+    {
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Not implemented");
     }
     ImGui::EndMenu();
   }
@@ -527,34 +580,58 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
       allwindow_settings.sac_hp_options_settings.is_set = false;
       allwindow_settings.sac_bp_options_settings.is_set = false;
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Reset all windows to default position and size");
+    }
     if (ImGui::MenuItem("Welcome", nullptr, nullptr, am_settings.welcome))
     {
-      allwindow_settings.welcome_settings.show = !allwindow_settings.welcome_settings.show;
+      allwindow_settings.welcome_settings.show = true;
     }
     if (ImGui::MenuItem("FPS Tracker", nullptr, nullptr, am_settings.fps))
     {
-      allwindow_settings.fps_settings.show = !allwindow_settings.fps_settings.show;
+      allwindow_settings.fps_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Frames Per Second display");
     }
     if (ImGui::MenuItem("Sac Header", nullptr, nullptr, am_settings.sac_header))
     {
-      allwindow_settings.sac_header_settings.show = !allwindow_settings.sac_header_settings.show;
+      allwindow_settings.sac_header_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Displays SAC header values");
     }
     if (ImGui::MenuItem("Sac Plot 1C", nullptr, nullptr, am_settings.sac_1c_plot))
     {
-      allwindow_settings.sac_1c_plot_settings.show = !allwindow_settings.sac_1c_plot_settings.show;
+      allwindow_settings.sac_1c_plot_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("1-component SAC plot");
     }
     if (ImGui::MenuItem("Spectrum Plot 1C", nullptr, nullptr, am_settings.sac_1c_spectrum_plot))
     {
-      allwindow_settings.sac_1c_spectrum_plot_settings.show = !allwindow_settings.sac_1c_spectrum_plot_settings.show;
+      allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("1-component SAC spectrogram (real/imaginary) plot");
     }
     if (ImGui::MenuItem("Sac List", nullptr, nullptr, am_settings.sac_vector))
     {
-      allwindow_settings.sac_vector_settings.show = !allwindow_settings.sac_vector_settings.show;
+      allwindow_settings.sac_vector_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("List of SAC files currently loaded in memory");
     }
     ImGui::EndMenu();
   }
   // File Dialog
-  ImVec2 maxSize = ImVec2(1000, 600);
+  ImVec2 maxSize = ImVec2(allwindow_settings.file_dialog_settings.width * 1.5, allwindow_settings.file_dialog_settings.height * 1.5);
   ImVec2 minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
@@ -572,6 +649,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
         allwindow_settings.sac_vector_settings.show = true;
+        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
         sac.sac_mutex.unlock();
       }
     }
@@ -609,9 +687,48 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         allwindow_settings.sac_header_settings.show = true;
         allwindow_settings.sac_1c_plot_settings.show = true;
         allwindow_settings.sac_vector_settings.show = true;
+        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
       }
     }
     ImGuiFileDialog::Instance()->Close();
+  }
+  if (ImGui::BeginMenu("Processing"))
+  {
+    if (ImGui::MenuItem("Lowpass", nullptr, nullptr, am_settings.sac_lp_options))
+    {
+      allwindow_settings.sac_lp_options_settings.show = true;
+      allwindow_settings.sac_hp_options_settings.show = false;
+      allwindow_settings.sac_bp_options_settings.show = false;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Lowpass filter");
+    }
+    if (ImGui::MenuItem("Highpass", nullptr, nullptr, am_settings.sac_hp_options))
+    {
+      allwindow_settings.sac_lp_options_settings.show = false;
+      allwindow_settings.sac_hp_options_settings.show = true;
+      allwindow_settings.sac_bp_options_settings.show = false;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Highpass filter");
+    }
+    if (ImGui::MenuItem("Bandpass", nullptr, nullptr, am_settings.sac_bp_options))
+    {
+      allwindow_settings.sac_lp_options_settings.show = false;
+      allwindow_settings.sac_hp_options_settings.show = false;
+      allwindow_settings.sac_bp_options_settings.show = true;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Bandpass filter");
+    }
+    ImGui::EndMenu();
+  }
+  if (ImGui::BeginMenu("Batch"))
+  {
+    ImGui::EndMenu();
   }
   ImGui::EndMainMenuBar();
 }
@@ -638,7 +755,7 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
       ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
       if (sac_vector[selected].sac_mutex.try_lock())
       {
-        ImPlot::PlotLine(sac_vector[selected].sac.kcmpnm.c_str(), &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
+        ImPlot::PlotLine("", &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
         sac_vector[selected].sac_mutex.unlock();
       }
       // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
@@ -857,7 +974,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
 {
   WindowSettings& window_settings = aw_settings.sac_vector_settings;
   std::string option{};
@@ -882,14 +999,14 @@ void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_
       // Right-click menu
       if (ImGui::BeginPopupContextItem((std::string("Context Menu##") + std::to_string(i)).c_str()))
       {
-        if (ImGui::MenuItem("Active"))
-        {
-          selected = i;
-        }
         if (ImGui::MenuItem("Remove"))
         {
           selected = i;
           cleared = true;
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+          ImGui::SetTooltip("Unload SAC data from memory");
         }
         if (ImGui::MenuItem("Reload"))
         {
@@ -901,26 +1018,42 @@ void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_
             calc_spectrum(sac_vector[selected], spectrum);
           }
         }
-        if (ImGui::MenuItem("LowPass"))
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+          ImGui::SetTooltip("Reload the original SAC file");
+        }
+        if (ImGui::MenuItem("LowPass", nullptr, nullptr, am_settings.sac_lp_options))
         {
           selected = i;
           aw_settings.sac_lp_options_settings.show = true;
           aw_settings.sac_hp_options_settings.show = false;
           aw_settings.sac_bp_options_settings.show = false;
         }
-        if (ImGui::MenuItem("HighPass"))
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+          ImGui::SetTooltip("Butterworth lowpass filter");
+        }
+        if (ImGui::MenuItem("HighPass", nullptr, nullptr, am_settings.sac_hp_options))
         {
           selected = i;
           aw_settings.sac_lp_options_settings.show = false;
           aw_settings.sac_hp_options_settings.show = true;
           aw_settings.sac_bp_options_settings.show = false;
         }
-        if (ImGui::MenuItem("BandPass"))
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+          ImGui::SetTooltip("Butterworth highpass filter");
+        }
+        if (ImGui::MenuItem("BandPass", nullptr, nullptr, am_settings.sac_bp_options))
         {
           selected = i;
           aw_settings.sac_lp_options_settings.show = false;
           aw_settings.sac_hp_options_settings.show = false;
           aw_settings.sac_bp_options_settings.show = true;
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+         ImGui::SetTooltip("Butterworth bandpass filter");
         }
         ImGui::EndPopup();
       }
@@ -1012,6 +1145,9 @@ int main()
       am_settings.sac_header = true;
       am_settings.sac_1c_plot = true;
       am_settings.sac_1c_spectrum_plot = true;
+      am_settings.sac_lp_options = true;
+      am_settings.sac_hp_options = true;
+      am_settings.sac_bp_options = true;
       // This fixes the issue of deleting all sac_1cs in the vector
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
@@ -1035,7 +1171,7 @@ int main()
       // Finally plot the spectrum
       window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      window_sac_vector(aw_settings, sac_vector, spectrum, active_sac, clear_sac);
+      window_sac_vector(aw_settings, am_settings, sac_vector, spectrum, active_sac, clear_sac);
       window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_vector[active_sac], spectrum);
       window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_vector[active_sac], spectrum);
       window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_vector[active_sac], spectrum);
@@ -1047,6 +1183,9 @@ int main()
       am_settings.sac_header = false;
       am_settings.sac_1c_plot = false;
       am_settings.sac_1c_spectrum_plot = false;
+      am_settings.sac_lp_options = false;
+      am_settings.sac_hp_options = false;
+      am_settings.sac_bp_options = false;
       spectrum.file_name = "";
     }
     // Finish the frame
