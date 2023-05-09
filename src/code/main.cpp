@@ -28,6 +28,8 @@
 #include <filesystem>
 // std::vector
 #include <vector>
+// std::clamp
+#include <algorithm>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -63,7 +65,27 @@ struct AllWindowSettings
   WindowSettings sac_1c_spectrum_plot_settings{2, 25, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
   WindowSettings sac_vector_settings{2, 367, 347, 300, false};
+  // Small window providing access to lowpass filter options
   WindowSettings sac_lp_options_settings{50, 367, 347, 200, false};
+  // Small window providing access to highpass filter options
+  WindowSettings sac_hp_options_settings{50, 367, 347, 200, false};
+  // Small window providing access to bandpass filter options
+  WindowSettings sac_bp_options_settings{50, 367, 347, 200, false};
+};
+// Settings for menu options
+// Defines is a menu option is enabled or disabled (separate from whether
+// a window is shown or hidden)
+struct AllMenuSettings
+{
+  bool welcome{true};
+  bool fps{true};
+  bool sac_header{false};
+  bool sac_1c_plot{false};
+  bool sac_1c_spectrum_plot{false};
+  bool sac_vector{false};
+  //bool sac_lp_options{false};
+  //bool sac_hp_options{false};
+  //bool sac_bp_options{false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -106,6 +128,26 @@ struct sac_1c
     }
     return *this;
   }
+};
+// Struct for filters
+struct filter_options
+{
+  // Filter order
+  int order{1};
+  // Limits on order
+  int min_order{1};
+  int max_order{10};
+  // Limits on filter frequencies
+  float min_freq{0.0f};
+  // max_freq is Nyquist (here just an arbitrary value)
+  float max_freq{10.0f};
+  // Two freqs for bandpass
+  // If using lowpass use freq_low
+  float freq_low{1.0f};
+  // If using highpass use freq_high
+  float freq_high{5.0f};
+  // Keyboard step interval
+  float freq_step{0.1f};
 };
 //-----------------------------------------------------------------------------
 // End custom structs
@@ -307,7 +349,7 @@ static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //------------------------------------------------------------------------
-static void window_lowpass_options(WindowSettings& window_settings, sac_1c& sac, sac_1c& spectrum)
+static void window_lowpass_options(WindowSettings& window_settings, filter_options& lowpass_settings, sac_1c& sac, sac_1c& spectrum)
 {
   if (window_settings.show)
   {
@@ -319,15 +361,20 @@ static void window_lowpass_options(WindowSettings& window_settings, sac_1c& sac,
     }
 
     ImGui::Begin("Lowpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-    static float cutoff = 1.0f;
-    static int order = 1;
-    ImGui::InputFloat("Freq (Hz)", &cutoff);
-    ImGui::InputInt("Order", &order);
+    lowpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    if (ImGui::InputFloat("Freq (Hz)", &lowpass_settings.freq_low, lowpass_settings.freq_step))
+    {
+      lowpass_settings.freq_low = std::clamp(lowpass_settings.freq_low, lowpass_settings.min_freq, lowpass_settings.max_freq);
+    }
+    if (ImGui::InputInt("Order", &lowpass_settings.order))
+    {
+      lowpass_settings.order = std::clamp(lowpass_settings.order, lowpass_settings.min_order, lowpass_settings.max_order);
+    }
     if (ImGui::Button("Ok"))
     {
       if (sac.sac_mutex.try_lock())
       {
-        SAC::lowpass(sac.sac, order, cutoff);
+        SAC::lowpass(sac.sac, lowpass_settings.order, lowpass_settings.freq_low);
         sac.sac_mutex.unlock();
         calc_spectrum(sac, spectrum);
         window_settings.show = false;
@@ -341,11 +388,97 @@ static void window_lowpass_options(WindowSettings& window_settings, sac_1c& sac,
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
+// Highpass Filter Options Window
+//------------------------------------------------------------------------
+static void window_highpass_options(WindowSettings& window_settings, filter_options& highpass_settings, sac_1c& sac, sac_1c& spectrum)
+{
+  if (window_settings.show)
+  {
+    if (!window_settings.is_set)
+    {
+      ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+      ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+      window_settings.is_set = true;
+    }
+
+    ImGui::Begin("Highpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    highpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    if (ImGui::InputFloat("Freq (Hz)", &highpass_settings.freq_low, highpass_settings.freq_step))
+    {
+      highpass_settings.freq_low = std::clamp(highpass_settings.freq_low, highpass_settings.min_freq, highpass_settings.max_freq);
+    }
+    if (ImGui::InputInt("Order", &highpass_settings.order))
+    {
+      highpass_settings.order = std::clamp(highpass_settings.order, highpass_settings.min_order, highpass_settings.max_order);
+    }
+    if (ImGui::Button("Ok"))
+    {
+      if (sac.sac_mutex.try_lock())
+      {
+        SAC::highpass(sac.sac, highpass_settings.order, highpass_settings.freq_low);
+        sac.sac_mutex.unlock();
+        calc_spectrum(sac, spectrum);
+        window_settings.show = false;
+      }
+    }
+    ImGui::End();
+  }
+}
+//------------------------------------------------------------------------
+// End highpass Filter Options Window
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Bandpass Filter Options Window
+//------------------------------------------------------------------------
+static void window_bandpass_options(WindowSettings& window_settings, filter_options& bandpass_settings, sac_1c& sac, sac_1c& spectrum)
+{
+  if (window_settings.show)
+  {
+    if (!window_settings.is_set)
+    {
+      ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+      ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+      window_settings.is_set = true;
+    }
+
+    ImGui::Begin("Bandpass Options", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    bandpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
+    if (ImGui::InputFloat("Min Freq (Hz)", &bandpass_settings.freq_low, bandpass_settings.freq_step))
+    {
+      bandpass_settings.freq_low = std::clamp(bandpass_settings.freq_low, bandpass_settings.min_freq, bandpass_settings.max_freq);
+    }
+    if (ImGui::InputFloat("Max Freq (Hz)", &bandpass_settings.freq_high, bandpass_settings.freq_step))
+    {
+      bandpass_settings.freq_high = std::clamp(bandpass_settings.freq_high, bandpass_settings.min_freq, bandpass_settings.max_freq);
+    }
+    if (ImGui::InputInt("Order", &bandpass_settings.order))
+    {
+      bandpass_settings.order = std::clamp(bandpass_settings.order, bandpass_settings.min_order, bandpass_settings.max_order);
+    }
+    if (ImGui::Button("Ok"))
+    {
+      if (sac.sac_mutex.try_lock())
+      {
+        SAC::bandpass(sac.sac, bandpass_settings.order, bandpass_settings.freq_low, bandpass_settings.freq_high);
+        sac.sac_mutex.unlock();
+        calc_spectrum(sac, spectrum);
+        window_settings.show = false;
+      }
+    }
+    ImGui::End();
+  }
+}
+//------------------------------------------------------------------------
+// End bandpass Filter Options Window
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
 // Function that handles the main menu bar. Preparing to handle 3C sac data soon
 // I'll do a list of sac_1c structs, file_dir will be redundant, but I don't care at the moment.
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, std::vector<sac_1c>& sac_vector)
+static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector)
 {
   sac_1c sac{};
   ImGui::BeginMainMenuBar();
@@ -369,27 +502,27 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   // Window menu
   if (ImGui::BeginMenu("Window"))
   {
-    if (ImGui::MenuItem("Welcome"))
+    if (ImGui::MenuItem("Welcome", nullptr, nullptr, am_settings.welcome))
     {
       allwindow_settings.welcome_settings.show = !allwindow_settings.welcome_settings.show;
     }
-    if (ImGui::MenuItem("FPS Tracker"))
+    if (ImGui::MenuItem("FPS Tracker", nullptr, nullptr, am_settings.fps))
     {
       allwindow_settings.fps_settings.show = !allwindow_settings.fps_settings.show;
     }
-    if (ImGui::MenuItem("Sac Header"))
+    if (ImGui::MenuItem("Sac Header", nullptr, nullptr, am_settings.sac_header))
     {
       allwindow_settings.sac_header_settings.show = !allwindow_settings.sac_header_settings.show;
     }
-    if (ImGui::MenuItem("Sac Plot 1C"))
+    if (ImGui::MenuItem("Sac Plot 1C", nullptr, nullptr, am_settings.sac_1c_plot))
     {
       allwindow_settings.sac_1c_plot_settings.show = !allwindow_settings.sac_1c_plot_settings.show;
     }
-    if (ImGui::MenuItem("Spectrum Plot 1C"))
+    if (ImGui::MenuItem("Spectrum Plot 1C", nullptr, nullptr, am_settings.sac_1c_spectrum_plot))
     {
       allwindow_settings.sac_1c_spectrum_plot_settings.show = !allwindow_settings.sac_1c_spectrum_plot_settings.show;
     }
-    if (ImGui::MenuItem("Sac List"))
+    if (ImGui::MenuItem("Sac List", nullptr, nullptr, am_settings.sac_vector))
     {
       allwindow_settings.sac_vector_settings.show = !allwindow_settings.sac_vector_settings.show;
     }
@@ -762,10 +895,12 @@ void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_
         if (ImGui::MenuItem("HighPass"))
         {
           selected = i;
+          aw_settings.sac_hp_options_settings.show = true;
         }
         if (ImGui::MenuItem("BandPass"))
         {
           selected = i;
+          aw_settings.sac_bp_options_settings.show = true;
         }
         ImGui::EndPopup();
       }
@@ -816,6 +951,10 @@ int main()
   fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
   AllWindowSettings aw_settings{};
+  AllMenuSettings am_settings{};
+  filter_options lowpass_settings{};
+  filter_options highpass_settings{};
+  filter_options bandpass_settings{};
   // Time-series
   std::vector<sac_1c> sac_vector;
   // Spectrum (only 1 for now)
@@ -838,7 +977,7 @@ int main()
     cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
     prep_newframe();
-    main_menu_bar(window, aw_settings, sac_vector);
+    main_menu_bar(window, aw_settings, am_settings, sac_vector);
     // Show the Welcome window if appropriate
     window_welcome(aw_settings.welcome_settings, welcome_message);
     update_fps(fps_tracker, io);
@@ -848,6 +987,11 @@ int main()
     // (That would involve accessing memory that doesn't exist and crash)
     if (sac_vector.size() > 0)
     {
+      // Allow menu options that require sac files
+      am_settings.sac_vector = true;
+      am_settings.sac_header = true;
+      am_settings.sac_1c_plot = true;
+      am_settings.sac_1c_spectrum_plot = true;
       // This fixes the issue of deleting all sac_1cs in the vector
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
@@ -872,10 +1016,17 @@ int main()
       window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
       window_sac_vector(aw_settings, sac_vector, spectrum, active_sac, clear_sac);
-      window_lowpass_options(aw_settings.sac_lp_options_settings, sac_vector[active_sac], spectrum);
+      window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_vector[active_sac], spectrum);
+      window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_vector[active_sac], spectrum);
+      window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_vector[active_sac], spectrum);
     }
     else
     {
+      // Disallow menu options that require sac files
+      am_settings.sac_vector = false;
+      am_settings.sac_header = false;
+      am_settings.sac_1c_plot = false;
+      am_settings.sac_1c_spectrum_plot = false;
       spectrum.file_name = "";
     }
     // Finish the frame
