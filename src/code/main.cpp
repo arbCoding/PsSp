@@ -35,6 +35,18 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Known Bugs
+//-----------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
+// Template for bugs, info and what-not goes between these sub-dividers
+//------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+// End Known Bugs
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
 // Per window settings
@@ -502,6 +514,19 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   // Window menu
   if (ImGui::BeginMenu("Window"))
   {
+    // Reset window positions incase something got lost
+    if (ImGui::MenuItem("Reset Windows"))
+    {
+      allwindow_settings.welcome_settings.is_set = false;
+      allwindow_settings.fps_settings.is_set = false;
+      allwindow_settings.sac_header_settings.is_set = false;
+      allwindow_settings.sac_1c_plot_settings.is_set = false;
+      allwindow_settings.sac_1c_spectrum_plot_settings.is_set = false;
+      allwindow_settings.sac_vector_settings.is_set = false;
+      allwindow_settings.sac_lp_options_settings.is_set = false;
+      allwindow_settings.sac_hp_options_settings.is_set = false;
+      allwindow_settings.sac_bp_options_settings.is_set = false;
+    }
     if (ImGui::MenuItem("Welcome", nullptr, nullptr, am_settings.welcome))
     {
       allwindow_settings.welcome_settings.show = !allwindow_settings.welcome_settings.show;
@@ -608,52 +633,45 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
       window_settings.is_set = true;
     }
     ImGui::Begin("Sac Plot", &window_settings.show);
-    if (ImGui::BeginChild("Sac Plot"))
+    if (ImPlot::BeginPlot("Seismogram"))
     {
-      if (ImPlot::BeginPlot("Seismogram"))
+      ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
+      if (sac_vector[selected].sac_mutex.try_lock())
       {
-        ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
-        if (sac_vector[selected].sac_mutex.try_lock())
-        {
-          ImPlot::PlotLine(sac_vector[selected].sac.kcmpnm.c_str(), &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
-          sac_vector[selected].sac_mutex.unlock();
-        }
-        // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
-        // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
-        // directly modifying ImPlot, which I don't want to do)
-        ImPlotContext* plot_ctx = ImPlot::GetCurrentContext();
-        if (plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-        {
-          // Oddly, BeginPopupContextItem doesn't seem to do the job here, so we must use the based functions
-          ImGui::OpenPopup("##CustomPlotOptions");
-        }
-        if (ImGui::BeginPopup("##CustomPlotOptions"))
-        {
-          if (ImGui::BeginMenu("Test"))
-          {
-            if (ImGui::MenuItem("Custom 1"))
-            {
-
-            }
-            ImGui::EndMenu();
-          }
-          if (ImGui::BeginMenu("Test 2"))
-          {
-            if (ImGui::MenuItem("Custom 2"))
-            {
-
-            }
-            if (ImGui::MenuItem("Custom 3"))
-            {
-
-            }
-            ImGui::EndMenu();
-          }
-          ImGui::EndPopup();
-        }
-        ImPlot::EndPlot();
+        ImPlot::PlotLine(sac_vector[selected].sac.kcmpnm.c_str(), &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
+        sac_vector[selected].sac_mutex.unlock();
       }
-      ImGui::EndChild();
+      // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
+      // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
+      // directly modifying ImPlot, which I don't want to do)
+      ImPlotContext* plot_ctx = ImPlot::GetCurrentContext();
+      if (plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+      {
+        // Oddly, BeginPopupContextItem doesn't seem to do the job here, so we must use the based functions
+        ImGui::OpenPopup("##CustomPlotOptions");
+      }
+      if (ImGui::BeginPopup("##CustomPlotOptions"))
+      {
+        if (ImGui::BeginMenu("Test"))
+        {
+          if (ImGui::MenuItem("Custom 1"))
+          {
+          }
+          ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Test 2"))
+        {
+          if (ImGui::MenuItem("Custom 2"))
+          {
+          }
+          if (ImGui::MenuItem("Custom 3"))
+          {
+          }
+          ImGui::EndMenu();
+        }
+        ImGui::EndPopup();
+      }
+      ImPlot::EndPlot();
     }
     ImGui::End();
   }
@@ -677,37 +695,33 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
       window_settings.is_set = true;
     }
     ImGui::Begin("Spectrum", &window_settings.show);
-    if (ImGui::BeginChild("Spectrum"))
+    ImGui::Columns(2);
+    if (ImPlot::BeginPlot("Real"))
     {
-      ImGui::Columns(2);
-      if (ImPlot::BeginPlot("Real"))
+      if (spectrum.sac_mutex.try_lock())
       {
-        if (spectrum.sac_mutex.try_lock())
-        {
-          ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-          const double sampling_freq{1.0 / spectrum.sac.delta};
-          const double freq_step{sampling_freq / spectrum.sac.npts};
-          ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
-          spectrum.sac_mutex.unlock();
-        }
-        ImPlot::EndPlot();
+        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+        const double sampling_freq{1.0 / spectrum.sac.delta};
+        const double freq_step{sampling_freq / spectrum.sac.npts};
+        ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
+        spectrum.sac_mutex.unlock();
       }
-      ImGui::NextColumn();
-      if (ImPlot::BeginPlot("Imaginary"))
-      {
-        if (spectrum.sac_mutex.try_lock())
-        {
-          ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-          const double sampling_freq{1.0 / spectrum.sac.delta};
-          const double freq_step{sampling_freq / spectrum.sac.npts};
-          ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
-          spectrum.sac_mutex.unlock();
-        }
-        ImPlot::EndPlot();
-      }
-      ImGui::Columns(1);
-      ImGui::EndChild();
+      ImPlot::EndPlot();
     }
+    ImGui::NextColumn();
+    if (ImPlot::BeginPlot("Imaginary"))
+    {
+      if (spectrum.sac_mutex.try_lock())
+      {
+        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+        const double sampling_freq{1.0 / spectrum.sac.delta};
+        const double freq_step{sampling_freq / spectrum.sac.npts};
+        ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
+        spectrum.sac_mutex.unlock();
+      }
+      ImPlot::EndPlot();
+    }
+    ImGui::Columns(1);
     ImGui::End();
   }
 }
@@ -891,15 +905,21 @@ void window_sac_vector(AllWindowSettings& aw_settings, std::vector<sac_1c>& sac_
         {
           selected = i;
           aw_settings.sac_lp_options_settings.show = true;
+          aw_settings.sac_hp_options_settings.show = false;
+          aw_settings.sac_bp_options_settings.show = false;
         }
         if (ImGui::MenuItem("HighPass"))
         {
           selected = i;
+          aw_settings.sac_lp_options_settings.show = false;
           aw_settings.sac_hp_options_settings.show = true;
+          aw_settings.sac_bp_options_settings.show = false;
         }
         if (ImGui::MenuItem("BandPass"))
         {
           selected = i;
+          aw_settings.sac_lp_options_settings.show = false;
+          aw_settings.sac_hp_options_settings.show = false;
           aw_settings.sac_bp_options_settings.show = true;
         }
         ImGui::EndPopup();
