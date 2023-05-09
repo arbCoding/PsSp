@@ -91,6 +91,7 @@ struct AllWindowSettings
 // a window is shown or hidden)
 struct AllMenuSettings
 {
+  bool save_sac_1c{false};
   bool welcome{true};
   bool fps{true};
   bool sac_header{false};
@@ -516,7 +517,7 @@ static void window_bandpass_options(WindowSettings& window_settings, filter_opti
 //------------------------------------------------------------------------
 // Function that handles the main menu bar. Preparing to handle 3C sac data soon
 // I'll do a list of sac_1c structs, file_dir will be redundant, but I don't care at the moment.
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector)
+static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector, int& active_sac)
 {
   sac_1c sac{};
   ImGui::BeginMainMenuBar();
@@ -538,6 +539,14 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Read a directory full of SAC-files");
+    }
+    if (ImGui::MenuItem("Save 1C", nullptr, nullptr, am_settings.save_sac_1c))
+    {
+      ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Save a single SAC-file");
     }
     if (ImGui::MenuItem("Exit"))
     {
@@ -630,7 +639,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     ImGui::EndMenu();
   }
-  // File Dialog
+  // Open File Dialog (single SAC)
   ImVec2 maxSize = ImVec2(allwindow_settings.file_dialog_settings.width * 1.5, allwindow_settings.file_dialog_settings.height * 1.5);
   ImVec2 minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
@@ -688,6 +697,20 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
         allwindow_settings.sac_1c_plot_settings.show = true;
         allwindow_settings.sac_vector_settings.show = true;
         allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+      }
+    }
+    ImGuiFileDialog::Instance()->Close();
+  }
+  // Save file dialog (single sac)
+  if (ImGuiFileDialog::Instance()->Display("SaveFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+  {
+    // Save the SAC-File safely
+    if (ImGuiFileDialog::Instance()->IsOk())
+    {
+      if (sac_vector[active_sac].sac_mutex.try_lock())
+      {
+        sac_vector[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
+        sac_vector[active_sac].sac_mutex.unlock();
       }
     }
     ImGuiFileDialog::Instance()->Close();
@@ -999,6 +1022,14 @@ void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_setti
       // Right-click menu
       if (ImGui::BeginPopupContextItem((std::string("Context Menu##") + std::to_string(i)).c_str()))
       {
+        if (ImGui::MenuItem("Save", nullptr, nullptr, am_settings.save_sac_1c))
+        {
+          selected = i;
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+          ImGui::SetTooltip("Save SAC file. Not implemented in this context. Use File->Save 1C");
+        }
         if (ImGui::MenuItem("Remove"))
         {
           selected = i;
@@ -1130,7 +1161,7 @@ int main()
     cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
     prep_newframe();
-    main_menu_bar(window, aw_settings, am_settings, sac_vector);
+    main_menu_bar(window, aw_settings, am_settings, sac_vector, active_sac);
     // Show the Welcome window if appropriate
     window_welcome(aw_settings.welcome_settings, welcome_message);
     update_fps(fps_tracker, io);
@@ -1141,6 +1172,7 @@ int main()
     if (sac_vector.size() > 0)
     {
       // Allow menu options that require sac files
+      am_settings.save_sac_1c = true;
       am_settings.sac_vector = true;
       am_settings.sac_header = true;
       am_settings.sac_1c_plot = true;
@@ -1179,6 +1211,7 @@ int main()
     else
     {
       // Disallow menu options that require sac files
+      am_settings.save_sac_1c = false;
       am_settings.sac_vector = false;
       am_settings.sac_header = false;
       am_settings.sac_1c_plot = false;
