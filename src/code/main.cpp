@@ -35,6 +35,60 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// TODO
+//-----------------------------------------------------------------------------
+// 1) Bandreject filter
+// 2) Lock program on batch jobs (read/write/process)
+// 3) Progress window on batch jobs (read/write/process)
+// 4) Data doesn't necessarily need to reside in memory at all times
+//    Only need for processing/plotting/saving
+//    Therefore, should implement a function to read and store only sac-header
+//    information, and then read in data on the fly as needed.
+//    (Chunks of data being in memory is ideal, that way we have a buffer that
+//    acts basically like a sliding window for the I/O operations)
+// 5) Threaded I/O (for reading/writing multiple files at a time)
+// 6) Threaded processing (for processing multiple files at a time)
+// 7) Undo/redo (that won't be fun...)
+// 8) Projects (that won't be fun...)
+// 9) Data-request/download from IRIS (or other server)
+// 10) Mapping of data
+// 11) Sorting of data in sac_vector
+//  11a) By filename
+//  11b) By component
+//  11c) By station
+//  11d) By event station distance
+//  11e) By azimuth/back-azimuth
+//  11f) By eventid
+//  11g) ????
+// 12) Batch filtering
+// 13) Manual arrival time picking
+// 14) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
+// 15) Spectrogram
+// 16) Grouping 3-component data
+// 17) Help menu
+// 18) Center windows functionality
+// 19) Overwrite layout functionality
+// 20) Advanced plots (record section, particle motion)
+// 21) Deconvolution (instrument response, source wavelet)
+//  21a) Spectral division with water-level
+//  21b) Spectral division with static shift
+//  21c) Iterative time-domain
+// 22) Reload all data
+// 23) Data-processing logs (probably easier than doing projects...)
+// 24) Generic basic waveforms (for exploring effects of processing flow)
+//  24a) Dirac Delta function
+//  24b) Dirac Delta-comb function
+//  24c) Boxcar function
+//  24d) Triangle function
+//  24e) Gaussian
+//  24f) Sombrero function
+// 25) Keyboard shortcuts for common operations
+// 26) User note's log (can write their own notes on what they're doing)
+//-----------------------------------------------------------------------------
+// End TODO
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Known Bugs
 //-----------------------------------------------------------------------------
 //
@@ -101,8 +155,11 @@ struct AllMenuSettings
   bool sac_lp_options{false};
   bool sac_hp_options{false};
   bool sac_bp_options{false};
+  bool sac_br_options{false};
   bool undo{false};
   bool redo{false};
+  bool rmean{false};
+  bool rtrend{false};
 };
 // Struct for handling fps tracking info
 struct fps_info
@@ -216,6 +273,77 @@ void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
     SAC::fft_real_imaginary(spectrum.sac);
     spectrum.sac_mutex.unlock();
   }
+}
+
+void remove_mean(sac_1c& sac)
+{
+  sac.sac_mutex.lock();
+  double mean{0};
+  // Check if the mean is already set
+  if (sac.sac.depmen != SAC::unset_float)
+  {
+    mean = sac.sac.depmen;
+  }
+  else
+  {
+    // Need to calculate the mean...
+     for (int i{0}; i < sac.sac.npts; ++i)
+    {
+      mean += sac.sac.data1[0];
+    }
+    mean /= static_cast<double>(sac.sac.npts);
+  }
+  // If out mean is zero, then we're done
+  if (mean != 0.0 || sac.sac.depmen != 0.0f)
+  {
+    // Subtract the mean from ever data point
+    for (int i{0}; i < sac.sac.npts; ++i)
+    {
+      sac.sac.data1[i] -= mean;
+    }
+    // The mean is zero
+    sac.sac.depmen = 0.0f;
+  }
+  sac.sac_mutex.unlock();
+}
+
+void remove_trend(sac_1c& sac)
+{
+  sac.sac_mutex.lock();
+  double mean_amplitude{0};
+  // Static_cast just to be sure no funny business
+  double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
+  // If depmen is not set, so no average to start from
+  if (sac.sac.depmen == SAC::unset_float)
+  {
+    for (int i{0}; i < sac.sac.npts; ++i)
+    {
+      mean_amplitude += sac.sac.data1[0];
+    }
+    mean_amplitude /= static_cast<double>(sac.sac.npts);
+  }
+  else
+  {
+    mean_amplitude = sac.sac.depmen;
+  }
+  // Now to calculate the slope and y-intercept (y = amplitude)
+  double numerator{0};
+  double denominator{0};
+  double t_diff{0};
+  for (int i{0}; i < sac.sac.npts; ++i)
+  {
+    t_diff = i - mean_t;
+    numerator += t_diff * (sac.sac.data1[i] - mean_amplitude);
+    denominator += t_diff * t_diff;
+  }
+  double slope{numerator / denominator};
+  double amplitude_intercept{mean_amplitude - (slope * mean_t)};
+  // Now to remove the linear trend from the data
+  for (int i{0}; i < sac.sac.npts; ++i)
+  {
+    sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
+  }
+  sac.sac_mutex.unlock();
 }
 //-----------------------------------------------------------------------------
 // End Misc functions
@@ -540,6 +668,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
       ImGui::SetTooltip("Read a directory full of SAC-files");
     }
+    ImGui::Separator();
     if (ImGui::MenuItem("Save 1C", nullptr, nullptr, am_settings.save_sac_1c))
     {
       ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
@@ -559,6 +688,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   {
     if (ImGui::MenuItem("Undo", nullptr, nullptr, am_settings.undo))
     {
+      // To be implemented at some point
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -566,6 +696,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     if (ImGui::MenuItem("Redo", nullptr, nullptr, am_settings.redo))
     {
+      // TO be implemented at some point
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -573,9 +704,41 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     ImGui::EndMenu();
   }
+  // Project Menu
+  // Eventually projects will be supported
+  // That will involve keeping track of files, actions, etc.
+  // Place-holder for now as a promise and reminder of my intentions
+  if (ImGui::BeginMenu("Project"))
+  {
+    ImGui::EndMenu();
+  }
+  // Options Menu
+  // Changing fonts, their sizes, etc.
+  if (ImGui::BeginMenu("Options"))
+  {
+    ImGui::EndMenu();
+  }
   // Window menu
   if (ImGui::BeginMenu("Window"))
   {
+    // Bring all windows to the center incase the layout got borked
+    if (ImGui::MenuItem("Center Windows"))
+    {
+      // To be implemented at some point
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Center ALL windows. Not yet implemented");
+    }
+    // Change the default layout, if the user wants that
+    if (ImGui::MenuItem("Save Layout"))
+    {
+      // To be implemented at some point
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Save current window layout as new default. Not yet implemented");
+    }
     // Reset window positions incase something got lost
     if (ImGui::MenuItem("Reset Windows"))
     {
@@ -593,6 +756,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     {
       ImGui::SetTooltip("Reset all windows to default position and size");
     }
+    ImGui::Separator();
     if (ImGui::MenuItem("Welcome", nullptr, nullptr, am_settings.welcome))
     {
       allwindow_settings.welcome_settings.show = true;
@@ -717,6 +881,23 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   }
   if (ImGui::BeginMenu("Processing"))
   {
+    if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
+    {
+      remove_mean(sac_vector[active_sac]);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Remove mean value from active data.");
+    }
+    if (ImGui::MenuItem("Remove Trend", nullptr, nullptr, am_settings.rtrend))
+    {
+      remove_trend(sac_vector[active_sac]);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Remove linear trend from active data.");
+    }
+    ImGui::Separator();
     if (ImGui::MenuItem("Lowpass", nullptr, nullptr, am_settings.sac_lp_options))
     {
       allwindow_settings.sac_lp_options_settings.show = true;
@@ -725,7 +906,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
-      ImGui::SetTooltip("Butterworth Lowpass filter");
+      ImGui::SetTooltip("Butterworth Lowpass filter active data.");
     }
     if (ImGui::MenuItem("Highpass", nullptr, nullptr, am_settings.sac_hp_options))
     {
@@ -735,7 +916,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
-      ImGui::SetTooltip("Butterworth Highpass filter");
+      ImGui::SetTooltip("Butterworth Highpass filter active data.");
     }
     if (ImGui::MenuItem("Bandpass", nullptr, nullptr, am_settings.sac_bp_options))
     {
@@ -745,12 +926,79 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
-      ImGui::SetTooltip("Butterworth Bandpass filter");
+      ImGui::SetTooltip("Butterworth Bandpass filter active data.");
     }
+    if (ImGui::MenuItem("Bandreject", nullptr, nullptr, am_settings.sac_br_options))
+    {
+      // To be implemented later
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Bandreject filter active data. Not implemented");
+    }
+    ImGui::EndMenu();
+  }
+  if (ImGui::BeginMenu("Picking"))
+  {
     ImGui::EndMenu();
   }
   if (ImGui::BeginMenu("Batch"))
   {
+    if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
+    {
+      for (std::size_t i{0}; i < sac_vector.size(); ++i)
+      {
+        remove_mean(sac_vector[i]);
+      }
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Remove mean value from all data.");
+    }
+    if (ImGui::MenuItem("Remove Trend", nullptr, nullptr, am_settings.rtrend))
+    {
+      for (std::size_t i{0}; i < sac_vector.size(); ++i)
+      {
+        remove_trend(sac_vector[i]);
+      }
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Remove trend value from all data.");
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Lowpass", nullptr, nullptr, am_settings.sac_lp_options))
+    {
+      // To be implemented later
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Lowpass filter all data. Not implemented");
+    }
+    if (ImGui::MenuItem("Highpass", nullptr, nullptr, am_settings.sac_hp_options))
+    {
+      // To be implemented later
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Highpass filter all data. Not implemented");
+    }
+    if (ImGui::MenuItem("Bandpass", nullptr, nullptr, am_settings.sac_bp_options))
+    {
+      // To be implemented later
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Bandpass filter all data. Not implemented");
+    }
+    if (ImGui::MenuItem("Bandreject", nullptr, nullptr, am_settings.sac_br_options))
+    {
+      // To be implemented later
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+      ImGui::SetTooltip("Butterworth Bandreject filter all data. Not implemented");
+    }
     ImGui::EndMenu();
   }
   ImGui::EndMainMenuBar();
@@ -1180,6 +1428,8 @@ int main()
       am_settings.sac_lp_options = true;
       am_settings.sac_hp_options = true;
       am_settings.sac_bp_options = true;
+      am_settings.rmean = true;
+      am_settings.rtrend = true;
       // This fixes the issue of deleting all sac_1cs in the vector
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
@@ -1219,6 +1469,8 @@ int main()
       am_settings.sac_lp_options = false;
       am_settings.sac_hp_options = false;
       am_settings.sac_bp_options = false;
+      am_settings.rmean = false;
+      am_settings.rtrend = false;
       spectrum.file_name = "";
     }
     // Finish the frame

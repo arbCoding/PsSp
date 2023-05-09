@@ -32,7 +32,7 @@
 //  I recommend copying the `data1` and/or `data2` std::vector<double>
 //  objects manually on your own. <- There is not need to copy everything else.
 //
-// * Futhermore. If you don't plan on modifying the original copies of `data1` and `data1`:
+// * Futhermore. If you don't plan on modifying the original copies of `data1` and `data2`:
 //  Make the copies constants (opens up more possible compiler optimizations).
 //
 //  * For an idea of how one would do this, see `./src/tests/sac_stream_fftw_test.cpp`
