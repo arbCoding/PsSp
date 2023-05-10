@@ -189,16 +189,14 @@ struct fps_info
 // Struct for holding 1-component sac data
 struct sac_1c
 {
-  std::string file_dir{};
   std::string file_name{};
   SAC::SacStream sac{};
   std::mutex sac_mutex{};
 
-  sac_1c() : file_dir(), file_name(), sac(), sac_mutex() {}
+  sac_1c() : file_name(), sac(), sac_mutex() {}
   // Copy constructor
   sac_1c(const sac_1c& other)
   {
-    file_dir = other.file_dir;
     file_name = other.file_name;
     sac = other.sac;
     // Don't copy the mutex
@@ -208,7 +206,6 @@ struct sac_1c
   {
     if (this != &other)
     {
-      file_dir = other.file_dir;
       file_name = other.file_name;
       sac = other.sac;
       // Don't assign the mutex
@@ -280,7 +277,6 @@ void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
   {
     spectrum.sac = sac.sac;
     spectrum.file_name = sac.file_name;
-    spectrum.file_dir = sac.file_dir;
     sac.sac_mutex.unlock();
     // Calculate the FFT
     SAC::fft_real_imaginary(spectrum.sac);
@@ -825,7 +821,6 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
       if (sac.sac_mutex.try_lock())
       {
         sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
-        sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
         sac.sac = SAC::SacStream(sac.file_name);
         // Add it to the list!
         sac_vector.push_back(sac);
@@ -857,7 +852,6 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
           {
             sac_found = true;
             sac.file_name = entry.path().string();
-            sac.file_dir = sac.file_name.substr(0, sac.file_name.find_last_of("\\/")) + '/';
             sac.sac = SAC::SacStream(sac.file_name);
             // Add it to the list!
             sac_vector.push_back(sac);
