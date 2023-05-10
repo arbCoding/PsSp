@@ -41,6 +41,8 @@
 #include <thread>
 // std::deque for thread-safe constant time access to a "list"
 #include <deque>
+// FIFO wrapper for deque
+#include <queue>
 // Unsure if needed
 //#include <iterator>
 //-----------------------------------------------------------------------------
@@ -127,7 +129,10 @@ struct FileIO
   bool started{false};
   int count{0};
   int total{0};
-  std::vector<std::string> file_vector{};
+  // Changing from vector to queue for thread-safety
+  std::queue<std::string, std::deque<std::string>>  file_queue{};
+  // Used to lock threads if the queue is empty instead of wasting CPU cycles
+  std::condition_variable condition{};
 };
 struct ProgramStatus
 {
@@ -368,6 +373,13 @@ void remove_trend(sac_1c& sac)
     sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
   }
   sac.sac_mutex.unlock();
+}
+
+// Reads files in a queue
+void read_sac_queue(ProgramStatus& program_status, std::vector<sac_1c>& sac_vector)
+{
+  std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
+  (void) sac_vector;
 }
 //-----------------------------------------------------------------------------
 // End Misc functions
@@ -881,10 +893,12 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-          program_status.fileio.file_vector.push_back(entry.path().string());
+          // Push it onto the queue
+          program_status.fileio.file_queue.push(entry.path().string());
         }
         program_status.fileio.to_read = true;
         program_status.fileio.count = 0;
+        program_status.fileio.total = static_cast<int>(program_status.fileio.file_queue.size());
       }
       program_status.program_mutex.unlock();
     }
@@ -1434,9 +1448,7 @@ int main()
     // Start the frame
     pssp::prep_newframe();
     pssp::status_bar(program_status.message.c_str(), program_status.progress);
-    // Testing the progress bar in the main loop since it doesn't fucking work anywhere else
-    // It works here, we'll need to move the file reading either to a separate thread
-    // or limit outselves to one file were frame at most...
+    // Migrating from vector to deque
     if (program_status.fileio.to_read)
     {
       program_status.program_mutex.lock();
@@ -1444,14 +1456,15 @@ int main()
       {
         program_status.message = "Reading SAC files...";
         program_status.progress = 0.0f;
-        program_status.fileio.total = static_cast<int>(program_status.fileio.file_vector.size());
         program_status.fileio.started = true;
       }
-      if (program_status.fileio.count < program_status.fileio.total)
+      // If there are files in the queue
+      if (program_status.fileio.file_queue.size() > 0)
       {
         pssp::sac_1c sac{};
         sac.sac_mutex.lock();
-        sac.file_name = program_status.fileio.file_vector[program_status.fileio.count];
+        sac.file_name = program_status.fileio.file_queue.front();
+        program_status.fileio.file_queue.pop();
         sac.sac = SAC::SacStream(sac.file_name);
         sac_vector.push_back(sac);
         sac.sac_mutex.unlock();
