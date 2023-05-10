@@ -22,6 +22,9 @@
 #include <iostream>
 // mutex locks for thread-safe data access
 #include <mutex>
+// Shared mutex for locking modifications of file
+// but not reading a file
+#include <shared_mutex>
 // std::string_view
 #include <string>
 // Path stuff
@@ -116,6 +119,12 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
+struct ProgramStatus
+{
+  std::string message{"Idle"};
+  float progress{0.0f};
+  std::shared_mutex program_mutex{};
+};
 // Per window settings
 struct WindowSettings
 {
@@ -453,12 +462,12 @@ void end_graphics(GLFWwindow* window)
 // General GUI functions
 //-----------------------------------------------------------------------------
 // Helper program for errors with glfw
-static void glfw_error_callback(int error, const char *description)
+void glfw_error_callback(int error, const char *description)
 {
   std::cerr << "GLFW Error " << error << ": " << description << '\n'; 
 }
 // Ran at beginning of new frame draw cycle
-static void prep_newframe()
+void prep_newframe()
 {
   // Check for user input (mouse, keyboard, etc)
   glfwPollEvents();
@@ -469,7 +478,7 @@ static void prep_newframe()
   ImGui::NewFrame();
 }
 // Ran at end of new frame draw cycle
-static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
+void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 {
   // Draw the update
   ImGui::Render();
@@ -501,9 +510,35 @@ static void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //-----------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
+// Status Bar
+//------------------------------------------------------------------------
+void status_bar(const char* status_message = "Idle", float progress = 0.0f)
+{
+  // Size and position
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
+  ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().FramePadding.y * 2.0f) + 10));
+  ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeightWithSpacing() - (ImGui::GetStyle().FramePadding.y * 2.0f) - 10));
+  // Start the status bar
+  ImGui::Begin("Status", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+  // Add status message
+  ImGui::Text("%s", status_message);
+  // Draw progress bar
+  if (progress >= 0.0f && progress <= 1.0f)
+  {
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 100.0f);
+    ImGui::ProgressBar(progress, ImVec2(100.0f, ImGui::GetTextLineHeight()));
+  }
+  ImGui::End();
+  ImGui::PopStyleVar();
+}
+//------------------------------------------------------------------------
+// End Status Bar
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //------------------------------------------------------------------------
-static void window_lowpass_options(WindowSettings& window_settings, filter_options& lowpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_lowpass_options(WindowSettings& window_settings, filter_options& lowpass_settings, sac_1c& sac, sac_1c& spectrum)
 {
   if (window_settings.show)
   {
@@ -551,7 +586,7 @@ static void window_lowpass_options(WindowSettings& window_settings, filter_optio
 //------------------------------------------------------------------------
 // Highpass Filter Options Window
 //------------------------------------------------------------------------
-static void window_highpass_options(WindowSettings& window_settings, filter_options& highpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_highpass_options(WindowSettings& window_settings, filter_options& highpass_settings, sac_1c& sac, sac_1c& spectrum)
 {
   if (window_settings.show)
   {
@@ -599,7 +634,7 @@ static void window_highpass_options(WindowSettings& window_settings, filter_opti
 //------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //------------------------------------------------------------------------
-static void window_bandpass_options(WindowSettings& window_settings, filter_options& bandpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_bandpass_options(WindowSettings& window_settings, filter_options& bandpass_settings, sac_1c& sac, sac_1c& spectrum)
 {
   if (window_settings.show)
   {
@@ -652,8 +687,10 @@ static void window_bandpass_options(WindowSettings& window_settings, filter_opti
 //------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
-static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector, int& active_sac)
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::vector<sac_1c>& sac_vector, int& active_sac)
 {
+  // Just to get rid of unused for now...
+  (void) program_status;
   sac_1c sac{};
   ImGui::BeginMainMenuBar();
   // File menu
@@ -834,7 +871,6 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
     }
     ImGuiFileDialog::Instance()->Close();
   }
-  // Directory selection Dialog
   if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
     if (ImGuiFileDialog::Instance()->IsOk())
@@ -1396,6 +1432,7 @@ int main()
   pssp::filter_options lowpass_settings{};
   pssp::filter_options highpass_settings{};
   pssp::filter_options bandpass_settings{};
+  pssp::ProgramStatus program_status{};
   // Time-series
   std::vector<pssp::sac_1c> sac_vector;
   // Spectrum (only 1 for now)
@@ -1418,7 +1455,8 @@ int main()
     cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
     pssp::prep_newframe();
-    pssp::main_menu_bar(window, aw_settings, am_settings, sac_vector, active_sac);
+    pssp::status_bar(program_status.message.c_str(), program_status.progress);
+    pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_vector, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
     pssp::update_fps(fps_tracker, io);
