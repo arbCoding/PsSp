@@ -119,11 +119,20 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
+struct FileIO
+{
+  bool to_read{false};
+  bool started{false};
+  int count{0};
+  int total{0};
+  std::vector<std::string> file_vector{};
+};
 struct ProgramStatus
 {
   std::string message{"Idle"};
-  float progress{0.0f};
+  float progress{1.1f};
   std::shared_mutex program_mutex{};
+  FileIO fileio{};
 };
 // Per window settings
 struct WindowSettings
@@ -200,7 +209,7 @@ struct sac_1c
 {
   std::string file_name{};
   SAC::SacStream sac{};
-  std::mutex sac_mutex{};
+  std::shared_mutex sac_mutex{};
 
   sac_1c() : file_name(), sac(), sac_mutex() {}
   // Copy constructor
@@ -875,33 +884,19 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
   {
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      bool sac_found{false};
       std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
       // Iterate over files in directory
+      program_status.program_mutex.lock();
       for (const auto& entry : std::filesystem::directory_iterator(directory))
       {
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-          // Time to read it into the vector
-          if (sac.sac_mutex.try_lock())
-          {
-            sac_found = true;
-            sac.file_name = entry.path().string();
-            sac.sac = SAC::SacStream(sac.file_name);
-            // Add it to the list!
-            sac_vector.push_back(sac);
-            sac.sac_mutex.unlock();
-          }
+          program_status.fileio.file_vector.push_back(entry.path().string());
         }
-      }
-      // Only if sac files were found and successfully loaded
-      if (sac_found)
-      {
-        allwindow_settings.sac_header_settings.show = true;
-        allwindow_settings.sac_1c_plot_settings.show = true;
-        allwindow_settings.sac_vector_settings.show = true;
-        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+        program_status.fileio.to_read = true;
+        program_status.fileio.count = 0;
+        program_status.program_mutex.unlock();
       }
     }
     ImGuiFileDialog::Instance()->Close();
@@ -987,10 +982,16 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
   {
     if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
     {
+      program_status.program_mutex.lock();
+      program_status.message = "Removing Mean...";
       for (std::size_t i{0}; i < sac_vector.size(); ++i)
       {
         remove_mean(sac_vector[i]);
+        program_status.progress = static_cast<float>(i) / static_cast<float>(sac_vector.size());
       }
+      program_status.message = "Idle";
+      program_status.progress = 0.0f;
+      program_status.program_mutex.unlock();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1456,6 +1457,43 @@ int main()
     // Start the frame
     pssp::prep_newframe();
     pssp::status_bar(program_status.message.c_str(), program_status.progress);
+    // Testing the progress bar in the main loop since it doesn't fucking work anywhere else
+    // It works here, we'll need to move the file reading either to a separate thread
+    // or limit outselves to one file were frame at most...
+    if (program_status.fileio.to_read)
+    {
+      program_status.program_mutex.lock();
+      if (!program_status.fileio.started)
+      {
+        program_status.message = "Reading SAC files...";
+        program_status.progress = 0.0f;
+        program_status.fileio.total = static_cast<int>(program_status.fileio.file_vector.size());
+        program_status.fileio.started = true;
+      }
+      if (program_status.fileio.count < program_status.fileio.total)
+      {
+        pssp::sac_1c sac{};
+        sac.sac_mutex.lock();
+        sac.file_name = program_status.fileio.file_vector[program_status.fileio.count];
+        sac.sac = SAC::SacStream(sac.file_name);
+        sac_vector.push_back(sac);
+        sac.sac_mutex.unlock();
+        ++program_status.fileio.count;
+        program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
+      }
+      else
+      {
+        program_status.progress = 1.1f;
+        program_status.message = "Idle";
+        program_status.fileio.to_read = false;
+        program_status.fileio.started = false;
+        aw_settings.sac_header_settings.show = true;
+        aw_settings.sac_1c_plot_settings.show = true;
+        aw_settings.sac_vector_settings.show = true;
+        aw_settings.sac_1c_spectrum_plot_settings.show = true;
+      }
+      program_status.program_mutex.unlock();
+    }
     pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_vector, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
