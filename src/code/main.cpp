@@ -35,7 +35,7 @@
 // Used for handling asynchronous data manipulation
 // without needing tons of mutex's
 //#include <future>
-// std::async, multi-threaded work
+// std::async, std::thread
 #include <thread>
 // std::deque for thread-safe constant time access to a "list"
 // Need to use this instead of a std::vector
@@ -102,6 +102,7 @@
 //  24f) Sombrero function
 // 25) Keyboard shortcuts for common operations
 // 26) User note's log (can write their own notes on what they're doing)
+// 27) Lockout `Batch` operations when doing file-io to prevent problems (single file stuf should be safe)
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
@@ -109,12 +110,7 @@
 //-----------------------------------------------------------------------------
 // Known Bugs
 //-----------------------------------------------------------------------------
-// On MacOS
-// Reading files (separate thread) with Sac List window opened freezes program
-// Reading files (separate thread) while interacting with plots sometimes freeze
-//  program
-// These issues were not apparent on linux. I think the issue is sac_deque not
-// being a thread-safe type (the sac_1c is thread-safe with its shared mutexs)
+//
 //-----------------------------------------------------------------------------
 // End Known Bugs
 //-----------------------------------------------------------------------------
@@ -897,17 +893,14 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     // Read the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      sac.sac_mutex.lock();
-      sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
-      sac.sac = SAC::SacStream(sac.file_name);
-      // Add it to the list!
-      sac_deque.push_back(sac);
-      // We should show the sac header window after loading a sac file (not before)
-      allwindow_settings.sac_header_settings.show = true;
-      allwindow_settings.sac_1c_plot_settings.show = true;
-      allwindow_settings.sac_deque_settings.show = true;
-      allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
-      sac.sac_mutex.unlock();
+      program_status.program_mutex.lock();
+      // Put in on the reading queue!
+      program_status.fileio.file_queue.push(ImGuiFileDialog::Instance()->GetFilePathName());
+      program_status.fileio.count = 0;
+      // Can only select 1 file anyway!
+      program_status.fileio.total = 1;
+      program_status.program_mutex.unlock();
+      program_status.fileio.condition.notify_one();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -1422,6 +1415,15 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
 //-----------------------------------------------------------------------------
 int main()
 {
+  // Spit out the number of threads allowed
+  // A safe number for a thread pool is std::thread::hardware_concurrency() - 1
+  // That way the main thread is left alone
+  // It avoids oversubscription of the CPU (though it might not perform at peak
+  // efficiency, some tasks work better with more threads than the system has)
+  // Experimenting post rule-of-thumb solution
+  // Also, Animation loop cannot exist on a thread other than the main thread
+  // (GLFW backend stuff prevents that).
+  //std::cout << std::thread::hardware_concurrency() << '\n';
   //---------------------------------------------------------------------------
   // Initialization
   //---------------------------------------------------------------------------
