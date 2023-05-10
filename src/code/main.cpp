@@ -43,8 +43,10 @@
 #include <deque>
 // FIFO wrapper for deque
 #include <queue>
-// Unsure if needed
-//#include <iterator>
+// Needed for condition variables (used for locking threads)
+#include <condition_variable>
+// std::ref, need to pass by reference to a thread
+#include <functional>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -125,14 +127,14 @@ namespace pssp
 //-----------------------------------------------------------------------------
 struct FileIO
 {
-  bool to_read{false};
-  bool started{false};
   int count{0};
   int total{0};
   // Changing from vector to queue for thread-safety
   std::queue<std::string, std::deque<std::string>>  file_queue{};
   // Used to lock threads if the queue is empty instead of wasting CPU cycles
-  std::condition_variable condition{};
+  std::condition_variable_any condition{};
+  // Tells us if we're reading files or not
+  bool is_reading{false};
 };
 struct ProgramStatus
 {
@@ -140,6 +142,11 @@ struct ProgramStatus
   float progress{1.1f};
   std::shared_mutex program_mutex{};
   FileIO fileio{};
+  // Flag for threads to exit safely because we want
+  // to end the program early
+  bool shut_down{false};
+  // Flag to specify if we're idle or doing something else
+  bool is_idle{true};
 };
 // Per window settings
 struct WindowSettings
@@ -149,7 +156,7 @@ struct WindowSettings
   // Y position (top to bottom)
   int pos_y{};
   int width{};
-  int height{};
+  int height{}; 
   bool show{true};
   // if false, position and size get set
   bool is_set{false};
@@ -378,8 +385,29 @@ void remove_trend(sac_1c& sac)
 // Reads files in a queue
 void read_sac_queue(ProgramStatus& program_status, std::vector<sac_1c>& sac_vector)
 {
-  std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
-  (void) sac_vector;
+  while (true)
+  {
+    std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
+    program_status.fileio.is_reading = !program_status.fileio.file_queue.empty();
+    program_status.fileio.condition.wait(lock, [&]{return (!program_status.fileio.file_queue.empty() || program_status.shut_down);});
+    // If we're shutting down we stop
+    if (program_status.shut_down)
+    {
+      //std::cout << "shutdown\n";
+      // We've been told to stop early, exit safely
+      break;
+    }
+    // Read the next file from the queue
+    pssp::sac_1c sac{};
+    sac.sac_mutex.lock();
+    sac.file_name = program_status.fileio.file_queue.front();
+    program_status.fileio.file_queue.pop();
+    sac.sac = SAC::SacStream(sac.file_name);
+    sac_vector.push_back(sac);
+    sac.sac_mutex.unlock();
+    ++program_status.fileio.count;
+    program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
+  }
 }
 //-----------------------------------------------------------------------------
 // End Misc functions
@@ -896,11 +924,13 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
           // Push it onto the queue
           program_status.fileio.file_queue.push(entry.path().string());
         }
-        program_status.fileio.to_read = true;
+        // Set count and total to 0
         program_status.fileio.count = 0;
         program_status.fileio.total = static_cast<int>(program_status.fileio.file_queue.size());
       }
       program_status.program_mutex.unlock();
+      // Let the thread know it is time to rock-n-roll
+      program_status.fileio.condition.notify_one();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -984,13 +1014,11 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
     {
       program_status.program_mutex.lock();
-      program_status.message = "Removing Mean...";
       for (std::size_t i{0}; i < sac_vector.size(); ++i)
       {
         remove_mean(sac_vector[i]);
         program_status.progress = static_cast<float>(i) / static_cast<float>(sac_vector.size());
       }
-      program_status.message = "Idle";
       program_status.progress = 0.0f;
       program_status.program_mutex.unlock();
     }
@@ -1105,7 +1133,6 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
     ImGui::End();
   }
 }
-
 //------------------------------------------------------------------------
 // End 1-component SAC plot window
 //------------------------------------------------------------------------
@@ -1437,6 +1464,15 @@ int main()
   //---------------------------------------------------------------------------
 
   //---------------------------------------------------------------------------
+  // Spawn Threads
+  //---------------------------------------------------------------------------
+  // Spawn thread for reading SAC files
+  std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_vector));
+  //---------------------------------------------------------------------------
+  // End Spawn Threads
+  //---------------------------------------------------------------------------
+
+  //---------------------------------------------------------------------------
   // Draw loop
   //---------------------------------------------------------------------------
   // The draw loop is ran EVERY FRAME, so be careful to make the stuff in here safe
@@ -1447,43 +1483,31 @@ int main()
     cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
     pssp::prep_newframe();
-    pssp::status_bar(program_status.message.c_str(), program_status.progress);
-    // Migrating from vector to deque
-    if (program_status.fileio.to_read)
+    //-------------------------------------------------------------------------
+    // Status of program
+    //-------------------------------------------------------------------------
+    // If we're not reading or shutting down, we're idle
+    program_status.is_idle = (!program_status.fileio.is_reading && !program_status.shut_down);
+    if (program_status.is_idle)
     {
-      program_status.program_mutex.lock();
-      if (!program_status.fileio.started)
+      program_status.message = "Idle";
+      program_status.progress = 1.1f;
+    }
+    else
+    {
+      if (program_status.fileio.is_reading)
       {
         program_status.message = "Reading SAC files...";
-        program_status.progress = 0.0f;
-        program_status.fileio.started = true;
       }
-      // If there are files in the queue
-      if (program_status.fileio.file_queue.size() > 0)
+      else if (program_status.shut_down)
       {
-        pssp::sac_1c sac{};
-        sac.sac_mutex.lock();
-        sac.file_name = program_status.fileio.file_queue.front();
-        program_status.fileio.file_queue.pop();
-        sac.sac = SAC::SacStream(sac.file_name);
-        sac_vector.push_back(sac);
-        sac.sac_mutex.unlock();
-        ++program_status.fileio.count;
-        program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
+        program_status.message = "Shutting down...";
       }
-      else
-      {
-        program_status.progress = 1.1f;
-        program_status.message = "Idle";
-        program_status.fileio.to_read = false;
-        program_status.fileio.started = false;
-        aw_settings.sac_header_settings.show = true;
-        aw_settings.sac_1c_plot_settings.show = true;
-        aw_settings.sac_vector_settings.show = true;
-        aw_settings.sac_1c_spectrum_plot_settings.show = true;
-      }
-      program_status.program_mutex.unlock();
     }
+    //-------------------------------------------------------------------------
+    // End Status of program
+    //-------------------------------------------------------------------------
+    pssp::status_bar(program_status.message.c_str(), program_status.progress);
     pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_vector, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
@@ -1551,6 +1575,19 @@ int main()
     // Finish the frame
     pssp::finish_newframe(window, clear_color);
   }
+  //---------------------------------------------------------------------------
+  // Notify and Join Threads
+  //---------------------------------------------------------------------------
+  // Set the shutdown status
+  program_status.shut_down = true;
+  // Notify the threads we're shutting down
+  program_status.fileio.condition.notify_all();
+  // Join the threads to make sure the program finishes cleanly by first
+  // waiting for them to finish
+  read_thread.join();
+  //---------------------------------------------------------------------------
+  // End Notify and Join Threads
+  //---------------------------------------------------------------------------
   //---------------------------------------------------------------------------
   // End draw loop
   //---------------------------------------------------------------------------
