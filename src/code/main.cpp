@@ -275,31 +275,26 @@ void cleanup_sac(std::vector<sac_1c>& sac_vector, int& selected, bool& clear)
 {
   if (clear)
   {
-    if (sac_vector[selected].sac_mutex.try_lock())
+    --selected;
+    sac_vector.erase(sac_vector.begin() + selected + 1);
+    if (selected < 0 && sac_vector.size() > 0)
     {
-      sac_vector[selected].sac_mutex.unlock();
-      --selected;
-      sac_vector.erase(sac_vector.begin() + selected + 1);
-      if (selected < 0 && sac_vector.size() > 0)
-      {
-        selected = 0;
-      }
-      clear = false;
+      selected = 0;
     }
+    clear = false;
   }
 }
 
 void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
 {
-  if ((spectrum.sac_mutex.try_lock()) && (sac.sac_mutex.try_lock()))
-  {
-    spectrum.sac = sac.sac;
-    spectrum.file_name = sac.file_name;
-    sac.sac_mutex.unlock();
-    // Calculate the FFT
-    SAC::fft_real_imaginary(spectrum.sac);
-    spectrum.sac_mutex.unlock();
-  }
+  spectrum.sac_mutex.lock();
+  sac.sac_mutex.lock();
+  spectrum.sac = sac.sac;
+  spectrum.file_name = sac.file_name;
+  sac.sac_mutex.unlock();
+  // Calculate the FFT
+  SAC::fft_real_imaginary(spectrum.sac);
+  spectrum.sac_mutex.unlock();
 }
 
 void remove_mean(sac_1c& sac)
@@ -572,13 +567,11 @@ void window_lowpass_options(WindowSettings& window_settings, filter_options& low
     }
     if (ImGui::Button("Ok"))
     {
-      if (sac.sac_mutex.try_lock())
-      {
-        SAC::lowpass(sac.sac, lowpass_settings.order, lowpass_settings.freq_low);
-        sac.sac_mutex.unlock();
-        calc_spectrum(sac, spectrum);
-        window_settings.show = false;
-      }
+      sac.sac_mutex.lock();
+      SAC::lowpass(sac.sac, lowpass_settings.order, lowpass_settings.freq_low);
+      sac.sac_mutex.unlock();
+      calc_spectrum(sac, spectrum);
+      window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel"))
@@ -620,13 +613,11 @@ void window_highpass_options(WindowSettings& window_settings, filter_options& hi
     }
     if (ImGui::Button("Ok"))
     {
-      if (sac.sac_mutex.try_lock())
-      {
-        SAC::highpass(sac.sac, highpass_settings.order, highpass_settings.freq_low);
-        sac.sac_mutex.unlock();
-        calc_spectrum(sac, spectrum);
-        window_settings.show = false;
-      }
+      sac.sac_mutex.lock();
+      SAC::highpass(sac.sac, highpass_settings.order, highpass_settings.freq_low);
+      sac.sac_mutex.unlock();
+      calc_spectrum(sac, spectrum);
+      window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel"))
@@ -673,13 +664,11 @@ void window_bandpass_options(WindowSettings& window_settings, filter_options& ba
     }
     if (ImGui::Button("Ok"))
     {
-      if (sac.sac_mutex.try_lock())
-      {
-        SAC::bandpass(sac.sac, bandpass_settings.order, bandpass_settings.freq_low, bandpass_settings.freq_high);
-        sac.sac_mutex.unlock();
-        calc_spectrum(sac, spectrum);
-        window_settings.show = false;
-      }
+      sac.sac_mutex.lock();
+      SAC::bandpass(sac.sac, bandpass_settings.order, bandpass_settings.freq_low, bandpass_settings.freq_high);
+      sac.sac_mutex.unlock();
+      calc_spectrum(sac, spectrum);
+      window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel"))
@@ -864,19 +853,17 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     // Read the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      if (sac.sac_mutex.try_lock())
-      {
-        sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
-        sac.sac = SAC::SacStream(sac.file_name);
-        // Add it to the list!
-        sac_vector.push_back(sac);
-        // We should show the sac header window after loading a sac file (not before)
-        allwindow_settings.sac_header_settings.show = true;
-        allwindow_settings.sac_1c_plot_settings.show = true;
-        allwindow_settings.sac_vector_settings.show = true;
-        allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
-        sac.sac_mutex.unlock();
-      }
+      sac.sac_mutex.lock();
+      sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
+      sac.sac = SAC::SacStream(sac.file_name);
+      // Add it to the list!
+      sac_vector.push_back(sac);
+      // We should show the sac header window after loading a sac file (not before)
+      allwindow_settings.sac_header_settings.show = true;
+      allwindow_settings.sac_1c_plot_settings.show = true;
+      allwindow_settings.sac_vector_settings.show = true;
+      allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+      sac.sac_mutex.unlock();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -907,11 +894,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     // Save the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      if (sac_vector[active_sac].sac_mutex.try_lock())
-      {
-        sac_vector[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
-        sac_vector[active_sac].sac_mutex.unlock();
-      }
+      sac_vector[active_sac].sac_mutex.lock();
+      sac_vector[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
+      sac_vector[active_sac].sac_mutex.unlock();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -1066,11 +1051,9 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
     if (ImPlot::BeginPlot("Seismogram"))
     {
       ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
-      if (sac_vector[selected].sac_mutex.try_lock())
-      {
-        ImPlot::PlotLine("", &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
-        sac_vector[selected].sac_mutex.unlock();
-      }
+      sac_vector[selected].sac_mutex.lock_shared();
+      ImPlot::PlotLine("", &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
+      sac_vector[selected].sac_mutex.unlock_shared();
       // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
       // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
       // directly modifying ImPlot, which I don't want to do)
@@ -1128,27 +1111,23 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
     ImGui::Columns(2);
     if (ImPlot::BeginPlot("Real"))
     {
-      if (spectrum.sac_mutex.try_lock())
-      {
-        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-        const double sampling_freq{1.0 / spectrum.sac.delta};
-        const double freq_step{sampling_freq / spectrum.sac.npts};
-        ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
-        spectrum.sac_mutex.unlock();
-      }
+      spectrum.sac_mutex.lock_shared();
+      ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+      const double sampling_freq{1.0 / spectrum.sac.delta};
+      const double freq_step{sampling_freq / spectrum.sac.npts};
+      ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
+      spectrum.sac_mutex.unlock_shared();
       ImPlot::EndPlot();
     }
     ImGui::NextColumn();
     if (ImPlot::BeginPlot("Imaginary"))
     {
-      if (spectrum.sac_mutex.try_lock())
-      {
-        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-        const double sampling_freq{1.0 / spectrum.sac.delta};
-        const double freq_step{sampling_freq / spectrum.sac.npts};
-        ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
-        spectrum.sac_mutex.unlock();
-      }
+      spectrum.sac_mutex.lock_shared();
+      ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+      const double sampling_freq{1.0 / spectrum.sac.delta};
+      const double freq_step{sampling_freq / spectrum.sac.npts};
+      ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
+      spectrum.sac_mutex.unlock_shared();
       ImPlot::EndPlot();
     }
     ImGui::Columns(1);
@@ -1175,50 +1154,48 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
 
     ImGui::Begin("Sac Header", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
 
-    if (sac.sac_mutex.try_lock())
+    sac.sac_mutex.lock_shared();
+    if (ImGui::CollapsingHeader("Station Information", ImGuiTreeNodeFlags_DefaultOpen))
     {
-      if (ImGui::CollapsingHeader("Station Information", ImGuiTreeNodeFlags_DefaultOpen))
-      {
-        ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
-        ImGui::Text("Station:    %s", sac.sac.kstnm.c_str());
-        ImGui::Text("Instrument: %s", sac.sac.kinst.c_str());
-        ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.stla);
-        ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.stlo);
-        ImGui::Text("Elevation:  %.2f m", sac.sac.stel);
-        ImGui::Text("Depth:      %.2f m", sac.sac.stdp);
-        ImGui::Text("Back Azi:   %.2f\u00B0", sac.sac.baz);
-      }
-      if (ImGui::CollapsingHeader("Component Information", ImGuiTreeNodeFlags_DefaultOpen))
-      {
-        ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
-        ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
-        ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
-      }
-      if (ImGui::CollapsingHeader("Event Information", ImGuiTreeNodeFlags_DefaultOpen))
-      {
-        ImGui::Text("Name:       %s", sac.sac.kevnm.c_str());
-        ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.evla);
-        ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.evlo);
-        ImGui::Text("Depth:      %.2f km", sac.sac.evdp);
-        ImGui::Text("Magnitude:  %.2f", sac.sac.mag);
-        ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.az);
-      }
-      if (ImGui::CollapsingHeader("DateTime Information", ImGuiTreeNodeFlags_DefaultOpen))
-      {
-        ImGui::Text("Year:       %i", sac.sac.nzyear);
-        ImGui::Text("Julian Day: %i", sac.sac.nzjday);
-        ImGui::Text("Hour:       %i", sac.sac.nzhour);
-        ImGui::Text("Minute:     %i", sac.sac.nzmin);
-        ImGui::Text("Second:     %i", sac.sac.nzsec);
-        ImGui::Text("MSecond:    %i", sac.sac.nzmsec);
-      }
-      if (ImGui::CollapsingHeader("Data Information", ImGuiTreeNodeFlags_DefaultOpen))
-      {
-        ImGui::Text("Npts:       %i", sac.sac.npts);
-        ImGui::Text("IfType:     %i", sac.sac.iftype);
-      }
-      sac.sac_mutex.unlock();
+      ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
+      ImGui::Text("Station:    %s", sac.sac.kstnm.c_str());
+      ImGui::Text("Instrument: %s", sac.sac.kinst.c_str());
+      ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.stla);
+      ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.stlo);
+      ImGui::Text("Elevation:  %.2f m", sac.sac.stel);
+      ImGui::Text("Depth:      %.2f m", sac.sac.stdp);
+      ImGui::Text("Back Azi:   %.2f\u00B0", sac.sac.baz);
     }
+    if (ImGui::CollapsingHeader("Component Information", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+      ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
+      ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
+      ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
+    }
+    if (ImGui::CollapsingHeader("Event Information", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+      ImGui::Text("Name:       %s", sac.sac.kevnm.c_str());
+      ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.evla);
+      ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.evlo);
+      ImGui::Text("Depth:      %.2f km", sac.sac.evdp);
+      ImGui::Text("Magnitude:  %.2f", sac.sac.mag);
+      ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.az);
+    }
+    if (ImGui::CollapsingHeader("DateTime Information", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+      ImGui::Text("Year:       %i", sac.sac.nzyear);
+      ImGui::Text("Julian Day: %i", sac.sac.nzjday);
+      ImGui::Text("Hour:       %i", sac.sac.nzhour);
+      ImGui::Text("Minute:     %i", sac.sac.nzmin);
+      ImGui::Text("Second:     %i", sac.sac.nzsec);
+      ImGui::Text("MSecond:    %i", sac.sac.nzmsec);
+    }
+    if (ImGui::CollapsingHeader("Data Information", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+      ImGui::Text("Npts:       %i", sac.sac.npts);
+      ImGui::Text("IfType:     %i", sac.sac.iftype);
+    }
+    sac.sac_mutex.unlock_shared();
     ImGui::End();
   }
 }
@@ -1332,12 +1309,10 @@ void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_setti
         if (ImGui::MenuItem("Reload"))
         {
           selected = i;
-          if (sac_vector[selected].sac_mutex.try_lock())
-          {
-            sac_vector[selected].sac = SAC::SacStream(sac_vector[selected].file_name);
-            sac_vector[selected].sac_mutex.unlock();
-            calc_spectrum(sac_vector[selected], spectrum);
-          }
+          sac_vector[selected].sac_mutex.lock();
+          sac_vector[selected].sac = SAC::SacStream(sac_vector[selected].file_name);
+          sac_vector[selected].sac_mutex.unlock();
+          calc_spectrum(sac_vector[selected], spectrum);
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         {
