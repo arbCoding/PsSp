@@ -29,23 +29,23 @@
 #include <string>
 // Path stuff
 #include <filesystem>
-// std::vector
-#include <vector>
 // std::clamp
 #include <algorithm>
 // std::future
 // Used for handling asynchronous data manipulation
 // without needing tons of mutex's
-#include <future>
+//#include <future>
 // std::async, multi-threaded work
 #include <thread>
 // std::deque for thread-safe constant time access to a "list"
+// Need to use this instead of a std::vector
 #include <deque>
 // FIFO wrapper for deque
 #include <queue>
 // Needed for condition variables (used for locking threads)
 #include <condition_variable>
-// std::ref, need to pass by reference to a thread
+// std::ref, needed to pass by reference to a thread (can't use & to pass by
+// reference in this situation)
 #include <functional>
 //-----------------------------------------------------------------------------
 // End include statements
@@ -54,6 +54,7 @@
 //-----------------------------------------------------------------------------
 // TODO
 //-----------------------------------------------------------------------------
+// Written 9 May 2023, will update on 12 May 2023 (too lazy to renumber daily)
 // 1) Bandreject filter
 // 2) Lock program on batch jobs (read/write/process)
 // 3) Progress window on batch jobs (read/write/process)
@@ -69,7 +70,7 @@
 // 8) Projects (that won't be fun...)
 // 9) Data-request/download from IRIS (or other server)
 // 10) Mapping of data
-// 11) Sorting of data in sac_vector
+// 11) Sorting of data in sac_deque
 //  11a) By filename
 //  11b) By component
 //  11c) By station
@@ -108,11 +109,12 @@
 //-----------------------------------------------------------------------------
 // Known Bugs
 //-----------------------------------------------------------------------------
-//
-//------------------------------------------------------------------------
-// Template for bugs, info and what-not goes between these sub-dividers
-//------------------------------------------------------------------------
-//
+// On MacOS
+// Reading files (separate thread) with Sac List window opened freezes program
+// Reading files (separate thread) while interacting with plots sometimes freeze
+//  program
+// These issues were not apparent on linux. I think the issue is sac_deque not
+// being a thread-safe type (the sac_1c is thread-safe with its shared mutexs)
 //-----------------------------------------------------------------------------
 // End Known Bugs
 //-----------------------------------------------------------------------------
@@ -129,8 +131,8 @@ struct FileIO
 {
   int count{0};
   int total{0};
-  // Changing from vector to queue for thread-safety
-  std::queue<std::string, std::deque<std::string>>  file_queue{};
+  // queue and deque safer than vectors
+  std::queue<std::string, std::deque<std::string>> file_queue{};
   // Used to lock threads if the queue is empty instead of wasting CPU cycles
   std::condition_variable_any condition{};
   // Tells us if we're reading files or not
@@ -175,7 +177,7 @@ struct AllWindowSettings
   // Plot real/imag spectrum of SAC file
   WindowSettings sac_1c_spectrum_plot_settings{288, 368, 1150, 340, false};
   // List of sac_1c's, allows user to select specific one in memory
-  WindowSettings sac_vector_settings{287, 709, 347, 135, false};
+  WindowSettings sac_deque_settings{287, 709, 347, 135, false};
   // Small window providing access to lowpass filter options
   WindowSettings sac_lp_options_settings{508, 297, 231, 120, false};
   // Small window providing access to highpass filter options
@@ -196,7 +198,7 @@ struct AllMenuSettings
   bool sac_header{false};
   bool sac_1c_plot{false};
   bool sac_1c_spectrum_plot{false};
-  bool sac_vector{false};
+  bool sac_deque{false};
   bool sac_lp_options{false};
   bool sac_hp_options{false};
   bool sac_bp_options{false};
@@ -285,13 +287,13 @@ void update_fps(fps_info& fps, ImGuiIO& io)
   ++fps.frame_count;
 }
 
-void cleanup_sac(std::vector<sac_1c>& sac_vector, int& selected, bool& clear)
+void cleanup_sac(std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
 {
   if (clear)
   {
     --selected;
-    sac_vector.erase(sac_vector.begin() + selected + 1);
-    if (selected < 0 && sac_vector.size() > 0)
+    sac_deque.erase(sac_deque.begin() + selected + 1);
+    if (selected < 0 && sac_deque.size() > 0)
     {
       selected = 0;
     }
@@ -383,7 +385,7 @@ void remove_trend(sac_1c& sac)
 }
 
 // Reads files in a queue
-void read_sac_queue(ProgramStatus& program_status, std::vector<sac_1c>& sac_vector)
+void read_sac_queue(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
   while (true)
   {
@@ -403,7 +405,7 @@ void read_sac_queue(ProgramStatus& program_status, std::vector<sac_1c>& sac_vect
     sac.file_name = program_status.fileio.file_queue.front();
     program_status.fileio.file_queue.pop();
     sac.sac = SAC::SacStream(sac.file_name);
-    sac_vector.push_back(sac);
+    sac_deque.push_back(sac);
     sac.sac_mutex.unlock();
     ++program_status.fileio.count;
     program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
@@ -727,7 +729,7 @@ void window_bandpass_options(WindowSettings& window_settings, filter_options& ba
 //------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
-void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::vector<sac_1c>& sac_vector, int& active_sac)
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
 {
   // Just to get rid of unused for now...
   (void) program_status;
@@ -831,7 +833,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       allwindow_settings.sac_header_settings.is_set = false;
       allwindow_settings.sac_1c_plot_settings.is_set = false;
       allwindow_settings.sac_1c_spectrum_plot_settings.is_set = false;
-      allwindow_settings.sac_vector_settings.is_set = false;
+      allwindow_settings.sac_deque_settings.is_set = false;
       allwindow_settings.sac_lp_options_settings.is_set = false;
       allwindow_settings.sac_hp_options_settings.is_set = false;
       allwindow_settings.sac_bp_options_settings.is_set = false;
@@ -877,9 +879,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("1-component SAC spectrogram (real/imaginary) plot");
     }
-    if (ImGui::MenuItem("Sac List", nullptr, nullptr, am_settings.sac_vector))
+    if (ImGui::MenuItem("Sac List", nullptr, nullptr, am_settings.sac_deque))
     {
-      allwindow_settings.sac_vector_settings.show = true;
+      allwindow_settings.sac_deque_settings.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -899,11 +901,11 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       sac.file_name = ImGuiFileDialog::Instance()->GetFilePathName();
       sac.sac = SAC::SacStream(sac.file_name);
       // Add it to the list!
-      sac_vector.push_back(sac);
+      sac_deque.push_back(sac);
       // We should show the sac header window after loading a sac file (not before)
       allwindow_settings.sac_header_settings.show = true;
       allwindow_settings.sac_1c_plot_settings.show = true;
-      allwindow_settings.sac_vector_settings.show = true;
+      allwindow_settings.sac_deque_settings.show = true;
       allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
       sac.sac_mutex.unlock();
     }
@@ -940,9 +942,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     // Save the SAC-File safely
     if (ImGuiFileDialog::Instance()->IsOk())
     {
-      sac_vector[active_sac].sac_mutex.lock();
-      sac_vector[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
-      sac_vector[active_sac].sac_mutex.unlock();
+      sac_deque[active_sac].sac_mutex.lock();
+      sac_deque[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
+      sac_deque[active_sac].sac_mutex.unlock();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -950,7 +952,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
   {
     if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
     {
-      remove_mean(sac_vector[active_sac]);
+      remove_mean(sac_deque[active_sac]);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -958,7 +960,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Remove Trend", nullptr, nullptr, am_settings.rtrend))
     {
-      remove_trend(sac_vector[active_sac]);
+      remove_trend(sac_deque[active_sac]);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1014,10 +1016,10 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     if (ImGui::MenuItem("Remove Mean", nullptr, nullptr, am_settings.rmean))
     {
       program_status.program_mutex.lock();
-      for (std::size_t i{0}; i < sac_vector.size(); ++i)
+      for (std::size_t i{0}; i < sac_deque.size(); ++i)
       {
-        remove_mean(sac_vector[i]);
-        program_status.progress = static_cast<float>(i) / static_cast<float>(sac_vector.size());
+        remove_mean(sac_deque[i]);
+        program_status.progress = static_cast<float>(i) / static_cast<float>(sac_deque.size());
       }
       program_status.progress = 0.0f;
       program_status.program_mutex.unlock();
@@ -1028,9 +1030,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Remove Trend", nullptr, nullptr, am_settings.rtrend))
     {
-      for (std::size_t i{0}; i < sac_vector.size(); ++i)
+      for (std::size_t i{0}; i < sac_deque.size(); ++i)
       {
-        remove_trend(sac_vector[i]);
+        remove_trend(sac_deque[i]);
       }
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -1081,7 +1083,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
 //------------------------------------------------------------------------
 // 1-component SAC plot window
 //------------------------------------------------------------------------
-void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_vector, int& selected)
+void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected)
 {
   if (window_settings.show)
   {
@@ -1095,9 +1097,9 @@ void window_plot_sac(WindowSettings& window_settings, std::vector<sac_1c>& sac_v
     if (ImPlot::BeginPlot("Seismogram"))
     {
       ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
-      sac_vector[selected].sac_mutex.lock_shared();
-      ImPlot::PlotLine("", &sac_vector[selected].sac.data1[0], sac_vector[selected].sac.data1.size(), sac_vector[selected].sac.delta);
-      sac_vector[selected].sac_mutex.unlock_shared();
+      sac_deque[selected].sac_mutex.lock_shared();
+      ImPlot::PlotLine("", &sac_deque[selected].sac.data1[0], sac_deque[selected].sac.data1.size(), sac_deque[selected].sac.delta);
+      sac_deque[selected].sac_mutex.unlock_shared();
       // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
       // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
       // directly modifying ImPlot, which I don't want to do)
@@ -1307,9 +1309,9 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
-  WindowSettings& window_settings = aw_settings.sac_vector_settings;
+  WindowSettings& window_settings = aw_settings.sac_deque_settings;
   std::string option{};
   if (window_settings.show)
   {
@@ -1321,7 +1323,7 @@ void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_setti
       window_settings.is_set = true;
     }
     ImGui::Begin("Sac List", &window_settings.show);
-    for (int i = 0; const auto& sac : sac_vector)
+    for (int i = 0; const auto& sac : sac_deque)
     {
       const bool is_selected{selected == i};
       option = sac.file_name.substr(sac.file_name.find_last_of("\\/") + 1);
@@ -1352,10 +1354,10 @@ void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_setti
         if (ImGui::MenuItem("Reload"))
         {
           selected = i;
-          sac_vector[selected].sac_mutex.lock();
-          sac_vector[selected].sac = SAC::SacStream(sac_vector[selected].file_name);
-          sac_vector[selected].sac_mutex.unlock();
-          calc_spectrum(sac_vector[selected], spectrum);
+          sac_deque[selected].sac_mutex.lock();
+          sac_deque[selected].sac = SAC::SacStream(sac_deque[selected].file_name);
+          sac_deque[selected].sac_mutex.unlock();
+          calc_spectrum(sac_deque[selected], spectrum);
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         {
@@ -1453,7 +1455,7 @@ int main()
   pssp::filter_options bandpass_settings{};
   pssp::ProgramStatus program_status{};
   // Time-series
-  std::vector<pssp::sac_1c> sac_vector;
+  std::deque<pssp::sac_1c> sac_deque;
   // Spectrum (only 1 for now)
   pssp::sac_1c spectrum;
   // Which sac-file is active
@@ -1467,7 +1469,7 @@ int main()
   // Spawn Threads
   //---------------------------------------------------------------------------
   // Spawn thread for reading SAC files
-  std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_vector));
+  std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_deque));
   //---------------------------------------------------------------------------
   // End Spawn Threads
   //---------------------------------------------------------------------------
@@ -1479,8 +1481,8 @@ int main()
   // (minimize spurious work, be thread-safe, etc.)
   while (!glfwWindowShouldClose(window))
   {
-    // Do we need to remove a sac_1c from the sac_vector?
-    cleanup_sac(sac_vector, active_sac, clear_sac);
+    // Do we need to remove a sac_1c from the sac_deque?
+    cleanup_sac(sac_deque, active_sac, clear_sac);
     // Start the frame
     pssp::prep_newframe();
     //-------------------------------------------------------------------------
@@ -1508,7 +1510,7 @@ int main()
     // End Status of program
     //-------------------------------------------------------------------------
     pssp::status_bar(program_status.message.c_str(), program_status.progress);
-    pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_vector, active_sac);
+    pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_deque, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
     pssp::update_fps(fps_tracker, io);
@@ -1516,11 +1518,11 @@ int main()
     pssp::window_fps(fps_tracker, aw_settings.fps_settings);
     // We don't want to show any of these windows if there are now sac files loaded in
     // (That would involve accessing memory that doesn't exist and crash)
-    if (sac_vector.size() > 0)
+    if (sac_deque.size() > 0)
     {
       // Allow menu options that require sac files
       am_settings.save_sac_1c = true;
-      am_settings.sac_vector = true;
+      am_settings.sac_deque = true;
       am_settings.sac_header = true;
       am_settings.sac_1c_plot = true;
       am_settings.sac_1c_spectrum_plot = true;
@@ -1529,39 +1531,39 @@ int main()
       am_settings.sac_bp_options = true;
       am_settings.rmean = true;
       am_settings.rtrend = true;
-      // This fixes the issue of deleting all sac_1cs in the vector
+      // This fixes the issue of deleting all sac_1cs in the deque
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
       {
         active_sac = 0;
       }
-      pssp::window_sac_header(aw_settings.sac_header_settings, sac_vector[active_sac]);
+      pssp::window_sac_header(aw_settings.sac_header_settings, sac_deque[active_sac]);
       // Show the Sac Plot window if appropriate
-      pssp::window_plot_sac(aw_settings.sac_1c_plot_settings, sac_vector, active_sac);
+      pssp::window_plot_sac(aw_settings.sac_1c_plot_settings, sac_deque, active_sac);
       // Show the Sac Spectrum window if appropriate
       // We need to see if the FFT needs to be calculated (don't want to do it
       // every frame)
       if (aw_settings.sac_1c_spectrum_plot_settings.show)
       {
         // If they're not the same, then calculate the FFT
-        if (spectrum.file_name != sac_vector[active_sac].file_name)
+        if (spectrum.file_name != sac_deque[active_sac].file_name)
         {
-          pssp::calc_spectrum(sac_vector[active_sac], spectrum);
+          pssp::calc_spectrum(sac_deque[active_sac], spectrum);
         }
       }
       // Finally plot the spectrum
       pssp::window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      pssp::window_sac_vector(aw_settings, am_settings, sac_vector, spectrum, active_sac, clear_sac);
-      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_vector[active_sac], spectrum);
-      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_vector[active_sac], spectrum);
-      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_vector[active_sac], spectrum);
+      pssp::window_sac_deque(aw_settings, am_settings, sac_deque, spectrum, active_sac, clear_sac);
+      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_deque[active_sac], spectrum);
+      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_deque[active_sac], spectrum);
+      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_deque[active_sac], spectrum);
     }
     else
     {
       // Disallow menu options that require sac files
       am_settings.save_sac_1c = false;
-      am_settings.sac_vector = false;
+      am_settings.sac_deque = false;
       am_settings.sac_header = false;
       am_settings.sac_1c_plot = false;
       am_settings.sac_1c_spectrum_plot = false;
