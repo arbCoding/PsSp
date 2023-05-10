@@ -30,6 +30,14 @@
 #include <vector>
 // std::clamp
 #include <algorithm>
+// std::future
+// Used for handling asynchronous data manipulation
+// without needing tons of mutex's
+#include <future>
+// std::async, multi-threaded work
+#include <thread>
+// Unsure if needed
+//#include <iterator>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -100,6 +108,11 @@
 // End Known Bugs
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Begin pssp namespace
+//-----------------------------------------------------------------------------
+namespace pssp
+{
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
@@ -643,8 +656,6 @@ static void window_bandpass_options(WindowSettings& window_settings, filter_opti
 //------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
-// Function that handles the main menu bar. Preparing to handle 3C sac data soon
-// I'll do a list of sac_1c structs, file_dir will be redundant, but I don't care at the moment.
 static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, std::vector<sac_1c>& sac_vector, int& active_sac)
 {
   sac_1c sac{};
@@ -654,7 +665,7 @@ static void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_setti
   {
     if (ImGui::MenuItem("Open 1C"))
     {
-        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1350,6 +1361,10 @@ void window_sac_vector(AllWindowSettings& aw_settings, AllMenuSettings& am_setti
 //-----------------------------------------------------------------------------
 // End UI Windows
 //-----------------------------------------------------------------------------
+};
+//-----------------------------------------------------------------------------
+// End pssp namespace
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // Main
@@ -1360,17 +1375,17 @@ int main()
   // Initialization
   //---------------------------------------------------------------------------
   // Check to make sure GLFW can startup
-  glfwSetErrorCallback(glfw_error_callback);
+  glfwSetErrorCallback(pssp::glfw_error_callback);
   if (!glfwInit())
   {
     std::abort();
   }
   // Setup the graphics library and get the version
-  const char* glsl_version = setup_gl();
+  const char* glsl_version = pssp::setup_gl();
   // Setup the GLFW window
   GLFWwindow* window = glfwCreateWindow(1024, 720, "Passive-source Seismic-processing", nullptr, nullptr);
   // Start the graphics backends and create the ImGui and ImPlot contexts
-  ImGuiIO& io = start_graphics(window, glsl_version);
+  ImGuiIO& io = pssp::start_graphics(window, glsl_version);
   //---------------------------------------------------------------------------
   // End Initialization
   //---------------------------------------------------------------------------
@@ -1380,17 +1395,17 @@ int main()
   //---------------------------------------------------------------------------
   // Default color for clearing the screen
   ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
-  fps_info fps_tracker{};
+  pssp::fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
-  AllWindowSettings aw_settings{};
-  AllMenuSettings am_settings{};
-  filter_options lowpass_settings{};
-  filter_options highpass_settings{};
-  filter_options bandpass_settings{};
+  pssp::AllWindowSettings aw_settings{};
+  pssp::AllMenuSettings am_settings{};
+  pssp::filter_options lowpass_settings{};
+  pssp::filter_options highpass_settings{};
+  pssp::filter_options bandpass_settings{};
   // Time-series
-  std::vector<sac_1c> sac_vector;
+  std::vector<pssp::sac_1c> sac_vector;
   // Spectrum (only 1 for now)
-  sac_1c spectrum;
+  pssp::sac_1c spectrum;
   // Which sac-file is active
   int active_sac{};
   bool clear_sac{false};
@@ -1408,13 +1423,13 @@ int main()
     // Do we need to remove a sac_1c from the sac_vector?
     cleanup_sac(sac_vector, active_sac, clear_sac);
     // Start the frame
-    prep_newframe();
-    main_menu_bar(window, aw_settings, am_settings, sac_vector, active_sac);
+    pssp::prep_newframe();
+    pssp::main_menu_bar(window, aw_settings, am_settings, sac_vector, active_sac);
     // Show the Welcome window if appropriate
-    window_welcome(aw_settings.welcome_settings, welcome_message);
-    update_fps(fps_tracker, io);
+    pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
+    pssp::update_fps(fps_tracker, io);
     // Show the FPS window if appropriate
-    window_fps(fps_tracker, aw_settings.fps_settings);
+    pssp::window_fps(fps_tracker, aw_settings.fps_settings);
     // We don't want to show any of these windows if there are now sac files loaded in
     // (That would involve accessing memory that doesn't exist and crash)
     if (sac_vector.size() > 0)
@@ -1436,9 +1451,9 @@ int main()
       {
         active_sac = 0;
       }
-      window_sac_header(aw_settings.sac_header_settings, sac_vector[active_sac]);
+      pssp::window_sac_header(aw_settings.sac_header_settings, sac_vector[active_sac]);
       // Show the Sac Plot window if appropriate
-      window_plot_sac(aw_settings.sac_1c_plot_settings, sac_vector, active_sac);
+      pssp::window_plot_sac(aw_settings.sac_1c_plot_settings, sac_vector, active_sac);
       // Show the Sac Spectrum window if appropriate
       // We need to see if the FFT needs to be calculated (don't want to do it
       // every frame)
@@ -1447,16 +1462,16 @@ int main()
         // If they're not the same, then calculate the FFT
         if (spectrum.file_name != sac_vector[active_sac].file_name)
         {
-          calc_spectrum(sac_vector[active_sac], spectrum);
+          pssp::calc_spectrum(sac_vector[active_sac], spectrum);
         }
       }
       // Finally plot the spectrum
-      window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
+      pssp::window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      window_sac_vector(aw_settings, am_settings, sac_vector, spectrum, active_sac, clear_sac);
-      window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_vector[active_sac], spectrum);
-      window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_vector[active_sac], spectrum);
-      window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_vector[active_sac], spectrum);
+      pssp::window_sac_vector(aw_settings, am_settings, sac_vector, spectrum, active_sac, clear_sac);
+      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_vector[active_sac], spectrum);
+      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_vector[active_sac], spectrum);
+      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_vector[active_sac], spectrum);
     }
     else
     {
@@ -1474,12 +1489,12 @@ int main()
       spectrum.file_name = "";
     }
     // Finish the frame
-    finish_newframe(window, clear_color);
+    pssp::finish_newframe(window, clear_color);
   }
   //---------------------------------------------------------------------------
   // End draw loop
   //---------------------------------------------------------------------------
-  end_graphics(window);
+  pssp::end_graphics(window);
   // End program
   return 0;
 }
