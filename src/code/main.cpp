@@ -39,6 +39,8 @@
 #include <future>
 // std::async, multi-threaded work
 #include <thread>
+// std::deque for thread-safe constant time access to a "list"
+#include <deque>
 // Unsure if needed
 //#include <iterator>
 //-----------------------------------------------------------------------------
@@ -883,8 +885,8 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
         }
         program_status.fileio.to_read = true;
         program_status.fileio.count = 0;
-        program_status.program_mutex.unlock();
       }
+      program_status.program_mutex.unlock();
     }
     ImGuiFileDialog::Instance()->Close();
   }
