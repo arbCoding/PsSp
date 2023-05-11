@@ -381,17 +381,19 @@ void remove_trend(sac_1c& sac)
 }
 
 // Reads files in a queue
+// Designed to run on a single separate thread
 void read_sac_queue(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
   while (true)
   {
     std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
     program_status.fileio.is_reading = !program_status.fileio.file_queue.empty();
+    // We wait for the file_queue to be non-empty, or the shut-down call
+    // but still need to be notified to wakeup and check (avoid wasting CPU cycles constantly checking)
     program_status.fileio.condition.wait(lock, [&]{return (!program_status.fileio.file_queue.empty() || program_status.shut_down);});
     // If we're shutting down we stop
     if (program_status.shut_down)
     {
-      //std::cout << "shutdown\n";
       // We've been told to stop early, exit safely
       break;
     }
@@ -556,17 +558,21 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Status Bar
 //------------------------------------------------------------------------
-void status_bar(const char* status_message = "Idle", float progress = 0.0f)
+void status_bar(const char* status_message = "Idle", float progress = 1.1f)
 {
   // Size and position
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
   ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().FramePadding.y * 2.0f) + 10));
   ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeightWithSpacing() - (ImGui::GetStyle().FramePadding.y * 2.0f) - 10));
   // Start the status bar
-  ImGui::Begin("Status", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+  ImGui::Begin("Status", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+               ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+               ImGuiWindowFlags_NoNav);
   // Add status message
   ImGui::Text("%s", status_message);
   // Draw progress bar
+  // If below 0 or above 1 it will not draw a progress bar
+  // which is super useful for hiding it
   if (progress >= 0.0f && progress <= 1.0f)
   {
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - 100.0f);
