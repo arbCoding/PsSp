@@ -5,6 +5,8 @@
 //-----------------------------------------------------------------------------
 // SAC:: spectral functions
 #include "sac_spectral.hpp"
+// pssp::ThreadPool class
+#include "thread_pool.hpp"
 // SAC::SacStream class
 #include <sac_stream.hpp>
 // Dear ImGui header and backends
@@ -133,6 +135,7 @@ struct FileIO
   std::condition_variable_any condition{};
   // Tells us if we're reading files or not
   bool is_reading{false};
+  std::mutex io_mutex{};
 };
 struct ProgramStatus
 {
@@ -145,6 +148,8 @@ struct ProgramStatus
   bool shut_down{false};
   // Flag to specify if we're idle or doing something else
   bool is_idle{true};
+  // Our thread pool
+  ThreadPool thread_pool{std::thread::hardware_concurrency() - 1};
 };
 // Per window settings
 struct WindowSettings
@@ -380,17 +385,33 @@ void remove_trend(sac_1c& sac)
   sac.sac_mutex.unlock();
 }
 
+// This works with the multi-threaded reading via my custom ThreadPool class!!!!
+// I still need to test on Linux
+// I need a better mechanism for keeping track of the progress
+void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name)
+{
+  pssp::sac_1c sac{};
+  sac.sac_mutex.lock();
+  sac.file_name = file_name;
+  sac.sac = SAC::SacStream(sac.file_name);
+  std::lock_guard<std::mutex> lock(fileio.io_mutex);
+  fileio.is_reading = true;
+  ++fileio.count;
+  sac_deque.push_back(sac);
+  sac.sac_mutex.unlock();
+}
+
 // Reads files in a queue
 // Designed to run on a single separate thread
 void read_sac_queue(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
-  while (true)
+  while (!program_status.fileio.file_queue.empty())
   {
     std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
     program_status.fileio.is_reading = !program_status.fileio.file_queue.empty();
     // We wait for the file_queue to be non-empty, or the shut-down call
     // but still need to be notified to wakeup and check (avoid wasting CPU cycles constantly checking)
-    program_status.fileio.condition.wait(lock, [&]{return (!program_status.fileio.file_queue.empty() || program_status.shut_down);});
+    //program_status.fileio.condition.wait(lock, [&]{return (!program_status.fileio.file_queue.empty() || program_status.shut_down);});
     // If we're shutting down we stop
     if (program_status.shut_down)
     {
@@ -906,7 +927,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       // Can only select 1 file anyway!
       program_status.fileio.total = 1;
       program_status.program_mutex.unlock();
-      program_status.fileio.condition.notify_one();
+      //program_status.thread_pool.enqueue(read_sac_queue, program_status, sac_deque);
+      program_status.thread_pool.enqueue(read_sac_queue, std::ref(program_status), std::ref(sac_deque));
+      //program_status.fileio.condition.notify_one();
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -916,22 +939,24 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
       // Iterate over files in directory
-      program_status.program_mutex.lock();
+      std::vector<std::string> file_names{};
       for (const auto& entry : std::filesystem::directory_iterator(directory))
       {
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-          // Push it onto the queue
-          program_status.fileio.file_queue.push(entry.path().string());
+          file_names.push_back(entry.path().string());
         }
-        // Set count and total to 0
-        program_status.fileio.count = 0;
-        program_status.fileio.total = static_cast<int>(program_status.fileio.file_queue.size());
       }
+      program_status.program_mutex.lock();
+      program_status.is_idle = false;
+      program_status.fileio.total = static_cast<int>(file_names.size());
+      program_status.fileio.count = 0;
       program_status.program_mutex.unlock();
-      // Let the thread know it is time to rock-n-roll
-      program_status.fileio.condition.notify_one();
+      for (std::string file_name : file_names)
+      {
+        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name);
+      }
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -1477,7 +1502,7 @@ int main()
   // Spawn Threads
   //---------------------------------------------------------------------------
   // Spawn thread for reading SAC files
-  std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_deque));
+  //std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_deque));
   //---------------------------------------------------------------------------
   // End Spawn Threads
   //---------------------------------------------------------------------------
@@ -1508,6 +1533,14 @@ int main()
       if (program_status.fileio.is_reading)
       {
         program_status.message = "Reading SAC files...";
+        program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
+        if (program_status.progress >= 1.0f)
+        {
+          program_status.fileio.io_mutex.lock();
+          program_status.is_idle = true;
+          program_status.fileio.is_reading = false;
+          program_status.fileio.io_mutex.unlock();
+        }
       }
       else if (program_status.shut_down)
       {
@@ -1591,10 +1624,10 @@ int main()
   // Set the shutdown status
   program_status.shut_down = true;
   // Notify the threads we're shutting down
-  program_status.fileio.condition.notify_all();
+  //program_status.fileio.condition.notify_all();
   // Join the threads to make sure the program finishes cleanly by first
   // waiting for them to finish
-  read_thread.join();
+  //read_thread.join();
   //---------------------------------------------------------------------------
   // End Notify and Join Threads
   //---------------------------------------------------------------------------
