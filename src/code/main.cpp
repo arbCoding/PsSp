@@ -1454,7 +1454,7 @@ int main()
   // Experimenting post rule-of-thumb solution
   // Also, Animation loop cannot exist on a thread other than the main thread
   // (GLFW backend stuff prevents that).
-  //std::cout << std::thread::hardware_concurrency() << '\n';
+  //std::cout << std::thread::hardware_concurrency() - 1 << '\n';
   //---------------------------------------------------------------------------
   // Initialization
   //---------------------------------------------------------------------------
