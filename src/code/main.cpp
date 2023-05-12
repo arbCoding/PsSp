@@ -6,7 +6,7 @@
 // SAC:: spectral functions
 #include "sac_spectral.hpp"
 // pssp::ThreadPool class
-#include "thread_pool.hpp"
+#include "pssp_threadpool.hpp"
 // SAC::SacStream class
 #include <sac_stream.hpp>
 // Dear ImGui header and backends
@@ -33,7 +33,7 @@
 #include <filesystem>
 // std::clamp
 #include <algorithm>
-// std::async, std::thread
+// std::thread
 #include <thread>
 // std::deque for thread-safe constant time access to a "list"
 // Need to use this instead of a std::vector
@@ -52,42 +52,43 @@
 //-----------------------------------------------------------------------------
 // Written 9 May 2023, will update on 12 May 2023 (too lazy to renumber daily)
 // 1) Bandreject filter
-// 2) Lock program on batch jobs (read/write/process)
-// 3) Progress window on batch jobs (read/write/process)
-// 4) Data doesn't necessarily need to reside in memory at all times
+// 2) Data doesn't necessarily need to reside in memory at all times
 //    Only need for processing/plotting/saving
 //    Therefore, should implement a function to read and store only sac-header
 //    information, and then read in data on the fly as needed.
 //    (Chunks of data being in memory is ideal, that way we have a buffer that
 //    acts basically like a sliding window for the I/O operations)
-// 5) Threaded I/O (for reading/writing multiple files at a time)
-// 6) Threaded processing (for processing multiple files at a time)
-// 7) Undo/redo (that won't be fun...)
-// 8) Projects (that won't be fun...)
-// 9) Data-request/download from IRIS (or other server)
-// 10) Mapping of data
-// 11) Sorting of data in sac_deque
-//  11a) By filename
-//  11b) By component
-//  11c) By station
-//  11d) By event station distance
-//  11e) By azimuth/back-azimuth
-//  11f) By eventid
-//  11g) ????
-// 12) Batch filtering
-// 13) Manual arrival time picking
-// 14) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
-// 15) Spectrogram
-// 16) Grouping 3-component data
-// 17) Help menu
-// 18) Center windows functionality
-// 19) Overwrite layout functionality
-// 20) Advanced plots (record section, particle motion)
-// 21) Deconvolution (instrument response, source wavelet)
-//  21a) Spectral division with water-level
-//  21b) Spectral division with static shift
-//  21c) Iterative time-domain
-// 22) Reload all data
+// 3) Undo/redo (that won't be fun...)
+// 4) Projects (that won't be fun...) <- Important for data-safety and saving user
+//    settings
+// 5) Data-request/download from IRIS (or other server)
+// 6) Mapping of data
+// 7) Sorting of data in sac_deque
+//  7a) By filename
+//  7b) By component
+//  7c) By station
+//  7d) By event station distance
+//  7e) By azimuth/back-azimuth
+//  7f) By eventid
+//  7g) ???? Basically any header variable
+// 8) Geometric calculations (gcarc, az, baz, dist)
+// 9) 3C geometric calculations (rotate components)
+// 10) Batch filtering
+// 11) Manual arrival time picking
+// 12) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
+// 13) Spectrogram
+// 14) Grouping 3-component data
+// 15) Generic grouping of data (array, sub-array, station, event)
+// 16) Help menu
+// 17) Center windows functionality
+// 18) Overwrite layout functionality
+// 19) Advanced plots (record section, particle motion)
+// 20) Deconvolution (instrument response, source wavelet)
+//  20a) Spectral division with water-level
+//  20b) Spectral division with static shift
+//  20c) Iterative time-domain
+// 21) Reload all data
+// 22) Unload all data
 // 23) Data-processing logs (probably easier than doing projects...)
 // 24) Generic basic waveforms (for exploring effects of processing flow)
 //  24a) Dirac Delta function
@@ -97,8 +98,30 @@
 //  24e) Gaussian
 //  24f) Sombrero function
 // 25) Keyboard shortcuts for common operations
-// 26) User note's log (can write their own notes on what they're doing)
-// 27) Lockout `Batch` operations when doing file-io to prevent problems (single file stuf should be safe)
+// 26) Tab-key navigation between components in window
+// 27) User note's log (can write their own notes on what they're doing)
+// 28) Replace mutex `.lock()` and `.unlock()` with lock_guards (regular or scoped)
+// 29) Datetime functionality
+// 30) Migrate all SAC stuff from floats to doubles (while maintaining read/write compatibility)
+// 31) Don't use std::cout or std::cerr, use exceptions and then try-catch blocks to
+//    check for exceptions
+// 32) Plotting appropriately down-sampled seismograms
+//    The plot window has a width in pixels, there is no need to show with a >1 ratio of
+//    data-points to pixels (literally couldn't see the difference)
+//    The xlimits on the window tell us how much of our data is shown, if the data/pixel
+//    ratio >1, down-sample by taking every-other point, if density if <0.5 then upsample
+//    (unless the window is bigger than the available data)
+//    Can then tweak the ratio bounds for when the swap should happen to try to keep things
+//    smooth and clean looking
+//    Could possibly have 3 versions (one denser than shown, the shown, one less dense than shown)
+//    and depending on the change in zoom level we either pop the front or the back and insert
+//    a new one in it's place (to make the transition feel fluid instead of jagged)
+//    The reason to even bother with this is that plotting something with 150,000 data-points
+//    tanks my framerate from ~120 fps on my macbook pro to ~40 fps, even though at most, I can see
+//    2560 pixels wide (retina display), and the plot is only ~60% the width of my screen tops.
+//    So those frames are dropping for stuff I can't even see anyway!
+//    We'll need to make sure the plotted data is within the plot-frame plus a bit extra on each side
+//    if data exists there, we'll also need to shift it into the correct place
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
@@ -136,7 +159,7 @@ struct ProgramStatus
   // Flag to specify if we're idle or doing something else
   bool is_idle{true};
   // Our thread pool
-  ThreadPool thread_pool{std::thread::hardware_concurrency() - 1};
+  ThreadPool thread_pool{};
 };
 // Per window settings
 struct WindowSettings
