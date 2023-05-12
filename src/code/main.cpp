@@ -48,7 +48,7 @@
 //-----------------------------------------------------------------------------
 // TODO
 //-----------------------------------------------------------------------------
-// Written 9 May 2023, will update on 12 May 2023 (too lazy to renumber daily)
+// Updated on 12 May 2023 (too lazy to renumber daily)
 // 1) Bandreject filter
 // 2) Data doesn't necessarily need to reside in memory at all times
 //    Only need for processing/plotting/saving
