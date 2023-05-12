@@ -128,6 +128,8 @@
 // 34a) It may not be necessary, performing bandpass (FFT + gain calculation + IFFT) on 700 files on a single-thread
 //    using FFTW takes about as long as reading in those 700 files across 7 threads. I suspect this will be a bit
 //    more awkward on a more powerful machine?
+//    On my Linux machine, reading 700 files takes ~2-3 seconds, doing a bandpass on them all is about 10 seconds
+//    On my Mac laptop, reading 700 files takes ~12 seconds, doing a bandpass on them all is about 11 seconds
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
@@ -359,35 +361,49 @@ void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
 
 void remove_mean(FileIO& fileio, sac_1c& sac)
 {
-  std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
-  double mean{0};
-  // Check if the mean is already set
-  if (sac.sac.depmen != SAC::unset_float)
   {
-    mean = sac.sac.depmen;
-  }
-  else
-  {
-    // Need to calculate the mean...
-     for (int i{0}; i < sac.sac.npts; ++i)
+    std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+    double mean{0};
+    // Check if the mean is already set
+    if (sac.sac.depmen != SAC::unset_float)
     {
-      mean += sac.sac.data1[0];
+      mean = sac.sac.depmen;
     }
-    mean /= static_cast<double>(sac.sac.npts);
-  }
-  // If out mean is zero, then we're done
-  if (mean != 0.0 || sac.sac.depmen != 0.0f)
-  {
-    // Subtract the mean from ever data point
-    for (int i{0}; i < sac.sac.npts; ++i)
+    else
     {
-      sac.sac.data1[i] -= mean;
+      // Need to calculate the mean...
+      for (int i{0}; i < sac.sac.npts; ++i)
+      {
+        mean += sac.sac.data1[0];
+      }
+      mean /= static_cast<double>(sac.sac.npts);
     }
-    // The mean is zero
-    sac.sac.depmen = 0.0f;
+    // If out mean is zero, then we're done
+    if (mean != 0.0 || sac.sac.depmen != 0.0f)
+    {
+      // Subtract the mean from ever data point
+      for (int i{0}; i < sac.sac.npts; ++i)
+      {
+        sac.sac.data1[i] -= mean;
+      }
+      // The mean is zero
+      sac.sac.depmen = 0.0f;
+    }
   }
   std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
   ++fileio.count;
+}
+
+void batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+{
+  std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+  program_status.fileio.is_processing = true;
+  program_status.fileio.count = 0;
+  program_status.fileio.total = static_cast<int>(sac_deque.size());
+  for (std::size_t i{0}; i < sac_deque.size(); ++i)
+  {
+    program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+  }
 }
 
 void remove_trend(FileIO& fileio, sac_1c& sac)
@@ -1138,13 +1154,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, am_settings.rmean))
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-      program_status.fileio.is_processing = true;
-      program_status.fileio.count = 0;
-      program_status.fileio.total = static_cast<int>(sac_deque.size());
-      for (std::size_t i{0}; i < sac_deque.size(); ++i)
-      {
-        program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[i]));
-      }
+      program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status), std::ref(sac_deque));
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
