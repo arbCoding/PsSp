@@ -446,6 +446,18 @@ void remove_trend(FileIO& fileio, sac_1c& sac)
   ++fileio.count;
 }
 
+void batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+{
+  std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+  program_status.fileio.is_processing = true;
+  program_status.fileio.count = 0;
+  program_status.fileio.total = static_cast<int>(sac_deque.size());
+  for (std::size_t i{0}; i < sac_deque.size(); ++i)
+  {
+    program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+  }
+}
+
 // Turns out FFTW is not thread-safe and doesn't provide that on Mac
 // I could compile it manually, but I don't want to
 // So we're going to change how we do this, one function for solo
@@ -1162,19 +1174,8 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, am_settings.rtrend))
     {
-      /*
-      for (std::size_t i{0}; i < sac_deque.size(); ++i)
-      {
-        remove_trend(sac_deque[i]);
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.is_idle = false;
-        program_status.message = "Removing trends...";
-        program_status.progress = static_cast<float>(i) / static_cast<float>(sac_deque.size());
-      }
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-      program_status.is_idle = true;
-      program_status.progress = 1.1f;
-      */
+      program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status), std::ref(sac_deque));
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
