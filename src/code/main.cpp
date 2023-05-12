@@ -119,6 +119,15 @@
 //    So those frames are dropping for stuff I can't even see anyway!
 //    We'll need to make sure the plotted data is within the plot-frame plus a bit extra on each side
 //    if data exists there, we'll also need to shift it into the correct place
+// 33) Currently, the way to prevent crashing when processing is happening is to hide the
+//    "Sac List" window. The reason it to prevent the user selecting data that is not accessible yet.
+//    I would prefer to gray-out the window and make the options non-selectable during processing.
+// 34) FFTW is not thread-safe. It seems to have the possibility to be thread-safe if compiled with the
+//    correct flag. Because on MacOS I use the default provided by homebrew, I don't have that.
+//    Either I should look into an FFT library that is thread-safe or streamline compiling FFTW as thread-safe.
+// 34a) It may not be necessary, performing bandpass (FFT + gain calculation + IFFT) on 700 files on a single-thread
+//    using FFTW takes about as long as reading in those 700 files across 7 threads. I suspect this will be a bit
+//    more awkward on a more powerful machine?
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
@@ -272,7 +281,7 @@ struct sac_1c
   }
 };
 // Struct for filters
-struct filter_options
+struct FilterOptions
 {
   // Filter order
   int order{1};
@@ -281,8 +290,6 @@ struct filter_options
   int max_order{10};
   // Limits on filter frequencies
   float min_freq{0.0f};
-  // max_freq is Nyquist (here just an arbitrary value)
-  float max_freq{10.0f};
   // Two freqs for bandpass
   // If using lowpass use freq_low
   float freq_low{1.0f};
@@ -290,6 +297,19 @@ struct filter_options
   float freq_high{5.0f};
   // Keyboard step interval
   float freq_step{0.1f};
+  // Do we apply the filter at all
+  bool apply_filter{false};
+  // Do we apply filter to a batch file
+  bool apply_batch{false};
+  std::shared_mutex filter_mutex;
+};
+// Holds the options for all filters, just to make life easier
+struct AllFilterOptions
+{
+  FilterOptions lowpass{};
+  FilterOptions highpass{};
+  FilterOptions bandpass{};
+  FilterOptions bandreject{};
 };
 //-----------------------------------------------------------------------------
 // End custom structs
@@ -370,7 +390,7 @@ void remove_mean(FileIO& fileio, sac_1c& sac)
   ++fileio.count;
 }
 
-void remove_trend(sac_1c& sac)
+void remove_trend(FileIO& fileio, sac_1c& sac)
 {
   std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
   double mean_amplitude{0};
@@ -406,10 +426,86 @@ void remove_trend(sac_1c& sac)
   {
     sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
   }
+  std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+  ++fileio.count;
 }
 
-// This works with the multi-threaded reading via my custom ThreadPool class!!!!
-// I still need to test on Linux
+// Turns out FFTW is not thread-safe and doesn't provide that on Mac
+// I could compile it manually, but I don't want to
+// So we're going to change how we do this, one function for solo
+// One function for many
+void apply_lowpass(FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+    SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
+  }
+  std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+  ++fileio.count;
+}
+
+void batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+    program_status.fileio.count = 0;
+    program_status.fileio.is_processing = true;
+    program_status.fileio.total = static_cast<int>(sac_deque.size());
+  }
+  for (std::size_t i{0}; i < sac_deque.size(); ++i)
+  {
+    apply_lowpass(program_status.fileio, sac_deque[i], lowpass_options);
+  }
+}
+
+void apply_highpass(FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+    SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
+  }
+  std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+  ++fileio.count;
+}
+
+void batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+    program_status.fileio.count = 0;
+    program_status.fileio.is_processing = true;
+    program_status.fileio.total = static_cast<int>(sac_deque.size());
+  }
+  for (std::size_t i{0}; i < sac_deque.size(); ++i)
+  {
+    apply_highpass(program_status.fileio, sac_deque[i], highpass_options);
+  }
+}
+
+void apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+    SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
+  }
+  std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+  ++fileio.count;
+}
+
+void batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
+{
+  {
+    std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+    program_status.fileio.count = 0;
+    program_status.fileio.is_processing = true;
+    program_status.fileio.total = static_cast<int>(sac_deque.size());
+  }
+  for (std::size_t i{0}; i < sac_deque.size(); ++i)
+  {
+    apply_bandpass(program_status.fileio, sac_deque[i], bandpass_options);
+  }
+}
+
 // I need a better mechanism for keeping track of the progress
 void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name)
 {
@@ -628,7 +724,7 @@ void status_bar(const char* status_message = "Idle", float progress = 1.1f)
 //------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //------------------------------------------------------------------------
-void window_lowpass_options(WindowSettings& window_settings, filter_options& lowpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
   if (window_settings.show)
   {
@@ -640,11 +736,10 @@ void window_lowpass_options(WindowSettings& window_settings, filter_options& low
     }
 
     ImGui::Begin("Lowpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-    lowpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)##", &lowpass_settings.freq_low, lowpass_settings.freq_step))
     {
-      lowpass_settings.freq_low = std::clamp(lowpass_settings.freq_low, lowpass_settings.min_freq, lowpass_settings.max_freq);
+      lowpass_settings.freq_low = std::max(0.0f, lowpass_settings.freq_low);
     }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order##", &lowpass_settings.order))
@@ -653,16 +748,14 @@ void window_lowpass_options(WindowSettings& window_settings, filter_options& low
     }
     if (ImGui::Button("Ok##"))
     {
-      {
-        std::lock_guard<std::shared_mutex> locK_sac(sac.sac_mutex);
-        SAC::lowpass(sac.sac, lowpass_settings.order, lowpass_settings.freq_low);
-      }
-      calc_spectrum(sac, spectrum);
+      lowpass_settings.apply_filter = true;
       window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel##"))
     {
+      lowpass_settings.apply_filter = false;
+      lowpass_settings.apply_batch = false;
       window_settings.show = false;
     }
     ImGui::End();
@@ -675,7 +768,7 @@ void window_lowpass_options(WindowSettings& window_settings, filter_options& low
 //------------------------------------------------------------------------
 // Highpass Filter Options Window
 //------------------------------------------------------------------------
-void window_highpass_options(WindowSettings& window_settings, filter_options& highpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_highpass_options(WindowSettings& window_settings, FilterOptions& highpass_settings)
 {
   if (window_settings.show)
   {
@@ -687,11 +780,10 @@ void window_highpass_options(WindowSettings& window_settings, filter_options& hi
     }
 
     ImGui::Begin("Highpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-    highpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)##", &highpass_settings.freq_low, highpass_settings.freq_step))
     {
-      highpass_settings.freq_low = std::clamp(highpass_settings.freq_low, highpass_settings.min_freq, highpass_settings.max_freq);
+      highpass_settings.freq_low = std::max(0.0f, highpass_settings.freq_low);
     }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order##", &highpass_settings.order))
@@ -700,16 +792,14 @@ void window_highpass_options(WindowSettings& window_settings, filter_options& hi
     }
     if (ImGui::Button("Ok##"))
     {
-      {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
-        SAC::highpass(sac.sac, highpass_settings.order, highpass_settings.freq_low);
-      }
-      calc_spectrum(sac, spectrum);
+      highpass_settings.apply_filter = true;
       window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel##"))
     {
+      highpass_settings.apply_filter = false;
+      highpass_settings.apply_batch = false;
       window_settings.show = false;
     }
     ImGui::End();
@@ -722,7 +812,7 @@ void window_highpass_options(WindowSettings& window_settings, filter_options& hi
 //------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //------------------------------------------------------------------------
-void window_bandpass_options(WindowSettings& window_settings, filter_options& bandpass_settings, sac_1c& sac, sac_1c& spectrum)
+void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings)
 {
   if (window_settings.show)
   {
@@ -734,34 +824,31 @@ void window_bandpass_options(WindowSettings& window_settings, filter_options& ba
     }
 
     ImGui::Begin("Bandpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-    bandpass_settings.max_freq = static_cast<float>(0.5 / sac.sac.delta); // Nyquist
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Min Freq (Hz)##", &bandpass_settings.freq_low, bandpass_settings.freq_step))
     {
-      bandpass_settings.freq_low = std::clamp(bandpass_settings.freq_low, bandpass_settings.min_freq, bandpass_settings.max_freq);
+      bandpass_settings.freq_low = std::max(0.0f, bandpass_settings.freq_low);
     }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Max Freq (Hz)##", &bandpass_settings.freq_high, bandpass_settings.freq_step))
     {
-      bandpass_settings.freq_high = std::clamp(bandpass_settings.freq_high, bandpass_settings.min_freq, bandpass_settings.max_freq);
+      bandpass_settings.freq_high = std::max(bandpass_settings.freq_low, bandpass_settings.freq_high);
     }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputInt("Order##", &bandpass_settings.order))
     {
       bandpass_settings.order = std::clamp(bandpass_settings.order, bandpass_settings.min_order, bandpass_settings.max_order);
     }
-    if (ImGui::Button("Ok##"))
+    if (ImGui::Button("Ok##") && bandpass_settings.freq_low < bandpass_settings.freq_high)
     {
-      {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
-        SAC::bandpass(sac.sac, bandpass_settings.order, bandpass_settings.freq_low, bandpass_settings.freq_high);
-      }
-      calc_spectrum(sac, spectrum);
+      bandpass_settings.apply_filter = true;
       window_settings.show = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel##"))
     {
+      bandpass_settings.apply_filter = false;
+      bandpass_settings.apply_batch = false;
       window_settings.show = false;
     }
     ImGui::End();
@@ -774,7 +861,8 @@ void window_bandpass_options(WindowSettings& window_settings, filter_options& ba
 //------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
-void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings,
+                   AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
 {
   // Just to get rid of unused for now...
   (void) program_status;
@@ -924,7 +1012,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("1-component SAC spectrogram (real/imaginary) plot");
     }
-    if (ImGui::MenuItem("Sac List##", nullptr, nullptr, am_settings.sac_deque))
+    if (ImGui::MenuItem("Sac List##", nullptr, nullptr, (am_settings.sac_deque && program_status.is_idle)))
     {
       allwindow_settings.sac_deque_settings.show = true;
     }
@@ -987,7 +1075,11 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, am_settings.rtrend))
     {
-      remove_trend(sac_deque[active_sac]);
+      std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+      program_status.fileio.is_processing = true;
+      program_status.fileio.count = 0;
+      program_status.fileio.total = 1;
+      program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -999,6 +1091,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       allwindow_settings.sac_lp_options_settings.show = true;
       allwindow_settings.sac_hp_options_settings.show = false;
       allwindow_settings.sac_bp_options_settings.show = false;
+      af_settings.lowpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1009,6 +1102,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       allwindow_settings.sac_lp_options_settings.show = false;
       allwindow_settings.sac_hp_options_settings.show = true;
       allwindow_settings.sac_bp_options_settings.show = false;
+      af_settings.highpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1019,6 +1113,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       allwindow_settings.sac_lp_options_settings.show = false;
       allwindow_settings.sac_hp_options_settings.show = false;
       allwindow_settings.sac_bp_options_settings.show = true;
+      af_settings.bandpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1057,6 +1152,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, am_settings.rtrend))
     {
+      /*
       for (std::size_t i{0}; i < sac_deque.size(); ++i)
       {
         remove_trend(sac_deque[i]);
@@ -1068,6 +1164,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
       program_status.is_idle = true;
       program_status.progress = 1.1f;
+      */
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1076,7 +1173,10 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     ImGui::Separator();
     if (ImGui::MenuItem("Lowpass##", nullptr, nullptr, am_settings.lowpass))
     {
-      // To be implemented later
+      allwindow_settings.sac_lp_options_settings.show = true;
+      allwindow_settings.sac_hp_options_settings.show = false;
+      allwindow_settings.sac_bp_options_settings.show = false;
+      af_settings.lowpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1084,7 +1184,10 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Highpass##", nullptr, nullptr, am_settings.highpass))
     {
-      // To be implemented later
+      allwindow_settings.sac_lp_options_settings.show = false;
+      allwindow_settings.sac_hp_options_settings.show = true;
+      allwindow_settings.sac_bp_options_settings.show = false;
+      af_settings.highpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1092,7 +1195,10 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, am_settings.bandpass))
     {
-      // To be implemented later
+      allwindow_settings.sac_lp_options_settings.show = false;
+      allwindow_settings.sac_hp_options_settings.show = false;
+      allwindow_settings.sac_bp_options_settings.show = true;
+      af_settings.bandpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1347,11 +1453,11 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
   WindowSettings& window_settings = aw_settings.sac_deque_settings;
   std::string option{};
-  if (window_settings.show)
+  if (window_settings.show && program_status.is_idle)
   {
     if (!window_settings.is_set)
     {
@@ -1488,9 +1594,7 @@ int main()
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
   pssp::AllWindowSettings aw_settings{};
   pssp::AllMenuSettings am_settings{};
-  pssp::filter_options lowpass_settings{};
-  pssp::filter_options highpass_settings{};
-  pssp::filter_options bandpass_settings{};
+  pssp::AllFilterOptions af_settings{};
   pssp::ProgramStatus program_status{};
   // Time-series
   std::deque<pssp::sac_1c> sac_deque;
@@ -1550,7 +1654,7 @@ int main()
     // End Status of program
     //-------------------------------------------------------------------------
     pssp::status_bar(program_status.message.c_str(), program_status.progress);
-    pssp::main_menu_bar(window, aw_settings, am_settings, program_status, sac_deque, active_sac);
+    pssp::main_menu_bar(window, aw_settings, am_settings, af_settings, program_status, sac_deque, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
     pssp::update_fps(fps_tracker, io);
@@ -1612,8 +1716,14 @@ int main()
       // every frame)
       if (aw_settings.sac_1c_spectrum_plot_settings.show)
       {
+        bool compare_names{true};
+        {
+          std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
+          std::shared_lock<std::shared_mutex> lock_sac(sac_deque[active_sac].sac_mutex);
+          compare_names = (spectrum.file_name == sac_deque[active_sac].file_name);
+        }
         // If they're not the same, then calculate the FFT
-        if (spectrum.file_name != sac_deque[active_sac].file_name)
+        if (!compare_names)
         {
           pssp::calc_spectrum(sac_deque[active_sac], spectrum);
         }
@@ -1621,10 +1731,10 @@ int main()
       // Finally plot the spectrum
       pssp::window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
-      pssp::window_sac_deque(aw_settings, am_settings, sac_deque, spectrum, active_sac, clear_sac);
-      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, lowpass_settings, sac_deque[active_sac], spectrum);
-      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, highpass_settings, sac_deque[active_sac], spectrum);
-      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, bandpass_settings, sac_deque[active_sac], spectrum);
+      pssp::window_sac_deque(aw_settings, am_settings, program_status, sac_deque, spectrum, active_sac, clear_sac);
+      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, af_settings.lowpass);
+      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, af_settings.highpass);
+      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, af_settings.bandpass);
     }
     else
     {
@@ -1645,6 +1755,61 @@ int main()
     }
     // Finish the frame
     pssp::finish_newframe(window, clear_color);
+    if (af_settings.lowpass.apply_filter)
+    {
+      std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+      program_status.fileio.count = 0;
+      program_status.fileio.is_processing = true;
+      if (af_settings.lowpass.apply_batch)
+      {
+        program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
+        af_settings.lowpass.apply_batch = false;
+      }
+      else
+      {
+        program_status.fileio.total = 1;
+        program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
+      }
+      af_settings.lowpass.apply_filter = false;
+    }
+    else if (af_settings.highpass.apply_filter)
+    {
+      std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+      program_status.fileio.count = 0;
+      program_status.fileio.is_processing = true;
+      if (af_settings.highpass.apply_batch)
+      {
+        program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
+        af_settings.highpass.apply_batch = false;
+      }
+      else
+      {
+        program_status.fileio.total = 1;
+        program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
+      }
+      af_settings.highpass.apply_filter = false;
+    }
+    else if (af_settings.bandpass.apply_filter)
+    {
+      std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+      program_status.fileio.count = 0;
+      program_status.fileio.is_processing = true;
+      if (af_settings.bandpass.apply_batch)
+      {
+        program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
+        af_settings.bandpass.apply_batch = false;
+      }
+      else
+      {
+        program_status.fileio.total = 1;
+        program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
+      }
+      af_settings.bandpass.apply_filter = false;
+    }
+    else if (af_settings.bandreject.apply_filter)
+    {
+      // Not yet implemented
+    }
   }
   //---------------------------------------------------------------------------
   // End draw loop
