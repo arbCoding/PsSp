@@ -18,7 +18,7 @@ SHELL := /bin/bash
 # Linux or mac
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = true
+debug = false
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------

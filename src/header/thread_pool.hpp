@@ -1,7 +1,6 @@
 #ifndef PSSP_THREAD_POOL_H
 #define PSSP_THREAD_POOL_H
 
-#include <iostream>
 #include <thread>
 #include <vector>
 #include <queue>

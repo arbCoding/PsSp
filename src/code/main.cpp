@@ -33,10 +33,6 @@
 #include <filesystem>
 // std::clamp
 #include <algorithm>
-// std::future
-// Used for handling asynchronous data manipulation
-// without needing tons of mutex's
-//#include <future>
 // std::async, std::thread
 #include <thread>
 // std::deque for thread-safe constant time access to a "list"
@@ -44,8 +40,6 @@
 #include <deque>
 // FIFO wrapper for deque
 #include <queue>
-// Needed for condition variables (used for locking threads)
-#include <condition_variable>
 // std::ref, needed to pass by reference to a thread (can't use & to pass by
 // reference in this situation)
 #include <functional>
@@ -129,11 +123,7 @@ struct FileIO
 {
   int count{0};
   int total{0};
-  // queue and deque safer than vectors
-  std::queue<std::string, std::deque<std::string>> file_queue{};
   // Used to lock threads if the queue is empty instead of wasting CPU cycles
-  std::condition_variable_any condition{};
-  // Tells us if we're reading files or not
   bool is_reading{false};
   std::mutex io_mutex{};
 };
@@ -143,9 +133,6 @@ struct ProgramStatus
   float progress{1.1f};
   std::shared_mutex program_mutex{};
   FileIO fileio{};
-  // Flag for threads to exit safely because we want
-  // to end the program early
-  bool shut_down{false};
   // Flag to specify if we're idle or doing something else
   bool is_idle{true};
   // Our thread pool
@@ -399,36 +386,6 @@ void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::strin
   ++fileio.count;
   sac_deque.push_back(sac);
   sac.sac_mutex.unlock();
-}
-
-// Reads files in a queue
-// Designed to run on a single separate thread
-void read_sac_queue(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
-{
-  while (!program_status.fileio.file_queue.empty())
-  {
-    std::unique_lock<std::shared_mutex> lock(program_status.program_mutex);
-    program_status.fileio.is_reading = !program_status.fileio.file_queue.empty();
-    // We wait for the file_queue to be non-empty, or the shut-down call
-    // but still need to be notified to wakeup and check (avoid wasting CPU cycles constantly checking)
-    //program_status.fileio.condition.wait(lock, [&]{return (!program_status.fileio.file_queue.empty() || program_status.shut_down);});
-    // If we're shutting down we stop
-    if (program_status.shut_down)
-    {
-      // We've been told to stop early, exit safely
-      break;
-    }
-    // Read the next file from the queue
-    pssp::sac_1c sac{};
-    sac.sac_mutex.lock();
-    sac.file_name = program_status.fileio.file_queue.front();
-    program_status.fileio.file_queue.pop();
-    sac.sac = SAC::SacStream(sac.file_name);
-    sac_deque.push_back(sac);
-    sac.sac_mutex.unlock();
-    ++program_status.fileio.count;
-    program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
-  }
 }
 //-----------------------------------------------------------------------------
 // End Misc functions
@@ -921,15 +878,11 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     if (ImGuiFileDialog::Instance()->IsOk())
     {
       program_status.program_mutex.lock();
-      // Put in on the reading queue!
-      program_status.fileio.file_queue.push(ImGuiFileDialog::Instance()->GetFilePathName());
       program_status.fileio.count = 0;
       // Can only select 1 file anyway!
       program_status.fileio.total = 1;
       program_status.program_mutex.unlock();
-      //program_status.thread_pool.enqueue(read_sac_queue, program_status, sac_deque);
-      program_status.thread_pool.enqueue(read_sac_queue, std::ref(program_status), std::ref(sac_deque));
-      //program_status.fileio.condition.notify_one();
+      program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), ImGuiFileDialog::Instance()->GetFilePathName());
     }
     ImGuiFileDialog::Instance()->Close();
   }
@@ -1499,15 +1452,6 @@ int main()
   //---------------------------------------------------------------------------
 
   //---------------------------------------------------------------------------
-  // Spawn Threads
-  //---------------------------------------------------------------------------
-  // Spawn thread for reading SAC files
-  //std::thread read_thread(pssp::read_sac_queue, std::ref(program_status), std::ref(sac_deque));
-  //---------------------------------------------------------------------------
-  // End Spawn Threads
-  //---------------------------------------------------------------------------
-
-  //---------------------------------------------------------------------------
   // Draw loop
   //---------------------------------------------------------------------------
   // The draw loop is ran EVERY FRAME, so be careful to make the stuff in here safe
@@ -1522,7 +1466,7 @@ int main()
     // Status of program
     //-------------------------------------------------------------------------
     // If we're not reading or shutting down, we're idle
-    program_status.is_idle = (!program_status.fileio.is_reading && !program_status.shut_down);
+    program_status.is_idle = (!program_status.fileio.is_reading);
     if (program_status.is_idle)
     {
       program_status.message = "Idle";
@@ -1541,10 +1485,6 @@ int main()
           program_status.fileio.is_reading = false;
           program_status.fileio.io_mutex.unlock();
         }
-      }
-      else if (program_status.shut_down)
-      {
-        program_status.message = "Shutting down...";
       }
     }
     //-------------------------------------------------------------------------
@@ -1618,19 +1558,6 @@ int main()
     // Finish the frame
     pssp::finish_newframe(window, clear_color);
   }
-  //---------------------------------------------------------------------------
-  // Notify and Join Threads
-  //---------------------------------------------------------------------------
-  // Set the shutdown status
-  program_status.shut_down = true;
-  // Notify the threads we're shutting down
-  //program_status.fileio.condition.notify_all();
-  // Join the threads to make sure the program finishes cleanly by first
-  // waiting for them to finish
-  //read_thread.join();
-  //---------------------------------------------------------------------------
-  // End Notify and Join Threads
-  //---------------------------------------------------------------------------
   //---------------------------------------------------------------------------
   // End draw loop
   //---------------------------------------------------------------------------
