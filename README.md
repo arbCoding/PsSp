@@ -2,24 +2,24 @@
 
 Passive-source Seismic-processing with a GUI (Graphical User Interface)
 
-This project depends on my [sac-format](https://github.com/arbCoding/seismic) library.
-
-The purpose of this is to provide an OS-independent, graphical, seismic processing software package targeted at passive seismologists.
+The purpose of this is to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
 
 ---
 
 ## Current status
 
-This is extremely early in development.
+This is extremely early in development. 
+
+It is now officially multi-threaded (11 May 2023)!
 
 ---
 
 ## Project Goals
 
-In the passive seismic community, there are many processing tools available. The problem, however, is the steep learning curve needed to use them.
+In the passive seismic community, there are many processing tools available. The biggest problem, however, is the steep learning curve needed to use them.
 
 The primary issues that I see today are:
-1) There is a lack of tools available to the seismologist that have a graphical user interface (GUI).
+1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the KISS philosophy),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
 by different persons/groups, in order to perform a given research task.
@@ -33,7 +33,9 @@ on doing science.
 PsSp is being developed to remove that barrier. To empower the seismologist with tools that are easy to use and foster exploration.
 By enabling the scientist to do exploratory analysis quickly, easily, and visually, I hope to allow the end-user to improve their
 intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed
-with their analysis.
+with their analysis. I hope this will also make entry into seismology easier (undergrads, summer intern, new graduate students) and
+will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving their everyone's workflow and
+the quality of research that is accomplished while minimizing the amount of time devoted to simply trying to get the tools to work.
 
 The goal can be summarized as extending the productivity suite of the seismologist. Seismologists have their program for writing manuscripts
 (MS Word, LaTeX, whatever), their program for giving scientific presentations (MS Powerpoint, Impress Presentation, etc.), their
@@ -47,6 +49,8 @@ work and be stuck trying to figure out what is wrong instead of making progress 
 ---
 
 ## ToDo
+
+See also the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is going on/planned.
 
 - [X] Read single SAC file
 - [X] Display SAC header information
@@ -64,6 +68,7 @@ work and be stuck trying to figure out what is wrong instead of making progress 
 - [ ] Record section plotting (many stations)
 - [ ] Plot spectrogram
 - [ ] Plot Spectrum
+- [ ] In the distant future, use [OpenCL](https://www.khronos.org/api/opencl) to use GPU computation to speed-up vectorizable tasks (FFT/IFFT).
 
 ---
 
