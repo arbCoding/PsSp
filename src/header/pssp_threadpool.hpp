@@ -13,6 +13,8 @@
 #include <condition_variable>
 // Needed for `typname Function` and `typename... Args` template components
 #include <functional>
+// Thread-safe integral type variables
+#include <atomic>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -46,11 +48,21 @@
 // If passing-by-reference of a non-integral type (complex custom type) then the
 // std::ref(object) is necessary.
 //
-// Remember, smart usage of mutex's is how you prevent data-races. If you don't
+// Remember, smart usage of mutexes is how you prevent data-races. If you don't
 // prevent data-races, you'll probably get super frustrating and non-intuitive
 // bugs/crashes. When in doubt, first lock it out.
 //-----------------------------------------------------------------------------
 // End Description
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// ToDo
+//-----------------------------------------------------------------------------
+// Up-to-date as of 13 May 2023
+// 1) Add a public kill-switch to call on shutdown of the program using a
+//    ThreadPool
+//-----------------------------------------------------------------------------
+// End ToDo
 //-----------------------------------------------------------------------------
 
 namespace pssp
@@ -66,9 +78,10 @@ namespace pssp
     //-------------------------------------------------------------------------
     // Tell me how many threads you want and I'll add them to the vector of
     // threads
-    ThreadPool(size_t num_threads = std::thread::hardware_concurrency() - 1)
+    ThreadPool(std::size_t n_threads = std::thread::hardware_concurrency() - 1) : 
+    n_threads_(n_threads), n_busy_threads_{0}, stop_{false}
     {
-      for (std::size_t i = 0; i < num_threads; ++i)
+      for (std::size_t i = 0; i < n_threads; ++i)
       {
         // Using bind to create a forwarding call operator
         // &ThreadPool::worker_thread is the callable object (memory location
@@ -128,6 +141,34 @@ namespace pssp
     //-------------------------------------------------------------------------
     // End Enqueue function
     //-------------------------------------------------------------------------
+
+    //-------------------------------------------------------------------------
+    // Getters
+    //-------------------------------------------------------------------------
+    // Declared as constant because they don't modify state, just check it
+    std::size_t n_threads_total() const
+    {
+      return n_threads_;
+    }
+
+    std::size_t n_busy_threads() const
+    {
+      return n_busy_threads_.load();
+    }
+
+    std::size_t n_idle_threads() const
+    {
+      return n_threads_ - n_busy_threads_.load();
+    }
+
+    std::size_t n_tasks()
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      return tasks_.size();
+    }
+    //-------------------------------------------------------------------------
+    // End Getters
+    //-------------------------------------------------------------------------
   
   private:
     //-------------------------------------------------------------------------
@@ -141,7 +182,7 @@ namespace pssp
       {
         std::unique_lock<std::mutex> lock(mutex_);
         // We use this to freeze the thread
-        // In only unfreezes if the task queue is non-empty and it gets notified
+        // It only unfreezes if the task queue is non-empty and it gets notified
         // Or if it is told to stop and gets notified
         condition_.wait(lock, [this]() { return !tasks_.empty() || stop_; });
         // Exit cleanly
@@ -149,6 +190,8 @@ namespace pssp
         {
           break;
         }
+        // We're busy
+        ++n_busy_threads_;
         // We move the task from the queue (tasks_) to our local variable task
         // This leaves tasks_.front() unspecified (empty, but still there)
         auto task = std::move(tasks_.front());
@@ -158,6 +201,8 @@ namespace pssp
         lock.unlock();
         // Do the task
         task();
+        // No long busy
+        --n_busy_threads_;
       }
     }
     //-------------------------------------------------------------------------
@@ -167,6 +212,8 @@ namespace pssp
     //-------------------------------------------------------------------------
     // Private internal variables
     //-------------------------------------------------------------------------
+    std::size_t n_threads_;
+    std::atomic<std::size_t> n_busy_threads_{0};
     // Vector of threads
     std::vector<std::thread> threads_{};
     // Function queue of tasks to do
@@ -176,7 +223,7 @@ namespace pssp
     // Condition variable for waiting patiently
     std::condition_variable condition_{};
     // Stop flag
-    bool stop_{false};
+    std::atomic<bool> stop_{false};
     //-------------------------------------------------------------------------
     // Private internal variables
     //-------------------------------------------------------------------------

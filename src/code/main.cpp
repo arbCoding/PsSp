@@ -41,6 +41,10 @@
 // std::ref, needed to pass by reference to a thread (can't use & to pass by
 // reference in this situation)
 #include <functional>
+// Thread-safe integral types
+#include <atomic>
+// String-stream for mixing types
+#include <sstream>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -152,22 +156,21 @@ namespace pssp
 //-----------------------------------------------------------------------------
 struct FileIO
 {
-  int count{0};
-  int total{0};
+  std::atomic<int> count{0};
+  std::atomic<int> total{0};
   // Used to flag if we're reading or not 
-  bool is_reading{false};
+  std::atomic<bool> is_reading{false};
   // Used to flag if we're processing data or not
-  bool is_processing{false};
+  std::atomic<bool> is_processing{false};
   std::shared_mutex io_mutex{};
 };
 struct ProgramStatus
 {
-  std::string message{"Idle"};
-  float progress{1.1f};
+  std::atomic<float> progress{1.1f};
   std::shared_mutex program_mutex{};
   FileIO fileio{};
   // Flag to specify if we're idle or doing something else
-  bool is_idle{true};
+  std::atomic<bool> is_idle{true};
   // Our thread pool
   ThreadPool thread_pool{};
 };
@@ -722,25 +725,77 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Status Bar
 //------------------------------------------------------------------------
-void status_bar(const char* status_message = "Idle", float progress = 1.1f)
+void status_bar(ProgramStatus& program_status)
 {
   // Size and position
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
   ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().FramePadding.y * 2.0f) + 10));
   ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeightWithSpacing() - (ImGui::GetStyle().FramePadding.y * 2.0f) - 10));
+  //----------------------------------------------------------------------
+  // Status of program (message and progress)
+  //----------------------------------------------------------------------
+  // If we're not reading or shutting down, we're idle
+  std::string status_message{""};
+  {
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.is_idle = (!program_status.fileio.is_reading && !program_status.fileio.is_processing);
+    if (program_status.is_idle)
+    {
+      status_message = "Idle";
+      program_status.progress = 1.1f;
+    }
+    else
+    {
+      program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
+      if (program_status.progress >= 1.0f)
+      {
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+        program_status.is_idle = true;
+        program_status.fileio.is_reading = false;
+        program_status.fileio.is_processing = false;
+        program_status.fileio.total = 0;
+      }
+      else if (program_status.fileio.is_reading)
+      {
+        status_message = "Reading SAC files...";
+      }
+      else if (program_status.fileio.is_processing)
+      {
+        status_message = "Processing...";
+      }
+    }
+  }
+  //----------------------------------------------------------------------
+  // End Status of program (message and progress)
+  //----------------------------------------------------------------------
+  std::ostringstream oss{};
+  oss << "Threads (Busy/Total): " << program_status.thread_pool.n_busy_threads()
+    << '/' << program_status.thread_pool.n_threads_total();
+  //----------------------------------------------------------------------
+  // Threads and Tasks
+  //----------------------------------------------------------------------
+
+  //----------------------------------------------------------------------
+  // End Threads and Tasks
+  //----------------------------------------------------------------------
   // Start the status bar
   ImGui::Begin("Status##", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
                ImGuiWindowFlags_NoNav);
-  // Add status message
-  ImGui::Text("%s", status_message);
+  // Add status message, this on the left of the bar
+  ImGui::Text("%s", status_message.c_str());
+  // Add information about running threads, this is in the middle of the bar
+  ImGui::SameLine((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(oss.str().c_str()).x) / 2.0f);
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
+  ImGui::Text("%s", oss.str().c_str());
   // Draw progress bar
   // If below 0 or above 1 it will not draw a progress bar
   // which is super useful for hiding it
-  if (progress >= 0.0f && progress <= 1.0f)
+  // This is on the right of the bar
+  if (program_status.progress >= 0.0f && program_status.progress <= 1.0f)
   {
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - 100.0f);
-    ImGui::ProgressBar(progress, ImVec2(100.0f, ImGui::GetTextLineHeight()));
+    ImGui::ProgressBar(program_status.progress, ImVec2(100.0f, ImGui::GetTextLineHeight()));
   }
   ImGui::End();
   ImGui::PopStyleVar();
@@ -752,7 +807,7 @@ void status_bar(const char* status_message = "Idle", float progress = 1.1f)
 //------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //------------------------------------------------------------------------
-void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowpass_settings)
+void window_lowpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
   if (window_settings.show)
   {
@@ -764,6 +819,10 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
     }
 
     ImGui::Begin("Lowpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    if (!program_status.is_idle)
+    {
+      ImGui::BeginDisabled();
+    }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)##", &lowpass_settings.freq_low, lowpass_settings.freq_step))
     {
@@ -786,6 +845,10 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
       lowpass_settings.apply_batch = false;
       window_settings.show = false;
     }
+    if (!program_status.is_idle)
+    {
+      ImGui::EndDisabled();
+    }
     ImGui::End();
   }
 }
@@ -796,7 +859,7 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
 //------------------------------------------------------------------------
 // Highpass Filter Options Window
 //------------------------------------------------------------------------
-void window_highpass_options(WindowSettings& window_settings, FilterOptions& highpass_settings)
+void window_highpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& highpass_settings)
 {
   if (window_settings.show)
   {
@@ -808,6 +871,10 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
     }
 
     ImGui::Begin("Highpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    if (!program_status.is_idle)
+    {
+      ImGui::BeginDisabled();
+    }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Freq (Hz)##", &highpass_settings.freq_low, highpass_settings.freq_step))
     {
@@ -830,6 +897,10 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
       highpass_settings.apply_batch = false;
       window_settings.show = false;
     }
+    if (!program_status.is_idle)
+    {
+      ImGui::EndDisabled();
+    }
     ImGui::End();
   }
 }
@@ -840,7 +911,7 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
 //------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //------------------------------------------------------------------------
-void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings)
+void window_bandpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& bandpass_settings)
 {
   if (window_settings.show)
   {
@@ -852,6 +923,10 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
     }
 
     ImGui::Begin("Bandpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    if (!program_status.is_idle)
+    {
+      ImGui::BeginDisabled();
+    }
     ImGui::SetNextItemWidth(130);
     if (ImGui::InputFloat("Min Freq (Hz)##", &bandpass_settings.freq_low, bandpass_settings.freq_step))
     {
@@ -878,6 +953,10 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
       bandpass_settings.apply_filter = false;
       bandpass_settings.apply_batch = false;
       window_settings.show = false;
+    }
+    if (!program_status.is_idle)
+    {
+      ImGui::EndDisabled();
     }
     ImGui::End();
   }
@@ -1340,7 +1419,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 //------------------------------------------------------------------------
 // 1-component SAC header window
 //------------------------------------------------------------------------
-void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
+void window_sac_header(ProgramStatus& program_status, WindowSettings& window_settings, sac_1c& sac)
 {
   if (window_settings.show)
   {
@@ -1352,8 +1431,11 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
     }
 
     ImGui::Begin("Sac Header##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
-
     {
+      if (!program_status.is_idle)
+      {
+        ImGui::BeginDisabled();
+      }
       std::shared_lock<std::shared_mutex> lock_sac(sac.sac_mutex);
       if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
       {
@@ -1394,6 +1476,10 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
       {
         ImGui::Text("Npts:       %i", sac.sac.npts);
         ImGui::Text("IfType:     %i", sac.sac.iftype);
+      }
+      if (!program_status.is_idle)
+      {
+        ImGui::EndDisabled();
       }
     }
     ImGui::End();
@@ -1468,6 +1554,7 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
 {
   WindowSettings& window_settings = aw_settings.sac_deque_settings;
   std::string option{};
+  //if (window_settings.show && program_status.is_idle)
   if (window_settings.show && program_status.is_idle)
   {
     if (!window_settings.is_set)
@@ -1478,6 +1565,10 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
       window_settings.is_set = true;
     }
     ImGui::Begin("Sac List##", &window_settings.show);
+    if (!program_status.is_idle)
+    {
+      ImGui::BeginDisabled();
+    }
     for (int i = 0; const auto& sac : sac_deque)
     {
       const bool is_selected{selected == i};
@@ -1556,7 +1647,10 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
       }
       ++i;
     }
-
+    if (!program_status.is_idle)
+    {
+      ImGui::EndDisabled();
+    }
     ImGui::End();
   }
 }
@@ -1629,42 +1723,7 @@ int main()
     cleanup_sac(sac_deque, active_sac, clear_sac);
     // Start the frame
     pssp::prep_newframe();
-    //-------------------------------------------------------------------------
-    // Status of program
-    //-------------------------------------------------------------------------
-    // If we're not reading or shutting down, we're idle
-    {
-      std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-      program_status.is_idle = (!program_status.fileio.is_reading && !program_status.fileio.is_processing);
-      if (program_status.is_idle)
-      {
-        program_status.message = "Idle";
-        program_status.progress = 1.1f;
-      }
-      else
-      {
-        program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
-        if (program_status.progress >= 1.0f)
-        {
-          std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
-          program_status.is_idle = true;
-          program_status.fileio.is_reading = false;
-          program_status.fileio.is_processing = false;
-        }
-        else if (program_status.fileio.is_reading)
-        {
-          program_status.message = "Reading SAC files...";
-        }
-        else if (program_status.fileio.is_processing)
-        {
-          program_status.message = "Processing...";
-        }
-      }
-    }
-    //-------------------------------------------------------------------------
-    // End Status of program
-    //-------------------------------------------------------------------------
-    pssp::status_bar(program_status.message.c_str(), program_status.progress);
+    pssp::status_bar(program_status);
     pssp::main_menu_bar(window, aw_settings, am_settings, af_settings, program_status, sac_deque, active_sac);
     // Show the Welcome window if appropriate
     pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
@@ -1695,11 +1754,23 @@ int main()
         {
           am_settings.save_1c = true;
           am_settings.batch_menu = true;
+          am_settings.processing_menu = true;
+          am_settings.lowpass = true;
+          am_settings.highpass = true;
+          am_settings.bandpass = true;
+          am_settings.rmean = true;
+          am_settings.rtrend = true;
         }
         else
         {
           am_settings.save_1c = false;
           am_settings.batch_menu = false;
+          am_settings.processing_menu = false;
+          am_settings.lowpass = false;
+          am_settings.highpass = false;
+          am_settings.bandpass = false;
+          am_settings.rmean = false;
+          am_settings.rtrend = false;
         }
       }
       // Allow menu options that require sac files
@@ -1707,19 +1778,13 @@ int main()
       am_settings.sac_header = true;
       am_settings.plot_1c = true;
       am_settings.plot_spectrum_1c = true;
-      am_settings.processing_menu = true;
-      am_settings.lowpass = true;
-      am_settings.highpass = true;
-      am_settings.bandpass = true;
-      am_settings.rmean = true;
-      am_settings.rtrend = true;
       // This fixes the issue of deleting all sac_1cs in the deque
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
       {
         active_sac = 0;
       }
-      pssp::window_sac_header(aw_settings.sac_header_settings, sac_deque[active_sac]);
+      pssp::window_sac_header(program_status, aw_settings.sac_header_settings, sac_deque[active_sac]);
       // Show the Sac Plot window if appropriate
       pssp::window_plot_sac(aw_settings.sac_1c_plot_settings, sac_deque, active_sac);
       // Show the Sac Spectrum window if appropriate
@@ -1743,9 +1808,9 @@ int main()
       pssp::window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
       // Show the Sac List window if appropriate
       pssp::window_sac_deque(aw_settings, am_settings, program_status, sac_deque, spectrum, active_sac, clear_sac);
-      pssp::window_lowpass_options(aw_settings.sac_lp_options_settings, af_settings.lowpass);
-      pssp::window_highpass_options(aw_settings.sac_hp_options_settings, af_settings.highpass);
-      pssp::window_bandpass_options(aw_settings.sac_bp_options_settings, af_settings.bandpass);
+      pssp::window_lowpass_options(program_status, aw_settings.sac_lp_options_settings, af_settings.lowpass);
+      pssp::window_highpass_options(program_status, aw_settings.sac_hp_options_settings, af_settings.highpass);
+      pssp::window_bandpass_options(program_status, aw_settings.sac_bp_options_settings, af_settings.bandpass);
     }
     else
     {
@@ -1766,6 +1831,7 @@ int main()
     }
     // Finish the frame
     pssp::finish_newframe(window, clear_color);
+    // Queue up filters if required
     if (af_settings.lowpass.apply_filter)
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
