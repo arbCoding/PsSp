@@ -134,6 +134,14 @@
 //    more awkward on a more powerful machine?
 //    On my Linux machine, reading 700 files takes ~2-3 seconds, doing a bandpass on them all is about 10 seconds
 //    On my Mac laptop, reading 700 files takes ~12 seconds, doing a bandpass on them all is about 11 seconds
+// 35) An FFTW plan pool may make it possible to use FFTW in a multi-threaded capacity without needing its
+//    thread-safe compilation pattern (which they advocate against using: https://www.fftw.org/fftw3_doc/Thread-safety.html)
+//    Idea is to have a pool of plans for different sized input vector.
+//    If a vector needs one of a size that doesn't exist, it gets created.
+//    If a vector needs one that does exist, if it is unused it takes it, otherwise it waits for it to be free.
+//    At the end, all plans get destroyed. It reduces the overhead of repeatidly creating/destroying plans
+//    and makes it thread-safe.
+// 36) Possibly a wrapper class for FFTW, maybe that'll make it actually thread-safe...
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
