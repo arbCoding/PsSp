@@ -3,10 +3,17 @@
 
 // Dear ImGui header
 #include <imgui.h>
+// MessagePack, https://msgpack.org/
+#include <msgpack.hpp>
 // Standard Library stuff, https://en.cppreference.com/
-#include <string_view>
 // Filesystem stuff
 #include <filesystem>
+// File IO
+#include <fstream>
+// std::string
+#include <string>
+// std::cout
+#include <iostream>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -80,7 +87,9 @@ struct WindowSettings
   // Window flags for Dear ImGui
   ImGuiWindowFlags img_flags{};
   // Window title, '##' is used to prevent Dear ImGui crashes
-  std::string_view title{"##"};
+  std::string title{"##"};
+  // To allow msgpack to handle the components.
+  MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title);
 };
 // Settings for all windows (except main menu bar and status bar)
 struct AllWindowSettings
@@ -88,32 +97,33 @@ struct AllWindowSettings
   // Window with welcome message
   WindowSettings welcome{395, 340, 525, 60, false, false, ImGuiWindowFlags_NoCollapse
     | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##Welcome"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Welcome##"};
   // FPS tracker window
   WindowSettings fps{1, 756, 60, 55, false, false, ImGuiWindowFlags_NoCollapse 
     | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##FPS"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "FPS##"};
   // Header info for a single SAC file
-  WindowSettings header{1, 25, 285, 730, false, false, ImGuiWindowFlags{}, "##SAC Header"};
+  WindowSettings header{1, 25, 285, 730, false, false, ImGuiWindowFlags{}, "SAC Header##"};
   // Plot of a single sac file (time-series only)
-  WindowSettings plot_1c{287, 25, 1150, 340, false, false, ImGuiWindowFlags{}, "##Seismogram"};
+  WindowSettings plot_1c{287, 25, 1150, 340, false, false, ImGuiWindowFlags{}, "Seismogram##"};
   // Plot real/imag spectrum of SAC file
-  WindowSettings spectrum_1c{288, 368, 1150, 340, false, false, ImGuiWindowFlags{}, "##Spectrum"};
+  WindowSettings spectrum_1c{288, 368, 1150, 340, false, false, ImGuiWindowFlags{}, "Spectrum##"};
   // List of sac_1c's, allows user to select specific one in memory
-  WindowSettings sac_files{287, 709, 347, 135, false, false, ImGuiWindowFlags{}, "##SAC Files"};
+  WindowSettings sac_files{287, 709, 347, 135, false, false, ImGuiWindowFlags{}, "SAC Files##"};
   // Small window providing access to lowpass filter options
   WindowSettings lowpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##Lowpass Options"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Lowpass Options##"};
   // Small window providing access to highpass filter options
   WindowSettings highpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##Highpass Options"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Highpass Options##"};
   // Small window providing access to bandpass filter options
   WindowSettings bandpass{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##Bandpass Options"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandpass Options##"};
   WindowSettings bandreject{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "##Bandreject Options"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options"};
   // File Dialog positions
   WindowSettings file_dialog{337, 150, 750, 450};
+  MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject);
 };
 // Whether a certain menu is allow or not
 struct MenuAllowed
@@ -163,10 +173,26 @@ struct MenuAllowed
 //-----------------------------------------------------------------------------
 // Class definitions
 //-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
+// Project class
+//------------------------------------------------------------------------
 class Project
   {
+  //----------------------------------------------------------------------
+  // Project private variables/methods
+  //----------------------------------------------------------------------
   private:
+  //----------------------------------------------------------------------
+  // End project private variables/methods
+  //----------------------------------------------------------------------
+
+  //----------------------------------------------------------------------
+  // Project public variables/methods
+  //----------------------------------------------------------------------
   public:
+    //---------------------------------------------------------------
+    // Public variables
+    //---------------------------------------------------------------
     AllWindowSettings window_settings{};
     MenuAllowed menu_allowed{};
     // Project base directory
@@ -174,7 +200,33 @@ class Project
     // Relative paths to project sub-directories
     std::filesystem::path raw_data_dir{"Raw_Data"};
     std::filesystem::path working_data_dir{"Work"};
+    // Names of project specific files
+    // Project meta-data file
+    std::filesystem::path md_file{"project_md.msgpack"}; 
+    //---------------------------------------------------------------
+    // End Public variables
+    //---------------------------------------------------------------
+
+    //---------------------------------------------------------------
+    // Public methods
+    //---------------------------------------------------------------
+    // Give me a directory and I'll populate it with all the defaults
+    void create_new_project(std::filesystem::path new_base_dir);
+    // This should take the project file, not the directory
+    // Give me a directory and I'll load in the project information from the
+    // meta-data file
+    void load_project(std::filesystem::path md_full_path);
+    //---------------------------------------------------------------
+    // End public methods
+    //---------------------------------------------------------------
+
+  //----------------------------------------------------------------------
+  // End Project Public variables/methods
+  //----------------------------------------------------------------------
   };
+//------------------------------------------------------------------------
+// End Project class
+//------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 // End Class definitions
 //-----------------------------------------------------------------------------

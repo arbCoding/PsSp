@@ -763,7 +763,7 @@ void window_lowpass_options(ProgramStatus& program_status, WindowSettings& windo
       window_settings.is_set = true;
     }
 
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -815,7 +815,7 @@ void window_highpass_options(ProgramStatus& program_status, WindowSettings& wind
       window_settings.is_set = true;
     }
 
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -867,7 +867,7 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
       window_settings.is_set = true;
     }
 
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -1268,7 +1268,7 @@ void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_de
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     if (ImPlot::BeginPlot("Seismogram##"))
     {
       ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
@@ -1328,7 +1328,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     ImGui::Columns(2);
     if (ImPlot::BeginPlot("Real##"))
     {
@@ -1374,8 +1374,7 @@ void window_sac_header(ProgramStatus& program_status, WindowSettings& window_set
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     {
       if (!program_status.is_idle)
       {
@@ -1447,7 +1446,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     ImGui::TextUnformatted(welcome_message.data());
     ImGui::End();
   }
@@ -1483,7 +1482,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
       fps_tracker.current_interval = 0;
       fps_tracker.prev_time = fps_tracker.current_time;
     }
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     ImGui::Text("%i", static_cast<int>(fps_tracker.fps));
     ImGui::End();
   }
@@ -1509,7 +1508,7 @@ void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
+    ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -1641,6 +1640,11 @@ int main()
   // Default color for clearing the screen
   ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
   pssp::Project current_project{};
+  // IT WORKS! THAT TOOK WAY TOO LONG!
+  // Testing making a new proto-project
+  current_project.create_new_project(std::filesystem::current_path());
+  // Testing loading a new proto-project
+  current_project.load_project(std::filesystem::current_path() / current_project.md_file);
   pssp::fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
   pssp::AllFilterOptions af_settings{};
