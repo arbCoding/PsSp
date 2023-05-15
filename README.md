@@ -12,8 +12,8 @@ This is extremely early in development.
 
 It is now officially multi-threaded (11 May 2023)!
 
-User-projects are currently being prototyped. This will allow users to have distinct projects, that protect their original data sources,
-have a degree of safety (via auto-save), and keep user defined program settings.
+User-projects are currently being prototyped. This will allow users to have distinct projects that: 1) protect their original data sources,
+2) have a degree of crash-safety (via auto-save), and 3) keep user defined program settings (window locations, sizes, etc.).
 
 ---
 
@@ -53,7 +53,7 @@ work and be stuck trying to figure out what is wrong instead of making progress 
 
 ## ToDo
 
-See also the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is going on/planned.
+See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is going on/planned for the future.
 
 ---
 
@@ -106,7 +106,7 @@ brew install fftw glfw msgpack-cxx
 
 On Linux (Ubuntu 22.04, Debian based)
 ```shell
-sudo apt install libfftw3-dev libglfw3-dev
+sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev
 ```
 
 Next you need to clone this project and initialize the [submodules](submodules)

@@ -157,10 +157,14 @@ imgui_cxx += -isystem$(implot_dir)
 #------------------------------------------------------------------------------
 # Boost
 #------------------------------------------------------------------------------
-# Curerntly MacOS only as I need to install and test on Linux later
-boost_dir = /opt/homebrew/Cellar/boost/1.81.0_1/
-boost_inc = $(boost_dir)include/
-boost_lib = $(boost_dir)lib/
+ifeq ($(uname_s), Darwin)
+	boost_dir = /opt/homebrew/Cellar/boost/1.81.0_1/
+	boost_inc = $(boost_dir)include/
+	boost_lib = $(boost_dir)lib/
+else
+	boost_inc = /usr/include/
+	boost_lib = /usr/lib/x86_64-linux-gnu/
+endif
 boost_params = -I$(boost_inc) -L$(boost_lib)
 #------------------------------------------------------------------------------
 # End Boost
@@ -169,11 +173,14 @@ boost_params = -I$(boost_inc) -L$(boost_lib)
 #------------------------------------------------------------------------------
 # MessagePack
 #------------------------------------------------------------------------------
-# Currently MacOS only as I need to install and test on Linux later
-msgpack_dir = /opt/homebrew/Cellar/msgpack-cxx/6.0.0/
-msgpack_inc = $(msgpack_dir)include/
-msgpack_lib = $(msgpack_dir)lib/
-msgpack_params = -I$(msgpack_inc) -L$(msgpack_lib)
+ifeq ($(uname_s), Darwin)
+	msgpack_dir = /opt/homebrew/Cellar/msgpack-cxx/6.0.0/
+	msgpack_inc = $(msgpack_dir)include/
+	msgpack_lib = $(msgpack_dir)lib/
+	msgpack_params = -I$(msgpack_inc) -L$(msgpack_lib)
+else
+	msgpack_params =`pkg-config --cflags --libs msgpack` 
+endif
 #------------------------------------------------------------------------------
 # End MessagePack
 #------------------------------------------------------------------------------
