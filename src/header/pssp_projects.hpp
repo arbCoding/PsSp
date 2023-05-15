@@ -89,7 +89,7 @@ struct WindowSettings
   // Window title, '##' is used to prevent Dear ImGui crashes
   std::string title{"##"};
   // To allow msgpack to handle the components.
-  MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title);
+  MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title)
 };
 // Settings for all windows (except main menu bar and status bar)
 struct AllWindowSettings
@@ -123,7 +123,7 @@ struct AllWindowSettings
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options"};
   // File Dialog positions
   WindowSettings file_dialog{337, 150, 750, 450};
-  MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject);
+  MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject)
 };
 // Whether a certain menu is allow or not
 struct MenuAllowed
