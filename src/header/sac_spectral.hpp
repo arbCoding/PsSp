@@ -1,5 +1,5 @@
-#ifndef SAC_SPECTRAL_H
-#define SAC_SPECTRAL_H
+#ifndef SAC_SPECTRAL_HPP
+#define SAC_SPECTRAL_HPP
 
 // SAC::SacStream
 #include <sac_stream.hpp>

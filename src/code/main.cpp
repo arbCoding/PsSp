@@ -7,6 +7,8 @@
 #include "sac_spectral.hpp"
 // pssp::ThreadPool class
 #include "pssp_threadpool.hpp"
+// Undefined project related stuff (to be defined later upon implementation)
+#include "pssp_projects.hpp"
 // SAC::SacStream class
 #include <sac_stream.hpp>
 // Dear ImGui header and backends
@@ -19,6 +21,7 @@
 #include <implot.h>
 // GLFW graphical backend
 #include <GLFW/glfw3.h>
+#include <msgpack.hpp>
 // Standard Library stuff, https://en.cppreference.com/
 // std::cout, std::cerr
 #include <iostream>
@@ -50,63 +53,65 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Current Focus
+//-----------------------------------------------------------------------------
+// User projects, see ./src/header/pssp_projects.hpp and 
+// ./src/implementation/pssp_projects.cpp for details.
+//-----------------------------------------------------------------------------
+// End Current Focus
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // TODO
 //-----------------------------------------------------------------------------
-// Updated on 12 May 2023 (too lazy to renumber daily)
+// Updated on 15 May 2023 (too lazy to renumber daily)
 // 1) Bandreject filter
-// 2) Data doesn't necessarily need to reside in memory at all times
-//    Only need for processing/plotting/saving
-//    Therefore, should implement a function to read and store only sac-header
-//    information, and then read in data on the fly as needed.
-//    (Chunks of data being in memory is ideal, that way we have a buffer that
-//    acts basically like a sliding window for the I/O operations)
-// 3) Undo/redo (that won't be fun...)
-// 4) Projects (that won't be fun...) <- Important for data-safety and saving user
-//    settings
-// 5) Data-request/download from IRIS (or other server)
-// 6) Mapping of data
-// 7) Sorting of data in sac_deque
-//  7a) By filename
-//  7b) By component
-//  7c) By station
-//  7d) By event station distance
-//  7e) By azimuth/back-azimuth
-//  7f) By eventid
-//  7g) ???? Basically any header variable
-// 8) Geometric calculations (gcarc, az, baz, dist)
-// 9) 3C geometric calculations (rotate components)
-// 10) Batch filtering
-// 11) Manual arrival time picking
-// 12) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
-// 13) Spectrogram
-// 14) Grouping 3-component data
-// 15) Generic grouping of data (array, sub-array, station, event)
-// 16) Help menu
-// 17) Center windows functionality
-// 18) Overwrite layout functionality
-// 19) Advanced plots (record section, particle motion)
-// 20) Deconvolution (instrument response, source wavelet)
-//  20a) Spectral division with water-level
-//  20b) Spectral division with static shift
-//  20c) Iterative time-domain
-// 21) Reload all data
-// 22) Unload all data
-// 23) Data-processing logs (probably easier than doing projects...)
-// 24) Generic basic waveforms (for exploring effects of processing flow)
-//  24a) Dirac Delta function
-//  24b) Dirac Delta-comb function
-//  24c) Boxcar function
-//  24d) Triangle function
-//  24e) Gaussian
-//  24f) Sombrero function
-// 25) Keyboard shortcuts for common operations
-// 26) Tab-key navigation between components in window
-// 27) User note's log (can write their own notes on what they're doing)
-// 29) Datetime functionality
-// 30) Migrate all SAC stuff from floats to doubles (while maintaining read/write compatibility)
-// 31) Don't use std::cout or std::cerr, use exceptions and then try-catch blocks to
+// 2) Data-request/download from IRIS (or other server)
+// 3) Mapping of data (implot has a nifty map example code)
+// 4) Sorting of data in sac_deque
+//  4a) By filename
+//  4b) By component
+//  4c) By station
+//  4d) By event station distance
+//  4e) By azimuth/back-azimuth
+//  4f) By eventid
+//  4g) ???? Basically any header variable
+// 5) Geometric calculations (gcarc, az, baz, dist)
+// 6) 3C geometric calculations (rotate components)
+// 7) Manual arrival time picking
+// 8) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
+// 9) Spectrogram
+// 10) Grouping data
+//  10a) Three-component
+//  10b) Array/sub-array
+//  10c) Event
+//  10d) Manually via the user, can provide their own name
+// 11) Help menu
+// 12) Center windows functionality
+// 13) Overwrite layout functionality
+// 14) Advanced plots (record section, particle motion)
+// 15) Deconvolution (instrument response, source wavelet)
+//  15a) Spectral division with water-level
+//  15b) Spectral division with static shift
+//  15c) Iterative time-domain
+// 16) Reload all data
+// 17) Unload all data
+// 18) Data-processing logs (probably easier than doing projects...)
+// 19) Generic basic waveforms (for exploring effects of processing flow)
+//  19a) Dirac Delta function
+//  19b) Dirac Delta-comb function
+//  19c) Boxcar function
+//  19d) Triangle function
+//  19e) Gaussian
+//  19f) Sombrero function
+// 20) Keyboard shortcuts for common operations
+// 21) Tab-key navigation between components in window
+// 22) User note's log (can write their own notes on what they're doing)
+// 23) Datetime functionality
+// 24) Migrate all SAC stuff from floats to doubles (while maintaining read/write compatibility)
+// 25) Don't use std::cout or std::cerr, use exceptions and then try-catch blocks to
 //    check for exceptions
-// 32) Plotting appropriately down-sampled seismograms
+// 26) Plotting appropriately down-sampled seismograms
 //    The plot window has a width in pixels, there is no need to show with a >1 ratio of
 //    data-points to pixels (literally couldn't see the difference)
 //    The xlimits on the window tell us how much of our data is shown, if the data/pixel
@@ -123,25 +128,26 @@
 //    So those frames are dropping for stuff I can't even see anyway!
 //    We'll need to make sure the plotted data is within the plot-frame plus a bit extra on each side
 //    if data exists there, we'll also need to shift it into the correct place
-// 33) Currently, the way to prevent crashing when processing is happening is to hide the
+// 27) Currently, the way to prevent crashing when processing is happening is to hide the
 //    "Sac List" window. The reason it to prevent the user selecting data that is not accessible yet.
 //    I would prefer to gray-out the window and make the options non-selectable during processing.
-// 34) FFTW is not thread-safe. It seems to have the possibility to be thread-safe if compiled with the
+// 28) FFTW is not thread-safe. It seems to have the possibility to be thread-safe if compiled with the
 //    correct flag. Because on MacOS I use the default provided by homebrew, I don't have that.
 //    Either I should look into an FFT library that is thread-safe or streamline compiling FFTW as thread-safe.
-// 34a) It may not be necessary, performing bandpass (FFT + gain calculation + IFFT) on 700 files on a single-thread
+//  28a) It may not be necessary, performing bandpass (FFT + gain calculation + IFFT) on 700 files on a single-thread
 //    using FFTW takes about as long as reading in those 700 files across 7 threads. I suspect this will be a bit
 //    more awkward on a more powerful machine?
 //    On my Linux machine, reading 700 files takes ~2-3 seconds, doing a bandpass on them all is about 10 seconds
 //    On my Mac laptop, reading 700 files takes ~12 seconds, doing a bandpass on them all is about 11 seconds
-// 35) An FFTW plan pool may make it possible to use FFTW in a multi-threaded capacity without needing its
+//  28b) An FFTW plan pool may make it possible to use FFTW in a multi-threaded capacity without needing its
 //    thread-safe compilation pattern (which they advocate against using: https://www.fftw.org/fftw3_doc/Thread-safety.html)
 //    Idea is to have a pool of plans for different sized input vector.
 //    If a vector needs one of a size that doesn't exist, it gets created.
 //    If a vector needs one that does exist, if it is unused it takes it, otherwise it waits for it to be free.
 //    At the end, all plans get destroyed. It reduces the overhead of repeatidly creating/destroying plans
 //    and makes it thread-safe.
-// 36) Possibly a wrapper class for FFTW, maybe that'll make it actually thread-safe...
+//  28c) Possibly a wrapper class for FFTW, maybe that'll make it actually thread-safe...
+// 29) Program logging.
 //-----------------------------------------------------------------------------
 // End TODO
 //-----------------------------------------------------------------------------
@@ -182,78 +188,9 @@ struct ProgramStatus
   // Our thread pool
   ThreadPool thread_pool{};
 };
-// Per window settings
-struct WindowSettings
-{
-  // X position (left to right)
-  int pos_x{};
-  // Y position (top to bottom)
-  int pos_y{};
-  int width{};
-  int height{}; 
-  bool show{true};
-  // if false, position and size get set
-  bool is_set{false};
-};
-// Settings for all windows
-struct AllWindowSettings
-{
-  // Window with welcome message
-  WindowSettings welcome_settings{395, 340, 525, 60};
-  // FPS tracker window
-  WindowSettings fps_settings{1, 756, 60, 55, false};
-  // Header info for a single SAC file
-  WindowSettings sac_header_settings{1, 25, 285, 730, false};
-  // Plot of a single sac file (time-series only)
-  WindowSettings sac_1c_plot_settings{287, 25, 1150, 340, false};
-  // Plot real/imag spectrum of SAC file
-  WindowSettings sac_1c_spectrum_plot_settings{288, 368, 1150, 340, false};
-  // List of sac_1c's, allows user to select specific one in memory
-  WindowSettings sac_deque_settings{287, 709, 347, 135, false};
-  // Small window providing access to lowpass filter options
-  WindowSettings sac_lp_options_settings{508, 297, 231, 120, false};
-  // Small window providing access to highpass filter options
-  WindowSettings sac_hp_options_settings{508, 297, 231, 120, false};
-  // Small window providing access to bandpass filter options
-  WindowSettings sac_bp_options_settings{508, 297, 276, 148, false};
-  // File Dialog positions
-  WindowSettings file_dialog_settings{337, 150, 750, 450};
-};
 // Settings for menu options
 // Defines is a menu option is enabled or disabled (separate from whether
 // a window is shown or hidden)
-struct AllMenuSettings
-{
-  bool file_menu{true};
-  bool open_1c{false};
-  bool open_dir{false};
-  bool save_1c{false};
-  bool exit{true};
-  bool edit_menu{false};
-  bool undo{false};
-  bool redo{false};
-  bool project_menu{false};
-  bool options_menu{false};
-  bool window_menu{true};
-  bool center_windows{false};
-  bool save_layout{false};
-  bool reset_windows{true};
-  bool welcome{true};
-  bool fps{true};
-  bool sac_header{false};
-  bool plot_1c{false};
-  bool plot_spectrum_1c{false};
-  bool sac_deque{false};
-  bool processing_menu{false};
-  bool rmean{false};
-  bool rtrend{false};
-  bool lowpass{false};
-  bool highpass{false};
-  bool bandpass{false};
-  bool bandreject{false};
-  bool picking_menu{false};
-  bool batch_menu{false};
-};
 // Struct for handling fps tracking info
 struct fps_info
 { 
@@ -826,7 +763,7 @@ void window_lowpass_options(ProgramStatus& program_status, WindowSettings& windo
       window_settings.is_set = true;
     }
 
-    ImGui::Begin("Lowpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -878,7 +815,7 @@ void window_highpass_options(ProgramStatus& program_status, WindowSettings& wind
       window_settings.is_set = true;
     }
 
-    ImGui::Begin("Highpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -930,7 +867,7 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
       window_settings.is_set = true;
     }
 
-    ImGui::Begin("Bandpass Options##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -976,7 +913,7 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
 //------------------------------------------------------------------------
 // Main menu bar
 //------------------------------------------------------------------------
-void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, AllMenuSettings& am_settings,
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
                    AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
 {
   // Just to get rid of unused for now...
@@ -984,9 +921,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
   sac_1c sac{};
   ImGui::BeginMainMenuBar();
   // File menu
-  if (ImGui::BeginMenu("File##", am_settings.file_menu))
+  if (ImGui::BeginMenu("File##", menu_allowed.file_menu))
   {
-    if (ImGui::MenuItem("Open 1C##", nullptr, nullptr, am_settings.open_1c))
+    if (ImGui::MenuItem("Open 1C##", nullptr, nullptr, menu_allowed.open_1c))
     {
       ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
     }
@@ -994,7 +931,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("Read a single SAC-file");
     }
-    if (ImGui::MenuItem("Open Dir##", nullptr, nullptr, am_settings.open_dir))
+    if (ImGui::MenuItem("Open Dir##", nullptr, nullptr, menu_allowed.open_dir))
     {
       ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, ".", ImGuiFileDialogFlags_Modal);
     }
@@ -1003,7 +940,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       ImGui::SetTooltip("Read a directory full of SAC-files");
     }
     ImGui::Separator();
-    if (ImGui::MenuItem("Save 1C##", nullptr, nullptr, am_settings.save_1c))
+    if (ImGui::MenuItem("Save 1C##", nullptr, nullptr, menu_allowed.save_1c))
     {
       ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
     }
@@ -1011,16 +948,16 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("Save a single SAC-file");
     }
-    if (ImGui::MenuItem("Exit##", nullptr, nullptr, am_settings.exit))
+    if (ImGui::MenuItem("Exit##", nullptr, nullptr, menu_allowed.exit))
     {
       glfwSetWindowShouldClose(window, true);
     }
     ImGui::EndMenu();
   }
   // Edit menu
-  if (ImGui::BeginMenu("Edit##", am_settings.edit_menu))
+  if (ImGui::BeginMenu("Edit##", menu_allowed.edit_menu))
   {
-    if (ImGui::MenuItem("Undo##", nullptr, nullptr, am_settings.undo))
+    if (ImGui::MenuItem("Undo##", nullptr, nullptr, menu_allowed.undo))
     {
       // To be implemented at some point
     }
@@ -1028,7 +965,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("Not implemented");
     }
-    if (ImGui::MenuItem("Redo##", nullptr, nullptr, am_settings.redo))
+    if (ImGui::MenuItem("Redo##", nullptr, nullptr, menu_allowed.redo))
     {
       // TO be implemented at some point
     }
@@ -1042,21 +979,21 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
   // Eventually projects will be supported
   // That will involve keeping track of files, actions, etc.
   // Place-holder for now as a promise and reminder of my intentions
-  if (ImGui::BeginMenu("Project##", am_settings.project_menu))
+  if (ImGui::BeginMenu("Project##", menu_allowed.project_menu))
   {
     ImGui::EndMenu();
   }
   // Options Menu
   // Changing fonts, their sizes, etc.
-  if (ImGui::BeginMenu("Options##", am_settings.options_menu))
+  if (ImGui::BeginMenu("Options##", menu_allowed.options_menu))
   {
     ImGui::EndMenu();
   }
   // Window menu
-  if (ImGui::BeginMenu("Window##", am_settings.window_menu))
+  if (ImGui::BeginMenu("Window##", menu_allowed.window_menu))
   {
     // Bring all windows to the center incase the layout got borked
-    if (ImGui::MenuItem("Center Windows##", nullptr, nullptr, am_settings.center_windows))
+    if (ImGui::MenuItem("Center Windows##", nullptr, nullptr, menu_allowed.center_windows))
     {
       // To be implemented at some point
     }
@@ -1065,7 +1002,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       ImGui::SetTooltip("Center ALL windows. Not yet implemented");
     }
     // Change the default layout, if the user wants that
-    if (ImGui::MenuItem("Save Layout##", nullptr, nullptr, am_settings.save_layout))
+    if (ImGui::MenuItem("Save Layout##", nullptr, nullptr, menu_allowed.save_layout))
     {
       // To be implemented at some point
     }
@@ -1074,62 +1011,62 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       ImGui::SetTooltip("Save current window layout as new default. Not yet implemented");
     }
     // Reset window positions incase something got lost
-    if (ImGui::MenuItem("Reset Windows##", nullptr, nullptr, am_settings.reset_windows))
+    if (ImGui::MenuItem("Reset Windows##", nullptr, nullptr, menu_allowed.reset_windows))
     {
-      allwindow_settings.welcome_settings.is_set = false;
-      allwindow_settings.fps_settings.is_set = false;
-      allwindow_settings.sac_header_settings.is_set = false;
-      allwindow_settings.sac_1c_plot_settings.is_set = false;
-      allwindow_settings.sac_1c_spectrum_plot_settings.is_set = false;
-      allwindow_settings.sac_deque_settings.is_set = false;
-      allwindow_settings.sac_lp_options_settings.is_set = false;
-      allwindow_settings.sac_hp_options_settings.is_set = false;
-      allwindow_settings.sac_bp_options_settings.is_set = false;
+      allwindow_settings.welcome.is_set = false;
+      allwindow_settings.fps.is_set = false;
+      allwindow_settings.header.is_set = false;
+      allwindow_settings.plot_1c.is_set = false;
+      allwindow_settings.spectrum_1c.is_set = false;
+      allwindow_settings.sac_files.is_set = false;
+      allwindow_settings.lowpass.is_set = false;
+      allwindow_settings.highpass.is_set = false;
+      allwindow_settings.bandpass.is_set = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Reset all windows to default position and size");
     }
     ImGui::Separator();
-    if (ImGui::MenuItem("Welcome##", nullptr, nullptr, am_settings.welcome))
+    if (ImGui::MenuItem("Welcome##", nullptr, nullptr, menu_allowed.welcome))
     {
-      allwindow_settings.welcome_settings.show = true;
+      allwindow_settings.welcome.show = true;
     }
-    if (ImGui::MenuItem("FPS Tracker##", nullptr, nullptr, am_settings.fps))
+    if (ImGui::MenuItem("FPS Tracker##", nullptr, nullptr, menu_allowed.fps))
     {
-      allwindow_settings.fps_settings.show = true;
+      allwindow_settings.fps.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Frames Per Second display");
     }
-    if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, am_settings.sac_header))
+    if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, menu_allowed.sac_header))
     {
-      allwindow_settings.sac_header_settings.show = true;
+      allwindow_settings.header.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Displays SAC header values");
     }
-    if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, am_settings.plot_1c))
+    if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, menu_allowed.plot_1c))
     {
-      allwindow_settings.sac_1c_plot_settings.show = true;
+      allwindow_settings.plot_1c.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("1-component SAC plot");
     }
-    if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, am_settings.plot_spectrum_1c))
+    if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, menu_allowed.plot_spectrum_1c))
     {
-      allwindow_settings.sac_1c_spectrum_plot_settings.show = true;
+      allwindow_settings.spectrum_1c.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("1-component SAC spectrogram (real/imaginary) plot");
     }
-    if (ImGui::MenuItem("Sac List##", nullptr, nullptr, (am_settings.sac_deque && program_status.is_idle)))
+    if (ImGui::MenuItem("Sac List##", nullptr, nullptr, (menu_allowed.sac_deque && program_status.is_idle)))
     {
-      allwindow_settings.sac_deque_settings.show = true;
+      allwindow_settings.sac_files.show = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1138,7 +1075,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     ImGui::EndMenu();
   }
   // Open File Dialog (single SAC)
-  ImVec2 maxSize = ImVec2(allwindow_settings.file_dialog_settings.width * 1.5, allwindow_settings.file_dialog_settings.height * 1.5);
+  ImVec2 maxSize = ImVec2(allwindow_settings.file_dialog.width * 1.5, allwindow_settings.file_dialog.height * 1.5);
   ImVec2 minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
   {
@@ -1174,9 +1111,9 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     ImGuiFileDialog::Instance()->Close();
   }
-  if (ImGui::BeginMenu("Processing##", am_settings.processing_menu))
+  if (ImGui::BeginMenu("Processing##", menu_allowed.processing_menu))
   {
-    if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, am_settings.rmean))
+    if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
       program_status.fileio.is_processing = true;
@@ -1188,7 +1125,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("Remove mean value from active data.");
     }
-    if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, am_settings.rtrend))
+    if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
       program_status.fileio.is_processing = true;
@@ -1201,40 +1138,40 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       ImGui::SetTooltip("Remove linear trend from active data.");
     }
     ImGui::Separator();
-    if (ImGui::MenuItem("Lowpass##", nullptr, nullptr, am_settings.lowpass))
+    if (ImGui::MenuItem("Lowpass##", nullptr, nullptr, menu_allowed.lowpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = true;
-      allwindow_settings.sac_hp_options_settings.show = false;
-      allwindow_settings.sac_bp_options_settings.show = false;
+      allwindow_settings.lowpass.show = true;
+      allwindow_settings.highpass.show = false;
+      allwindow_settings.bandpass.show = false;
       af_settings.lowpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Lowpass filter active data.");
     }
-    if (ImGui::MenuItem("Highpass##", nullptr, nullptr, am_settings.highpass))
+    if (ImGui::MenuItem("Highpass##", nullptr, nullptr, menu_allowed.highpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = false;
-      allwindow_settings.sac_hp_options_settings.show = true;
-      allwindow_settings.sac_bp_options_settings.show = false;
+      allwindow_settings.lowpass.show = false;
+      allwindow_settings.highpass.show = true;
+      allwindow_settings.bandpass.show = false;
       af_settings.highpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Highpass filter active data.");
     }
-    if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, am_settings.bandpass))
+    if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, menu_allowed.bandpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = false;
-      allwindow_settings.sac_hp_options_settings.show = false;
-      allwindow_settings.sac_bp_options_settings.show = true;
+      allwindow_settings.lowpass.show = false;
+      allwindow_settings.highpass.show = false;
+      allwindow_settings.bandpass.show = true;
       af_settings.bandpass.apply_batch = false;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Bandpass filter active data.");
     }
-    if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, am_settings.bandreject))
+    if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, menu_allowed.bandreject))
     {
       // To be implemented later
     }
@@ -1244,13 +1181,13 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     }
     ImGui::EndMenu();
   }
-  if (ImGui::BeginMenu("Picking##", am_settings.picking_menu))
+  if (ImGui::BeginMenu("Picking##", menu_allowed.picking_menu))
   {
     ImGui::EndMenu();
   }
-  if (ImGui::BeginMenu("Batch##", am_settings.batch_menu)) // testing disabling a menu
+  if (ImGui::BeginMenu("Batch##", menu_allowed.batch_menu)) // testing disabling a menu
   {
-    if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, am_settings.rmean))
+    if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
       program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status), std::ref(sac_deque));
@@ -1259,7 +1196,7 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
     {
       ImGui::SetTooltip("Remove mean value from all data.");
     }
-    if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, am_settings.rtrend))
+    if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
     {
       std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
       program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status), std::ref(sac_deque));
@@ -1269,40 +1206,40 @@ void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, Al
       ImGui::SetTooltip("Remove trend value from all data.");
     }
     ImGui::Separator();
-    if (ImGui::MenuItem("Lowpass##", nullptr, nullptr, am_settings.lowpass))
+    if (ImGui::MenuItem("Lowpass##", nullptr, nullptr, menu_allowed.lowpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = true;
-      allwindow_settings.sac_hp_options_settings.show = false;
-      allwindow_settings.sac_bp_options_settings.show = false;
+      allwindow_settings.lowpass.show = true;
+      allwindow_settings.highpass.show = false;
+      allwindow_settings.bandpass.show = false;
       af_settings.lowpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Lowpass filter all data. Not implemented");
     }
-    if (ImGui::MenuItem("Highpass##", nullptr, nullptr, am_settings.highpass))
+    if (ImGui::MenuItem("Highpass##", nullptr, nullptr, menu_allowed.highpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = false;
-      allwindow_settings.sac_hp_options_settings.show = true;
-      allwindow_settings.sac_bp_options_settings.show = false;
+      allwindow_settings.lowpass.show = false;
+      allwindow_settings.highpass.show = true;
+      allwindow_settings.bandpass.show = false;
       af_settings.highpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Highpass filter all data. Not implemented");
     }
-    if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, am_settings.bandpass))
+    if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, menu_allowed.bandpass))
     {
-      allwindow_settings.sac_lp_options_settings.show = false;
-      allwindow_settings.sac_hp_options_settings.show = false;
-      allwindow_settings.sac_bp_options_settings.show = true;
+      allwindow_settings.lowpass.show = false;
+      allwindow_settings.highpass.show = false;
+      allwindow_settings.bandpass.show = true;
       af_settings.bandpass.apply_batch = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
       ImGui::SetTooltip("Butterworth Bandpass filter all data. Not implemented");
     }
-    if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, am_settings.bandreject))
+    if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, menu_allowed.bandreject))
     {
       // To be implemented later
     }
@@ -1331,7 +1268,7 @@ void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_de
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin("Sac Plot##", &window_settings.show);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     if (ImPlot::BeginPlot("Seismogram##"))
     {
       ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
@@ -1391,7 +1328,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin("Spectrum##", &window_settings.show);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     ImGui::Columns(2);
     if (ImPlot::BeginPlot("Real##"))
     {
@@ -1438,7 +1375,7 @@ void window_sac_header(ProgramStatus& program_status, WindowSettings& window_set
       window_settings.is_set = true;
     }
 
-    ImGui::Begin("Sac Header##", &window_settings.show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     {
       if (!program_status.is_idle)
       {
@@ -1510,7 +1447,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin(" ", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     ImGui::TextUnformatted(welcome_message.data());
     ImGui::End();
   }
@@ -1546,7 +1483,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
       fps_tracker.current_interval = 0;
       fps_tracker.prev_time = fps_tracker.current_time;
     }
-    ImGui::Begin("FPS##", &window_settings.show, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     ImGui::Text("%i", static_cast<int>(fps_tracker.fps));
     ImGui::End();
   }
@@ -1558,9 +1495,9 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
-  WindowSettings& window_settings = aw_settings.sac_deque_settings;
+  WindowSettings& window_settings = aw_settings.sac_files;
   std::string option{};
   //if (window_settings.show && program_status.is_idle)
   if (window_settings.show && program_status.is_idle)
@@ -1572,7 +1509,7 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
       ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
       window_settings.is_set = true;
     }
-    ImGui::Begin("Sac List##", &window_settings.show);
+    ImGui::Begin(window_settings.title.data(), &window_settings.show, window_settings.img_flags);
     if (!program_status.is_idle)
     {
       ImGui::BeginDisabled();
@@ -1588,7 +1525,7 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
       // Right-click menu
       if (ImGui::BeginPopupContextItem((std::string("Context Menu##") + std::to_string(i)).c_str()))
       {
-        if (ImGui::MenuItem("Save##", nullptr, nullptr, am_settings.save_1c))
+        if (ImGui::MenuItem("Save##", nullptr, nullptr, menu_allowed.save_1c))
         {
           selected = i;
         }
@@ -1618,34 +1555,34 @@ void window_sac_deque(AllWindowSettings& aw_settings, AllMenuSettings& am_settin
         {
           ImGui::SetTooltip("Reload the original SAC file");
         }
-        if (ImGui::MenuItem("LowPass##", nullptr, nullptr, am_settings.lowpass))
+        if (ImGui::MenuItem("LowPass##", nullptr, nullptr, menu_allowed.lowpass))
         {
           selected = i;
-          aw_settings.sac_lp_options_settings.show = true;
-          aw_settings.sac_hp_options_settings.show = false;
-          aw_settings.sac_bp_options_settings.show = false;
+          aw_settings.lowpass.show = true;
+          aw_settings.highpass.show = false;
+          aw_settings.bandpass.show = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         {
           ImGui::SetTooltip("Butterworth lowpass filter");
         }
-        if (ImGui::MenuItem("HighPass##", nullptr, nullptr, am_settings.highpass))
+        if (ImGui::MenuItem("HighPass##", nullptr, nullptr, menu_allowed.highpass))
         {
           selected = i;
-          aw_settings.sac_lp_options_settings.show = false;
-          aw_settings.sac_hp_options_settings.show = true;
-          aw_settings.sac_bp_options_settings.show = false;
+          aw_settings.lowpass.show = false;
+          aw_settings.highpass.show = true;
+          aw_settings.bandpass.show = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         {
           ImGui::SetTooltip("Butterworth highpass filter");
         }
-        if (ImGui::MenuItem("BandPass##", nullptr, nullptr, am_settings.bandpass))
+        if (ImGui::MenuItem("BandPass##", nullptr, nullptr, menu_allowed.bandpass))
         {
           selected = i;
-          aw_settings.sac_lp_options_settings.show = false;
-          aw_settings.sac_hp_options_settings.show = false;
-          aw_settings.sac_bp_options_settings.show = true;
+          aw_settings.lowpass.show = false;
+          aw_settings.highpass.show = false;
+          aw_settings.bandpass.show = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         {
@@ -1703,10 +1640,9 @@ int main()
   //---------------------------------------------------------------------------
   // Default color for clearing the screen
   ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
+  pssp::Project current_project{};
   pssp::fps_info fps_tracker{};
   std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
-  pssp::AllWindowSettings aw_settings{};
-  pssp::AllMenuSettings am_settings{};
   pssp::AllFilterOptions af_settings{};
   pssp::ProgramStatus program_status{};
   // Time-series
@@ -1732,24 +1668,24 @@ int main()
     // Start the frame
     pssp::prep_newframe();
     pssp::status_bar(program_status);
-    pssp::main_menu_bar(window, aw_settings, am_settings, af_settings, program_status, sac_deque, active_sac);
+    pssp::main_menu_bar(window, current_project.window_settings, current_project.menu_allowed, af_settings, program_status, sac_deque, active_sac);
     // Show the Welcome window if appropriate
-    pssp::window_welcome(aw_settings.welcome_settings, welcome_message);
+    pssp::window_welcome(current_project.window_settings.welcome, welcome_message);
     pssp::update_fps(fps_tracker, io);
     // Show the FPS window if appropriate
-    pssp::window_fps(fps_tracker, aw_settings.fps_settings);
+    pssp::window_fps(fps_tracker, current_project.window_settings.fps);
     // Doesn't matter if files are in the sac_deque or not
     {
       std::shared_lock<std::shared_mutex> lock_program(program_status.program_mutex);
       if (program_status.is_idle)
       {
-        am_settings.open_1c = true;
-        am_settings.open_dir = true;
+        current_project.menu_allowed.open_1c = true;
+        current_project.menu_allowed.open_dir = true;
       }
       else
       {
-        am_settings.open_1c = false;
-        am_settings.open_dir = false;
+        current_project.menu_allowed.open_1c = false;
+        current_project.menu_allowed.open_dir = false;
       }
     }
     // Only if there are files in the sac_deque
@@ -1760,45 +1696,45 @@ int main()
         std::shared_lock<std::shared_mutex> lock_program(program_status.program_mutex);
         if (program_status.is_idle)
         {
-          am_settings.save_1c = true;
-          am_settings.batch_menu = true;
-          am_settings.processing_menu = true;
-          am_settings.lowpass = true;
-          am_settings.highpass = true;
-          am_settings.bandpass = true;
-          am_settings.rmean = true;
-          am_settings.rtrend = true;
+          current_project.menu_allowed.save_1c = true;
+          current_project.menu_allowed.batch_menu = true;
+          current_project.menu_allowed.processing_menu = true;
+          current_project.menu_allowed.lowpass = true;
+          current_project.menu_allowed.highpass = true;
+          current_project.menu_allowed.bandpass = true;
+          current_project.menu_allowed.rmean = true;
+          current_project.menu_allowed.rtrend = true;
         }
         else
         {
-          am_settings.save_1c = false;
-          am_settings.batch_menu = false;
-          am_settings.processing_menu = false;
-          am_settings.lowpass = false;
-          am_settings.highpass = false;
-          am_settings.bandpass = false;
-          am_settings.rmean = false;
-          am_settings.rtrend = false;
+          current_project.menu_allowed.save_1c = false;
+          current_project.menu_allowed.batch_menu = false;
+          current_project.menu_allowed.processing_menu = false;
+          current_project.menu_allowed.lowpass = false;
+          current_project.menu_allowed.highpass = false;
+          current_project.menu_allowed.bandpass = false;
+          current_project.menu_allowed.rmean = false;
+          current_project.menu_allowed.rtrend = false;
         }
       }
       // Allow menu options that require sac files
-      am_settings.sac_deque = true;
-      am_settings.sac_header = true;
-      am_settings.plot_1c = true;
-      am_settings.plot_spectrum_1c = true;
+      current_project.menu_allowed.sac_deque = true;
+      current_project.menu_allowed.sac_header = true;
+      current_project.menu_allowed.plot_1c = true;
+      current_project.menu_allowed.plot_spectrum_1c = true;
       // This fixes the issue of deleting all sac_1cs in the deque
       // loading new ones, and then trying to access the -1 element
       if (active_sac < 0)
       {
         active_sac = 0;
       }
-      pssp::window_sac_header(program_status, aw_settings.sac_header_settings, sac_deque[active_sac]);
+      pssp::window_sac_header(program_status, current_project.window_settings.header, sac_deque[active_sac]);
       // Show the Sac Plot window if appropriate
-      pssp::window_plot_sac(aw_settings.sac_1c_plot_settings, sac_deque, active_sac);
+      pssp::window_plot_sac(current_project.window_settings.plot_1c, sac_deque, active_sac);
       // Show the Sac Spectrum window if appropriate
       // We need to see if the FFT needs to be calculated (don't want to do it
       // every frame)
-      if (aw_settings.sac_1c_spectrum_plot_settings.show)
+      if (current_project.window_settings.spectrum_1c.show)
       {
         bool compare_names{true};
         {
@@ -1813,28 +1749,28 @@ int main()
         }
       }
       // Finally plot the spectrum
-      pssp::window_plot_spectrum(aw_settings.sac_1c_spectrum_plot_settings, spectrum);
+      pssp::window_plot_spectrum(current_project.window_settings.spectrum_1c, spectrum);
       // Show the Sac List window if appropriate
-      pssp::window_sac_deque(aw_settings, am_settings, program_status, sac_deque, spectrum, active_sac, clear_sac);
-      pssp::window_lowpass_options(program_status, aw_settings.sac_lp_options_settings, af_settings.lowpass);
-      pssp::window_highpass_options(program_status, aw_settings.sac_hp_options_settings, af_settings.highpass);
-      pssp::window_bandpass_options(program_status, aw_settings.sac_bp_options_settings, af_settings.bandpass);
+      pssp::window_sac_deque(current_project.window_settings, current_project.menu_allowed, program_status, sac_deque, spectrum, active_sac, clear_sac);
+      pssp::window_lowpass_options(program_status, current_project.window_settings.lowpass, af_settings.lowpass);
+      pssp::window_highpass_options(program_status, current_project.window_settings.highpass, af_settings.highpass);
+      pssp::window_bandpass_options(program_status, current_project.window_settings.bandpass, af_settings.bandpass);
     }
     else
     {
       // Disallow menu options that require sac files
-      am_settings.save_1c = false;
-      am_settings.sac_deque = false;
-      am_settings.sac_header = false;
-      am_settings.plot_1c = false;
-      am_settings.plot_spectrum_1c = false;
-      am_settings.processing_menu = false;
-      am_settings.lowpass = false;
-      am_settings.highpass = false;
-      am_settings.bandpass = false;
-      am_settings.rmean = false;
-      am_settings.rtrend = false;
-      am_settings.batch_menu = false;
+      current_project.menu_allowed.save_1c = false;
+      current_project.menu_allowed.sac_deque = false;
+      current_project.menu_allowed.sac_header = false;
+      current_project.menu_allowed.plot_1c = false;
+      current_project.menu_allowed.plot_spectrum_1c = false;
+      current_project.menu_allowed.processing_menu = false;
+      current_project.menu_allowed.lowpass = false;
+      current_project.menu_allowed.highpass = false;
+      current_project.menu_allowed.bandpass = false;
+      current_project.menu_allowed.rmean = false;
+      current_project.menu_allowed.rtrend = false;
+      current_project.menu_allowed.batch_menu = false;
       spectrum.file_name = "";
     }
     // Finish the frame

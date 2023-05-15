@@ -1,5 +1,5 @@
-#ifndef PSSP_THREAD_POOL_H
-#define PSSP_THREAD_POOL_H
+#ifndef PSSP_THREAD_POOL_HPP
+#define PSSP_THREAD_POOL_HPP
 
 // std::thread
 #include <thread>

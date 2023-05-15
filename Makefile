@@ -155,6 +155,30 @@ imgui_cxx += -isystem$(implot_dir)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Boost
+#------------------------------------------------------------------------------
+# Curerntly MacOS only as I need to install and test on Linux later
+boost_dir = /opt/homebrew/Cellar/boost/1.81.0_1/
+boost_inc = $(boost_dir)include/
+boost_lib = $(boost_dir)lib/
+boost_params = -I$(boost_inc) -L$(boost_lib)
+#------------------------------------------------------------------------------
+# End Boost
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# MessagePack
+#------------------------------------------------------------------------------
+# Currently MacOS only as I need to install and test on Linux later
+msgpack_dir = /opt/homebrew/Cellar/msgpack-cxx/6.0.0/
+msgpack_inc = $(msgpack_dir)include/
+msgpack_lib = $(msgpack_dir)lib/
+msgpack_params = -I$(msgpack_inc) -L$(msgpack_lib)
+#------------------------------------------------------------------------------
+# End MessagePack
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Include my headers
 #------------------------------------------------------------------------------
 # Compilation command with inclusion of my headers
@@ -268,7 +292,7 @@ PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o 
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
-	$(imgui_cxx) -I$(hdr_prefix) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params)
+	$(imgui_cxx) -I$(hdr_prefix) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params) $(boost_params) $(msgpack_params)
 	@test imgui.ini && rm -f imgui.ini
 	@echo -e "Build finish: $$(date)\n"
 

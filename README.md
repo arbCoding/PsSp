@@ -12,6 +12,9 @@ This is extremely early in development.
 
 It is now officially multi-threaded (11 May 2023)!
 
+User-projects are currently being prototyped. This will allow users to have distinct projects, that protect their original data sources,
+have a degree of safety (via auto-save), and keep user defined program settings.
+
 ---
 
 ## Project Goals
@@ -52,30 +55,12 @@ work and be stuck trying to figure out what is wrong instead of making progress 
 
 See also the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is going on/planned.
 
-- [X] Read single SAC file
-- [X] Display SAC header information
-- [X] Plot 1-component Seismogram
-- [X] Read many 1-component seismograms
-- [X] Remove seismograms from list/memory
-- [X] Right-click context menu on sac-files in memory
-- [ ] Read 3-component Seismic data (3 SAC files)
-- [ ] Plot 3-component Seismic data
-- [ ] Read Array seismic data (3-component SAC files)
-- [ ] Display event epicenter on map (excellent example [here](https://github.com/epezent/implot_demos/blob/master/demos/maps.cpp))
-- [ ] Display station/array positions on map
-- [ ] Instrument response removal
-- [ ] Filtering (1 or many)
-- [ ] Record section plotting (many stations)
-- [ ] Plot spectrogram
-- [ ] Plot Spectrum
-- [ ] In the distant future, use [OpenCL](https://www.khronos.org/api/opencl) to use GPU computation to speed-up vectorizable tasks (FFT/IFFT).
-
 ---
 
 ## Dependencies
 
-The only dependencies that are **NOT** handled automatically are FFTW3, GLFW3, and OpenGL3.
-I provide information on installing them on MacOS and Linux [here](#compilation-instructions).
+Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice
+or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
 
 The other dependencies are setup as Git submodules and handled automatically.
 
@@ -98,6 +83,10 @@ Info on dependencies:
     * This is a graphical backend for the GUI.
  * [FFTW3](https://www.fftw.org/)
     * This is necessary for spectral functionality (FFT, IFFT).
+ * [MessagePack](https://msgpack.org/)
+    * Provides data-serialization, for user project settings.
+ * [Boost](https://www.boost.org/)
+    * Required by MessagePack
 
 ---
 
@@ -112,7 +101,7 @@ to setup your compilation environment on Windows.
 
 On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
 ```shell
-brew install fftw glfw
+brew install fftw glfw msgpack-cxx
 ```
 
 On Linux (Ubuntu 22.04, Debian based)
