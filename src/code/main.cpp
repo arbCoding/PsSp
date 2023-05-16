@@ -914,7 +914,7 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
 // Main menu bar
 //------------------------------------------------------------------------
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-                   AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
+AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
 {
   // Just to get rid of unused for now...
   (void) program_status;
@@ -1494,7 +1494,8 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
+ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
   WindowSettings& window_settings = aw_settings.sac_files;
   std::string option{};
@@ -1779,6 +1780,9 @@ int main()
     }
     // Finish the frame
     pssp::finish_newframe(window, clear_color);
+    //-------------------------------------------------------------------------
+    // Queue Filtering tasks
+    //-------------------------------------------------------------------------
     // Queue up filters if required
     if (af_settings.lowpass.apply_filter)
     {
@@ -1835,6 +1839,9 @@ int main()
     {
       // Not yet implemented
     }
+    //-------------------------------------------------------------------------
+    // End Queue Filtering tasks
+    //-------------------------------------------------------------------------
   }
   //---------------------------------------------------------------------------
   // End draw loop

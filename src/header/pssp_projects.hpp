@@ -1,6 +1,9 @@
 #ifndef PSSP_PROJECTS_HPP
 #define PSSP_PROJECTS_HPP
 
+//-----------------------------------------------------------------------------
+// Include statements
+//-----------------------------------------------------------------------------
 // Dear ImGui header
 #include <imgui.h>
 // MessagePack, https://msgpack.org/
@@ -14,6 +17,9 @@
 #include <string>
 // std::cout
 #include <iostream>
+//-----------------------------------------------------------------------------
+// End Include statements
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // Description
@@ -212,9 +218,7 @@ class Project
     //---------------------------------------------------------------
     // Give me a directory and I'll populate it with all the defaults
     void create_new_project(std::filesystem::path new_base_dir);
-    // This should take the project file, not the directory
-    // Give me a directory and I'll load in the project information from the
-    // meta-data file
+    // Give me a project file and I'll load in the project information
     void load_project(std::filesystem::path md_full_path);
     //---------------------------------------------------------------
     // End public methods
