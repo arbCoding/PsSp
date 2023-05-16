@@ -75,6 +75,9 @@ imp_prefix = $(base_prefix)implementation/
 obj_prefix = $(base_prefix)objects/
 # Submodules directory
 submod_prefix = $(CURDIR)/submodules/
+# MacOs exclusive directory (Info.plist)
+# For making the PsSp.app for MacOS only!
+macos_exc_dir = $(CURDIR)/macos_application/
 #------------------------------------------------------------------------------
 # End directory structure
 #------------------------------------------------------------------------------
@@ -200,6 +203,10 @@ cxx := $(cxx) -I$(hdr_prefix)
 # All programs
 all: PsSp
 
+# Not necessary for MacOS, but necessary if you want a free floating application
+# on MacOS
+macos: PsSp.app
+
 # These need sac_format.o and FFTW
 sac_spectral_tests: sac_stream_fftw_test sac_stream_lowpass_test
 
@@ -304,6 +311,23 @@ PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o 
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # end PsSp
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# PsSp.app (MacOS only)
+#------------------------------------------------------------------------------
+PsSp.app: PsSp
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(bin_prefix)$@ && rm -r $(bin_prefix)$@ || true
+	@mkdir -p $(bin_prefix)$@/Contents/MacOS
+	@mkdir -p $(bin_prefix)$@/Contents/Resources
+	@cp $(macos_exc_dir)Info.plist $(bin_prefix)$@/Contents/Info.plist
+	@cp $(bin_prefix)$< $(bin_prefix)$@/Contents/MacOS/$<
+	@dylibbundler -s /opt/homebrew/lib -od -b -x $(bin_prefix)$@/Contents/MacOS/$< -d $(bin_prefix)$@/Contents/libs/
+	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End PsSp.app (MacOs only)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------

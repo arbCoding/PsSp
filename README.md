@@ -147,7 +147,10 @@ Then it is a simple as running
 ```shell
 make
 ```
-To make PsSp, which will be inside the ./bin/ directory. 
+To make PsSp, which will be inside the ./bin/ directory.
+
+**NOTE** For MacOS user's, if you want a stand-alone Application file (no need to execute from the terminal) there are
+additional requirements. Please see the [additional instructions](#special-macos-application)
 
 ---
 ### Tests
@@ -161,6 +164,35 @@ To cleanup (including removing the compiled programs), run:
 ```shell
 make clean
 ```
+---
+
+## Special MacOS Application
+
+If you want a stand-alone MacOS application file, there are additional steps.
+First, I use (dylibbundler)[https://github.com/auriamg/macdylibbundler/] to handle rebinding
+the links for the non-standard dynamically linked libraries. The application bundle requires that they
+be included in the application (such that user doesn't need to install them).
+
+I do not take credit for figuring this out, I found this [blog post](https://newbedev.com/building-osx-app-bundle) on the topic.
+
+This can be installed via Homebrew
+```shell
+brew install dylibbundler
+```
+
+You can see which dylib's will need to be modified via the `otool` command after the program is compiled:
+```shell
+otool -L ./bin/PsSp
+```
+
+Anything not listed in `/System/Libary/` or `/usr/lib` will need to be included with the application.
+Fortunately, **dylibbundler** can handle that for us.
+```shell
+dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d ./PsSp.app/Contents/libs/
+```
+
+Of course, this is implemented in the [Makefile](Makefile) automatically, assuming you also used Homebrew to install GLFW3 and FFTW3.
+
 ---
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.
 ---
