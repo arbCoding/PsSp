@@ -26,7 +26,7 @@ The primary issues that I see today are:
 1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
-by different persons/groups, in order to perform a given research task. Add in the additional complication of OS-exclusive software, locking user's
+by different persons/groups, in order to perform a given research task. Add in the additional complication of OS-exclusive software, locking users
 of the wrong operating system out from certain tools and you have a tremendously unfortunate mess.
 
 The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
@@ -37,7 +37,7 @@ The disconnected nature of the typical seismic workflow leads to reproducibility
 without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of
 exploration, and so on, it becomes exceedingly difficult to be able to provide an accurate account of the actual processing steps necessary to consistently reproduce presented/published results. In this age of modern computing, it is simply **absurd** that the seismologist has no other choice than to work with this *severe tool-deficit*.
 
-The researcher shouldn't need to expend immense amounts of time/energy/mental-bandwidth on making their tools, nor on making them work together. They should be focused on doing science. While advances in machine learning are allowing the modern seismologist to parse massive amounts of data with little effort, we must still look at our data and question the validity of our analysis/interpretation.
+The researcher shouldn't need to expend immense amounts of time/energy/mental-bandwidth on making their tools, nor on making them work together. They should be focused on doing science. While advances in machine learning are allowing the modern seismologist to parse massive amounts of data with little effort, we must still look at our data and question the validity of our analysis/interpretation. And we should be able to do this with relative ease and minimal pain.
 
 ### Purpose
 
@@ -59,12 +59,12 @@ User projects are currently being implemented. This will allow users to have dis
 1) Protect their original data sources
 2) Have a degree of crash-safety (via auto-save) 
 3) Keep user defined program settings (window locations, sizes, etc.)
-4) Keep logs of project execution
+4) Keep logs of processing steps and parameters used in the workflow
 5) Allow users to maintain project notes
 6) Facilitate integrating new data into an existing project
 7) Maintain necessary data provenance for publicatons
 8) Provide project check-pointing features to ease the challenges of iterative exploratory analysis.
-9) Allow making spinning off sub-projects for tangential exploration.
+9) Allow spinning off sub-projects for tangential exploration
 
 ---
 
