@@ -7,8 +7,8 @@
     <key>CFBundleExecutable</key>
     <string>PsSp</string>
     <key>CFBundleGetInfoString</key>
-    <string>0.48.2, Copyright 2013 my company</string>
+    <string>Copyright 2023 Alexander R. Blanchette</string>
     <key>CFBundleIdentifier</key>
-    <string>com.mycompany.PsSp</string>
+    <string>com.arbCoding.PsSp</string>
 </dict>
 </plist>
