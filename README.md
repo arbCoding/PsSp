@@ -12,7 +12,7 @@ The purpose of this is to provide an OS-independent, graphical, seismic-processi
 The purpose can be summarized as **extending the productivity suite of the seismologist**. Seismologists have their program for writing manuscripts
 (e.g. MS Word, LaTeX), their program for giving scientific presentations (e.g. MS Powerpoint, Impress Presentation, etc.), their
 program for handling emails (Outlook, Thunderbird, whatever). The gap that exists is **what program do they use to do seismic anlaysis**? Far too often,
-it is whatever they manage to cludge together that seems to work.
+it is whatever they manage to cludge together, so long as it *seems* to work.
 
 ### Introduction
 
@@ -26,11 +26,12 @@ The primary issues that I see today are:
 1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
-by different persons/groups, in order to perform a given research task.
+by different persons/groups, in order to perform a given research task. Add in the additional complication of OS-exclusive software, locking user's
+of the wrong operating system out from certain tools and you have a tremendously unfortunate mess.
 
 The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
-assumptions, nor the limitations. Not only are these often not documented, they tend to be assumed as just plain *obvious*, despite that being
-entirely dependent upon a very specific (and undocumented) workflow. These issues tend to be discovered after much confusion and frustration. That is not how science should work. 
+assumptions, nor the limitations. Often, these tools were never designed to be shared and therefore are designed in a non-intuitive fashion, with virtually no
+comments in the actual code. These tools are often not documented (or under-documented, or even *incorrectly documented*), they tend to be assumed as just plain *obvious*, despite that being entirely dependent upon a very specific (and undocumented) workflow. These issues tend to be discovered after much confusion and frustration (hopefully fairly early on, as opposed to while writing a manuscript). That is not how science should work.
 
 The disconnected nature of the typical seismic workflow leads to reproducibility issues. A researcher must keep track of every step taken in the analysis manually,
 without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of
@@ -122,6 +123,9 @@ Using [Homebrew](https://brew.sh/)
 brew install fftw glfw msgpack-cxx
 ```
 
+**NOTE** For MacOS user's, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
+additional requirements. Please see the [additional instructions](#special-macos-application)
+
 ### Linux (Ubuntu 22.04/Debian based)
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev
@@ -149,9 +153,6 @@ make
 ```
 To make PsSp, which will be inside the ./bin/ directory.
 
-**NOTE** For MacOS user's, if you want a stand-alone Application file (no need to execute from the terminal) there are
-additional requirements. Please see the [additional instructions](#special-macos-application)
-
 ---
 ### Tests
 To make the test programs (test programs will go inside the ./bin/test/ directory) run
@@ -169,11 +170,12 @@ make clean
 ## Special MacOS Application
 
 If you want a stand-alone MacOS application file, there are additional steps.
-First, I use (dylibbundler)[https://github.com/auriamg/macdylibbundler/] to handle rebinding
-the links for the non-standard dynamically linked libraries. The application bundle requires that they
-be included in the application (such that user doesn't need to install them).
 
 I do not take credit for figuring this out, I found this [blog post](https://newbedev.com/building-osx-app-bundle) on the topic.
+
+First, I use [dylibbundler](https://github.com/auriamg/macdylibbundler/) to handle rebinding
+the links for the non-standard dynamically linked libraries. The application bundle requires that they
+be included in the application (such that user doesn't need to install them).
 
 This can be installed via Homebrew
 ```shell
@@ -191,7 +193,7 @@ Fortunately, **dylibbundler** can handle that for us.
 dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d ./PsSp.app/Contents/libs/
 ```
 
-Of course, this is implemented in the [Makefile](Makefile) automatically, assuming you also used Homebrew to install GLFW3 and FFTW3.
+Of course, this is implemented automatically in the [Makefile](Makefile), assuming you also used Homebrew to install the other packages (non-Git submodules).
 
 ---
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.
