@@ -63,14 +63,14 @@ User projects are currently being implemented. This will allow users to have dis
 5) Allow users to maintain project notes
 6) Facilitate integrating new data into an existing project
 7) Maintain necessary data provenance for publicatons
-8) Provide project check-pointing features to ease the challenges of iterative exploratory analysis.
+8) Provide project check-pointing features to ease the challenges of iterative exploratory analysis
 9) Allow spinning off sub-projects for tangential exploration
 
 ---
 
 ## ToDo
 
-See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is going on/planned for the future.
+See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is currently going-on/planned for the future.
 
 ---
 
@@ -79,9 +79,6 @@ See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more
 Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice
 or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
 
-The other dependencies are setup as Git submodules and handled automatically.
-
-Info on dependencies:
  * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
     * This provides the OS-independent GUI.
     * Git submodule.
@@ -100,8 +97,9 @@ Info on dependencies:
     * This is a graphical backend for the GUI.
  * [FFTW3](https://www.fftw.org/)
     * This is necessary for spectral functionality (FFT, IFFT).
+    * At present, this is not thread-safe and therefore all spectral functions (filtering) is performed on a single-thread.
  * [MessagePack](https://msgpack.org/)
-    * Provides data-serialization, for user project settings.
+    * Provides data-serialization, used for the implementation of user projects.
  * [Boost](https://www.boost.org/)
     * Required by MessagePack
 
@@ -110,8 +108,6 @@ Info on dependencies:
 ## Compilation instructions
 
 I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
-
-You'll need to install FFTW3 and GLFW yourself. I believe GLFW provides/includes OpenGL.
 
 **Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/)
 to setup your compilation environment on Windows.
