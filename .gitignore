@@ -52,3 +52,5 @@ bin/*
 .DS_Store
 # Ini files
 *.ini
+# MessagePack Files
+*.msgpack

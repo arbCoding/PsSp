@@ -1,5 +1,7 @@
 # PsSp
 
+![PsSp Main Window](screenshots/pssp_main_window_16May2023.png)
+
 Passive-source Seismic-processing with a GUI (Graphical User Interface)
 
 The purpose of this is to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
