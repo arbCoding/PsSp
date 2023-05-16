@@ -119,8 +119,8 @@ Using [Homebrew](https://brew.sh/)
 brew install fftw glfw msgpack-cxx
 ```
 
-**NOTE** For MacOS user's, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
-additional requirements. Please see the [additional instructions](#special-macos-application)
+**NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
+additional requirements. Please see the [additional instructions](#special-macos-application) for more information.
 
 ### Linux (Ubuntu 22.04/Debian based)
 ```shell
