@@ -769,7 +769,7 @@ void window_lowpass_options(ProgramStatus& program_status, WindowSettings& windo
       ImGui::BeginDisabled();
     }
     ImGui::SetNextItemWidth(130);
-    if (ImGui::InputFloat("Freq (Hz)##", &lowpass_settings.freq_low, lowpass_settings.freq_step))
+    if (ImGui::InputFloat("Freq (Hz)", &lowpass_settings.freq_low, lowpass_settings.freq_step))
     {
       lowpass_settings.freq_low = std::max(0.0f, lowpass_settings.freq_low);
     }
@@ -821,7 +821,7 @@ void window_highpass_options(ProgramStatus& program_status, WindowSettings& wind
       ImGui::BeginDisabled();
     }
     ImGui::SetNextItemWidth(130);
-    if (ImGui::InputFloat("Freq (Hz)##", &highpass_settings.freq_low, highpass_settings.freq_step))
+    if (ImGui::InputFloat("Freq (Hz)", &highpass_settings.freq_low, highpass_settings.freq_step))
     {
       highpass_settings.freq_low = std::max(0.0f, highpass_settings.freq_low);
     }
@@ -873,12 +873,12 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
       ImGui::BeginDisabled();
     }
     ImGui::SetNextItemWidth(130);
-    if (ImGui::InputFloat("Min Freq (Hz)##", &bandpass_settings.freq_low, bandpass_settings.freq_step))
+    if (ImGui::InputFloat("Min Freq (Hz)", &bandpass_settings.freq_low, bandpass_settings.freq_step))
     {
       bandpass_settings.freq_low = std::max(0.0f, bandpass_settings.freq_low);
     }
     ImGui::SetNextItemWidth(130);
-    if (ImGui::InputFloat("Max Freq (Hz)##", &bandpass_settings.freq_high, bandpass_settings.freq_step))
+    if (ImGui::InputFloat("Max Freq (Hz)", &bandpass_settings.freq_high, bandpass_settings.freq_step))
     {
       bandpass_settings.freq_high = std::max(bandpass_settings.freq_low, bandpass_settings.freq_high);
     }
@@ -1334,7 +1334,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
     {
       {
         std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
-        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)##");
+        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
         const double sampling_freq{1.0 / spectrum.sac.delta};
         const double freq_step{sampling_freq / spectrum.sac.npts};
         ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
@@ -1346,7 +1346,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
     {
       {
         std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
-        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)##");
+        ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
         const double sampling_freq{1.0 / spectrum.sac.delta};
         const double freq_step{sampling_freq / spectrum.sac.npts};
         ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);

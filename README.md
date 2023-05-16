@@ -1,55 +1,69 @@
-# PsSp
+# Passive-source Seismic-processing (PsSp)
 
 ![PsSp Main Window](screenshots/pssp_main_window_16May2023.png)
-
-Passive-source Seismic-processing with a GUI (Graphical User Interface)
 
 The purpose of this is to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
 
 ---
 
-## Current status
+## Why does this exist?
+### Summary
 
-This is extremely early in development. 
+The purpose can be summarized as **extending the productivity suite of the seismologist**. Seismologists have their program for writing manuscripts
+(e.g. MS Word, LaTeX), their program for giving scientific presentations (e.g. MS Powerpoint, Impress Presentation, etc.), their
+program for handling emails (Outlook, Thunderbird, whatever). The gap that exists is **what program do they use to do seismic anlaysis**? Far too often,
+it is whatever they manage to cludge together that seems to work.
 
-It is now officially multi-threaded (11 May 2023)!
+### Introduction
 
-User-projects are currently being prototyped. This will allow users to have distinct projects that: 1) protect their original data sources,
-2) have a degree of crash-safety (via auto-save), and 3) keep user defined program settings (window locations, sizes, etc.).
+Despite the various seismological tools that exist (and honestly, because of how they are designed) the seismologist will **most likely** need to code 
+their own tool(s) (as a shell script stitching programs together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if it is 
+desired by the researcher is awesome, the need to do it is unfortunate as not everyone wants to (or knows how to) write their own codes. It gets worse when you consider the performance of these codes, or how the codes end up becoming obsolete after a short time (try using someone's old Python scripts, or Matlab codes, have them not work and be stuck trying to figure out what is wrong instead of making progress on your research).
 
----
-
-## Project Goals
-
-In the passive seismic community, there are many processing tools available. The biggest problem, however, is the steep learning curve needed to use them.
+### Discussion
 
 The primary issues that I see today are:
 1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
-2) Often tools only do one or a few jobs. This makes life easier for the developer (following the KISS philosophy),
+2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
 by different persons/groups, in order to perform a given research task.
 
-The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, or underlying
-assumptions, or limitations. This tends to be discovered after much confusion and frustration. That is not how science should work.
+The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
+assumptions, nor the limitations. Not only are these often not documented, they tend to be assumed as just plain *obvious*, despite that being
+entirely dependent upon a very specific (and undocumented) workflow. These issues tend to be discovered after much confusion and frustration. That is not how science should work. 
 
-We shouldn't need to expend immense amounts of time/energy/mental-bandwidth on getting our tools to work for us. We should be focused
-on doing science.
+The disconnected nature of the typical seismic workflow leads to reproducibility issues. A researcher must keep track of every step taken in the analysis manually,
+without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of
+exploration, and so on, it becomes exceedingly difficult to be able to provide an accurate account of the actual processing steps necessary to consistently reproduce presented/published results. In this age of modern computing, it is simply **absurd** that the seismologist has no other choice than to work with this *severe tool-deficit*.
 
-PsSp is being developed to remove that barrier. To empower the seismologist with tools that are easy to use and foster exploration.
-By enabling the scientist to do exploratory analysis quickly, easily, and visually, I hope to allow the end-user to improve their
+The researcher shouldn't need to expend immense amounts of time/energy/mental-bandwidth on making their tools, nor on making them work together. They should be focused on doing science. While advances in machine learning are allowing the modern seismologist to parse massive amounts of data with little effort, we must still look at our data and question the validity of our analysis/interpretation.
+
+### Purpose
+
+PsSp is being developed to solve this problem; to empower the seismologist with tools that are easy to use and foster exploration.
+By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually, I hope to allow the end-user to improve their
 intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed
-with their analysis. I hope this will also make entry into seismology easier (undergrads, summer intern, new graduate students) and
-will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving their everyone's workflow and
-the quality of research that is accomplished while minimizing the amount of time devoted to simply trying to get the tools to work.
+with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and
+will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow and
+the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
 
-The goal can be summarized as extending the productivity suite of the seismologist. Seismologists have their program for writing manuscripts
-(MS Word, LaTeX, whatever), their program for giving scientific presentations (MS Powerpoint, Impress Presentation, etc.), their
-program for handling emails (Outlook, Thunderbird, whatever). The gap that exists is **what does one open to do seismic anlaysis**?
-Of all the choices out there, the seismologist will **most likely** need to code their own tool (as a shell script stitching programs
-together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if desired is awesome, the need to do it
-is unfortunate as not everyone wants to (or knows how to) write their own codes. It gets worse when you consider the performance of these
-codes, or how the codes end up becoming obsolete after a short time (try using someone's old Python scripts, or Matlab codes, have them not
-work and be stuck trying to figure out what is wrong instead of making progress on your research).
+---
+## Current status
+
+This is extremely early in development.
+
+### Current Focus: Projects
+
+User projects are currently being implemented. This will allow users to have distinct projects that: 
+1) Protect their original data sources
+2) Have a degree of crash-safety (via auto-save) 
+3) Keep user defined program settings (window locations, sizes, etc.)
+4) Keep logs of project execution
+5) Allow users to maintain project notes
+6) Facilitate integrating new data into an existing project
+7) Maintain necessary data provenance for publicatons
+8) Provide project check-pointing features to ease the challenges of iterative exploratory analysis.
+9) Allow making spinning off sub-projects for tangential exploration.
 
 ---
 
@@ -98,19 +112,21 @@ I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specif
 
 You'll need to install FFTW3 and GLFW yourself. I believe GLFW provides/includes OpenGL.
 
-**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/)
+**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/)
 to setup your compilation environment on Windows.
 
-On MacOs, I do this with [Homebrew](https://brew.sh/) as follows
+---
+### MacOS
+Using [Homebrew](https://brew.sh/)
 ```shell
 brew install fftw glfw msgpack-cxx
 ```
 
-On Linux (Ubuntu 22.04, Debian based)
+### Linux (Ubuntu 22.04/Debian based)
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev
 ```
-
+---
 Next you need to clone this project and initialize the [submodules](submodules)
 ```shell
 git clone https://github.com/arbCoding/PsSp.git
@@ -131,19 +147,20 @@ Then it is a simple as running
 ```shell
 make
 ```
-
 To make PsSp, which will be inside the ./bin/ directory. 
 
+---
+### Tests
 To make the test programs (test programs will go inside the ./bin/test/ directory) run
 ```shell
 make tests
 ```
-
+---
+### Cleanup
 To cleanup (including removing the compiled programs), run:
 ```shell
 make clean
 ```
-
+---
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.
-
 ---
