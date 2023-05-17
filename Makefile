@@ -75,6 +75,10 @@ imp_prefix = $(base_prefix)implementation/
 obj_prefix = $(base_prefix)objects/
 # Submodules directory
 submod_prefix = $(CURDIR)/submodules/
+# Font directory
+font_dir = $(CURDIR)/fonts/
+# Chosen font
+chosen_font = $(font_dir)Hack/HackNerdFontMono-Regular.ttf
 # MacOs exclusive directory (Info.plist)
 # For making the PsSp.app for MacOS only!
 macos_exc_dir = $(CURDIR)/macos_application/
@@ -302,11 +306,15 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiF
 #------------------------------------------------------------------------------
 # PsSp
 #------------------------------------------------------------------------------
+pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params)
+pssp_param_list += $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params)
+pssp_param_list += $(boost_params) $(msgpack_params) $(imp_prefix)pssp_projects.cpp
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(obj_prefix)sac_spectral.o
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
-	$(imgui_cxx) -I$(hdr_prefix) -I$(sf_header) -o $(bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params) $(boost_params) $(msgpack_params) $(imp_prefix)pssp_projects.cpp
+	$(imgui_cxx) -o $(bin_prefix)$@ $< $(pssp_param_list)
+	@cp $(chosen_font) $(bin_prefix)
 	@test imgui.ini && rm -f imgui.ini
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
@@ -324,6 +332,7 @@ PsSp.app: PsSp
 	@mkdir -p $(bin_prefix)$@/Contents/Resources
 	@cp $(macos_exc_dir)Info.plist $(bin_prefix)$@/Contents/Info.plist
 	@cp $(bin_prefix)$< $(bin_prefix)$@/Contents/MacOS/$<
+	@cp $(chosen_font) $(bin_prefix)$@/Contents/MacOS/
 	@dylibbundler -s /opt/homebrew/lib -od -b -x $(bin_prefix)$@/Contents/MacOS/$< -d $(bin_prefix)$@/Contents/libs/
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------

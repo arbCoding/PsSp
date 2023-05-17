@@ -559,7 +559,7 @@ const char* setup_gl()
 }
 // Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO
 // stuff (Fonts, other things I'm sure)
-ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version)
+ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path)
 {
   if (window == nullptr)
   {
@@ -580,21 +580,14 @@ ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version)
   //----------------------------------------------------------------------
   // Resize fonts
   //----------------------------------------------------------------------
-  // Using FontGlobalScale makes for blurry fonts
-  //io.FontGlobalScale = 1.f;
-  // Create a new font with a larger size
-  /*
-  ImFontAtlas* font_atlas = io.Fonts;
-  ImFontConfig font_cfg;
-  font_cfg.SizePixels = 18;
-  ImFont* font = font_atlas->AddFontDefault(&font_cfg);
-  io.FontDefault = font;
-  */
   // Will need to provide the font with the Application package
   // Will also need to keep it linked to the programs location, not the directory the program was called from...
-  ImFont* font = io.Fonts->AddFontFromFileTTF("./fonts/Hack/HackNerdFontMono-Regular.ttf", 18);
+  //ImFont* font = io.Fonts->AddFontFromFileTTF("./fonts/Hack/HackNerdFontMono-Regular.ttf", 18);
+  std::string font_path{program_path.string()};
+  font_path += "/HackNerdFontMono-Regular.ttf";
+  constexpr int font_size{18};
+  ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), font_size);
   io.FontDefault = font;
-  // Attempting to embed font as binary file
   //----------------------------------------------------------------------
   // End Resize fonts
   //----------------------------------------------------------------------
@@ -1636,8 +1629,9 @@ int main(int arg_count, char* arg_array[])
   (void) arg_count;
   // Location of the program
   std::filesystem::path program_path(arg_array[0]);
-  // Strip the program from the call
+  // Full path
   program_path = std::filesystem::canonical(program_path);
+  // We're assuming that the font is in the same directory as the program
   program_path = program_path.parent_path();
   //---------------------------------------------------------------------------
   // Initialization
@@ -1653,7 +1647,7 @@ int main(int arg_count, char* arg_array[])
   // Setup the GLFW window
   GLFWwindow* window = glfwCreateWindow(1024, 720, "Passive-source Seismic-processing", nullptr, nullptr);
   // Start the graphics backends and create the ImGui and ImPlot contexts
-  ImGuiIO& io = pssp::start_graphics(window, glsl_version);
+  ImGuiIO& io = pssp::start_graphics(window, glsl_version, program_path);
   //---------------------------------------------------------------------------
   // End Initialization
   //---------------------------------------------------------------------------
