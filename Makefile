@@ -338,7 +338,7 @@ PsSp.app: PsSp
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack
 	make -C $(sf_dir) clean
 #------------------------------------------------------------------------------
 # End cleanup

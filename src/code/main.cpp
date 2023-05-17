@@ -21,7 +21,6 @@
 #include <implot.h>
 // GLFW graphical backend
 #include <GLFW/glfw3.h>
-#include <msgpack.hpp>
 // Standard Library stuff, https://en.cppreference.com/
 // std::cout, std::cerr
 #include <iostream>
@@ -48,6 +47,8 @@
 #include <atomic>
 // String-stream for mixing types
 #include <sstream>
+// std::getenv()
+#include <cstdlib>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -582,11 +583,18 @@ ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version)
   // Using FontGlobalScale makes for blurry fonts
   //io.FontGlobalScale = 1.f;
   // Create a new font with a larger size
+  /*
   ImFontAtlas* font_atlas = io.Fonts;
   ImFontConfig font_cfg;
   font_cfg.SizePixels = 18;
   ImFont* font = font_atlas->AddFontDefault(&font_cfg);
   io.FontDefault = font;
+  */
+  // Will need to provide the font with the Application package
+  // Will also need to keep it linked to the programs location, not the directory the program was called from...
+  ImFont* font = io.Fonts->AddFontFromFileTTF("./fonts/Hack/HackNerdFontMono-Regular.ttf", 18);
+  io.FontDefault = font;
+  // Attempting to embed font as binary file
   //----------------------------------------------------------------------
   // End Resize fonts
   //----------------------------------------------------------------------
@@ -916,16 +924,23 @@ void window_bandpass_options(ProgramStatus& program_status, WindowSettings& wind
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
 AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
 {
-  // Just to get rid of unused for now...
-  (void) program_status;
   sac_1c sac{};
+  std::string home_path{};
+  // We're going to need to use a preprocessor macro to get the default home directory for the OS being used
+#ifdef _WIN32
+  const char* user_profile{std::getenv("USERPROFILE")};
+  if (user_profile) { home_path = user_profile; home_path += '\\'; }
+#else
+  const char* home_dir{std::getenv("HOME")};
+  if (home_dir) { home_path = home_dir; home_path += '/'; }
+#endif
   ImGui::BeginMainMenuBar();
   // File menu
   if (ImGui::BeginMenu("File##", menu_allowed.file_menu))
   {
     if (ImGui::MenuItem("Open 1C##", nullptr, nullptr, menu_allowed.open_1c))
     {
-      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".SAC,.sac", home_path, ImGuiFileDialogFlags_Modal);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -933,7 +948,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
     }
     if (ImGui::MenuItem("Open Dir##", nullptr, nullptr, menu_allowed.open_dir))
     {
-      ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, ".", ImGuiFileDialogFlags_Modal);
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, home_path, ImGuiFileDialogFlags_Modal);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -942,7 +957,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
     ImGui::Separator();
     if (ImGui::MenuItem("Save 1C##", nullptr, nullptr, menu_allowed.save_1c))
     {
-      ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save File", ".SAC,.sac", ".", ImGuiFileDialogFlags_Modal);
+      ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlgKey", "Save File", ".SAC,.sac", home_path, ImGuiFileDialogFlags_Modal);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -1614,8 +1629,16 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
-int main()
+int main(int arg_count, char* arg_array[])
 {
+  // Prevent unused variable warning for arg_count, it is required if I want
+  // arg_array, but I don't actually need it for anything else
+  (void) arg_count;
+  // Location of the program
+  std::filesystem::path program_path(arg_array[0]);
+  // Strip the program from the call
+  program_path = std::filesystem::canonical(program_path);
+  program_path = program_path.parent_path();
   //---------------------------------------------------------------------------
   // Initialization
   //---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ namespace pssp
 {
 void Project::create_new_project(std::filesystem::path new_base_dir)
 {
-  // Always the same named file, in the directory
+  // Always the same named file, in the direc tory
   std::ofstream file{new_base_dir / md_file, std::ios::binary};
   // Going to use a packer to make it easier to serialize the data
   // and write it out to the file
