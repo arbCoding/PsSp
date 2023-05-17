@@ -27,7 +27,7 @@ void pssp::status_bar(ProgramStatus& program_status)
             program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
             if (program_status.progress >= 1.0f)
             {
-                std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+                std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
                 program_status.is_idle = true;
                 program_status.fileio.is_reading = false;
                 program_status.fileio.is_processing = false;
@@ -397,7 +397,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         // Save the SAC-File safely
         if (ImGuiFileDialog::Instance()->IsOk())
         {
-            std::lock_guard<std::shared_mutex> lock_sac(sac_deque[active_sac].sac_mutex);
+            std::lock_guard<std::shared_mutex> lock_sac(sac_deque[active_sac].mutex_);
             sac_deque[active_sac].sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
         }
         ImGuiFileDialog::Instance()->Close();
@@ -554,7 +554,7 @@ void pssp::window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& 
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
             {
-                std::shared_lock<std::shared_mutex> lock_sac(sac_deque[selected].sac_mutex);
+                std::shared_lock<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
                 ImPlot::PlotLine("", &sac_deque[selected].sac.data1[0], sac_deque[selected].sac.data1.size(), sac_deque[selected].sac.delta);
             }
             // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
@@ -608,7 +608,7 @@ void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectru
         if (ImPlot::BeginPlot("Real##"))
         {
             {
-                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
+                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
                 ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
                 const double sampling_freq{1.0 / spectrum.sac.delta};
                 const double freq_step{sampling_freq / spectrum.sac.npts};
@@ -620,7 +620,7 @@ void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectru
         if (ImPlot::BeginPlot("Imaginary##"))
         {
             {
-                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
+                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
                 ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
                 const double sampling_freq{1.0 / spectrum.sac.delta};
                 const double freq_step{sampling_freq / spectrum.sac.npts};
@@ -653,7 +653,7 @@ void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& wind
         {
             if (!program_status.is_idle) { ImGui::BeginDisabled(); }
             
-            std::shared_lock<std::shared_mutex> lock_sac(sac.sac_mutex);
+            std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
             if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
@@ -733,7 +733,7 @@ void pssp::window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 {
     if (window_settings.show)
     {
-        std::lock_guard<std::mutex> guard(fps_tracker.fps_mutex);
+        std::lock_guard<std::mutex> guard(fps_tracker.mutex_);
         if (!window_settings.is_set)
         {
             // Setup the window
@@ -806,7 +806,7 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
                 {
                     selected = i;
                     {
-                    std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].sac_mutex);
+                    std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
                     sac_deque[selected].sac = SAC::SacStream(sac_deque[selected].file_name);
                     }
                     calc_spectrum(sac_deque[selected], spectrum);

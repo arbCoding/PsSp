@@ -6,6 +6,7 @@
 
 // FFTW library
 #include <fftw3.h>
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // Needed by FFTW library
 #include <cmath>
 

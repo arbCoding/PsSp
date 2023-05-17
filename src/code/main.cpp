@@ -7,7 +7,7 @@
 #include "pssp_windows.hpp"
 // Definitions of Misc Structs/Classes/Functions
 #include "pssp_misc.hpp"
-// Standard Library stuff, https://en.cppreference.com/
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // std::string_view
 #include <string_view>
 // Path stuff
@@ -268,8 +268,8 @@ int main(int arg_count, char* arg_array[])
           {
               bool compare_names{true};
               {
-                  std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
-                  std::shared_lock<std::shared_mutex> lock_sac(sac_deque[active_sac].sac_mutex);
+                  std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
+                  std::shared_lock<std::shared_mutex> lock_sac(sac_deque[active_sac].mutex_);
                   compare_names = (spectrum.file_name == sac_deque[active_sac].file_name);
               }
               // If they're not the same, then calculate the FFT

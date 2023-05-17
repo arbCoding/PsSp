@@ -6,7 +6,7 @@
 void pssp::update_fps(fps_info& fps, ImGuiIO& io)
 {
     // Lock the fps_tracker
-    std::lock_guard<std::mutex> guard(fps.fps_mutex);
+    std::lock_guard<std::mutex> guard(fps.mutex_);
     // Not using the lock_guard here
     // Increase time
     fps.current_time += io.DeltaTime;
@@ -32,9 +32,9 @@ void pssp::cleanup_sac(std::deque<sac_1c>& sac_deque, int& selected, bool& clear
 
 void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
 {
-    std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.sac_mutex);
+    std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
     {
-        std::shared_lock<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
         spectrum.sac = sac.sac;
         spectrum.file_name = sac.file_name;
     }
@@ -45,7 +45,7 @@ void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
 void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         double mean{0};
         // Check if the mean is already set
         if (sac.sac.depmen != SAC::unset_float)
@@ -73,7 +73,7 @@ void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
             sac.sac.depmen = 0.0f;
         }
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
@@ -91,7 +91,7 @@ void pssp::batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& 
 
 void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
 {
-    std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     double mean_amplitude{0};
     // Static_cast just to be sure no funny business
     double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
@@ -125,7 +125,7 @@ void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
     {
         sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
@@ -144,17 +144,17 @@ void pssp::batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>&
 void pssp::apply_lowpass(FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
 void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
         program_status.fileio.count = 0;
         program_status.fileio.is_processing = true;
         program_status.fileio.total = static_cast<int>(sac_deque.size());
@@ -168,17 +168,17 @@ void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>
 void pssp::apply_highpass(FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
 void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
         program_status.fileio.count = 0;
         program_status.fileio.is_processing = true;
         program_status.fileio.total = static_cast<int>(sac_deque.size());
@@ -192,17 +192,17 @@ void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c
 void pssp::apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
 void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.io_mutex);
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
         program_status.fileio.count = 0;
         program_status.fileio.is_processing = true;
         program_status.fileio.total = static_cast<int>(sac_deque.size());
@@ -217,12 +217,12 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
 {
     pssp::sac_1c sac{};
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.sac_mutex);
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
     }
-    std::shared_lock<std::shared_mutex> lock_sac(sac.sac_mutex);
-    std::lock_guard<std::shared_mutex> lock_io(fileio.io_mutex);
+    std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     fileio.is_reading = true;
     ++fileio.count;
     sac_deque.push_back(sac);

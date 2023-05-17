@@ -7,8 +7,11 @@
 //-----------------------------------------------------------------------------
 // Include statments
 //-----------------------------------------------------------------------------
+// pssp::ThreadPool
 #include "pssp_threadpool.hpp"
+// SAC namespace filters
 #include <sac_spectral.hpp>
+// Dear ImGui and Graphical Backends
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -16,7 +19,7 @@
 #include <implot.h>
 // GLFW graphical backend
 #include <GLFW/glfw3.h>
-// Standard Library stuff
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <atomic>
 #include <shared_mutex>
 #include <deque>
@@ -28,7 +31,25 @@
 //-----------------------------------------------------------------------------
 // Description
 //-----------------------------------------------------------------------------
+// Having everything in main.cpp began to really convolute the appearance of the
+// main program's logic.
+// To make this easier, I'm splitting off structs/Class/functions and what-not
+// to this new header/implementation combo. This is stuff that at the moment
+// seems to have no real place to belong.
 //
+// Other Header/Implementation combos to consider are:
+// * pssp_projects.hpp/.cpp
+//      User projects related structs/classes/functions
+// * pssp_threadpool.hpp (no .cpp for this)
+//      ThreadPool class for multi-threaded fun
+// * pssp_windows.hpp/.cpp
+//      These are the Dear ImGui windows (and ImPlot plots) that the program
+//      displays. These are ran every frame on the main thread.
+//      Anything you want to run in the ThreadPool needs to be passed to the
+//      animation loop with a flag stating it is ready to be passed to task
+//      queue
+// * sac_spectral.hpp/.cpp
+//      FFT, iFFT, and filters on SAC::SacStream objects (or sac_1c structs)
 //-----------------------------------------------------------------------------
 // End Description
 //-----------------------------------------------------------------------------
@@ -49,7 +70,7 @@ struct FileIO
     std::atomic<bool> is_reading{false};
     // Used to flag if we're processing data or not
     std::atomic<bool> is_processing{false};
-    std::shared_mutex io_mutex{};
+    std::shared_mutex mutex_{};
 };
 //
 struct ProgramStatus
@@ -72,33 +93,33 @@ struct fps_info
     float fps{0.0f};
     // How often we update the fps tracker
     float reporting_interval{0.2f};
-    std::mutex fps_mutex{};
+    std::mutex mutex_{};
 };
 
 struct sac_1c
 {
     std::string file_name{};
     SAC::SacStream sac{};
-    std::shared_mutex sac_mutex{};
+    std::shared_mutex mutex_{};
 
-    sac_1c() : file_name(), sac(), sac_mutex() {}
+    sac_1c() : file_name(), sac(), mutex_() {}
     // Copy constructor
     sac_1c(const sac_1c& other)
     {
         file_name = other.file_name;
         sac = other.sac;
-    // Don't copy the mutex
+        // Don't copy the mutex
     }
     // Assignment operator
     sac_1c& operator=(const sac_1c& other)
     {
-    if (this != &other)
-    {
-        file_name = other.file_name;
-        sac = other.sac;
-        // Don't assign the mutex
-    }
-    return *this;
+        if (this != &other)
+        {
+            file_name = other.file_name;
+            sac = other.sac;
+            // Don't assign the mutex
+        }
+        return *this;
     }
 };
 // Struct for filters
@@ -122,7 +143,7 @@ struct FilterOptions
     bool apply_filter{false};
     // Do we apply filter to a batch file
     bool apply_batch{false};
-    std::shared_mutex filter_mutex;
+    std::shared_mutex mutex_{};
 };
 // Holds the options for all filters, just to make life easier
 struct AllFilterOptions
