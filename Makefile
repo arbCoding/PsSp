@@ -306,9 +306,9 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiF
 #------------------------------------------------------------------------------
 # PsSp
 #------------------------------------------------------------------------------
-pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params)
-pssp_param_list += $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params)
-pssp_param_list += $(boost_params) $(msgpack_params) $(imp_prefix)pssp_projects.cpp $(imp_prefix)pssp_misc.cpp $(imp_prefix)pssp_windows.cpp
+pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
+pssp_param_list += $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params) $(boost_params) $(msgpack_params) 
+pssp_param_list += $(imp_prefix)pssp_projects.cpp $(imp_prefix)pssp_misc.cpp $(imp_prefix)pssp_windows.cpp $(imgui_params)
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(obj_prefix)sac_spectral.o
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"

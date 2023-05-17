@@ -16,9 +16,11 @@
 #include <implot.h>
 // GLFW graphical backend
 #include <GLFW/glfw3.h>
+// Standard Library stuff
 #include <atomic>
 #include <shared_mutex>
 #include <deque>
+#include <filesystem>
 //-----------------------------------------------------------------------------
 // End Include statments
 //-----------------------------------------------------------------------------
