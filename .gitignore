@@ -54,5 +54,6 @@ bin/*
 *.ini
 # MessagePack Files
 *.msgpack
+.vscode
 .vscode/settings.json
 .vscode/launch.json
