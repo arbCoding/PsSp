@@ -219,7 +219,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
 // Main menu bar
 //-----------------------------------------------------------------------------
 void pssp::main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
+AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac, Project& project)
 {
     sac_1c sac{};
     std::string home_path{};
@@ -377,7 +377,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.count = 0;
             // Can only select 1 file anyway!
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), ImGuiFileDialog::Instance()->GetFilePathName());
+            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), ImGuiFileDialog::Instance()->GetFilePathName(), std::ref(project));
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -387,7 +387,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         {
             std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), std::ref(sac_deque), directory);
+            program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), std::ref(sac_deque), directory, std::ref(project));
         }
         ImGuiFileDialog::Instance()->Close();
     }

@@ -9,6 +9,8 @@
 //-----------------------------------------------------------------------------
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
+// pssp::Project class
+#include "pssp_projects.hpp"
 // SAC namespace filters
 #include <sac_spectral.hpp>
 // Dear ImGui and Graphical Backends
@@ -191,9 +193,9 @@ void apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options
 // Bandpass all sac_1c's in a deque
 void batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
 // Read in a single sac_file
-void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name);
+void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name, Project& project);
 // Read all SAC files in a directory
-void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory);
+void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project);
 // Setup the graphical backends
 const char* setup_gl();
 // Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO

@@ -308,7 +308,8 @@ imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiF
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
 pssp_param_list += $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params) $(boost_params) $(msgpack_params) 
-pssp_param_list += $(imp_prefix)pssp_projects.cpp $(imp_prefix)pssp_misc.cpp $(imp_prefix)pssp_windows.cpp $(imgui_params)
+pssp_param_list += $(imp_prefix)pssp_program_settings.cpp $(imp_prefix)pssp_misc.cpp $(imp_prefix)pssp_windows.cpp $(imgui_params)
+pssp_param_list += -lsqlite3
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(obj_prefix)sac_spectral.o
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
@@ -347,7 +348,7 @@ PsSp.app: PsSp
 # Cleanup
 #------------------------------------------------------------------------------
 clean:
-	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack
+	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
 #------------------------------------------------------------------------------
 # End cleanup

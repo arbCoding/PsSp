@@ -5,8 +5,9 @@
 // Include statments
 //-----------------------------------------------------------------------------
 // Necessary structs from pssp_projects
-#include "pssp_projects.hpp"
+#include "pssp_program_settings.hpp"
 #include "pssp_misc.hpp"
+#include "pssp_projects.hpp"
 // Dear ImGui
 #include <imgui.h>
 // FileDialog add-on for Dear ImGui
@@ -43,7 +44,7 @@ void window_highpass_options(ProgramStatus& program_status, WindowSettings& wind
 void window_bandpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& bandpass_settings);
 // Main menu bar along top of screen
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac);
+AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac, Project& project);
 // Plot a single sac file
 void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected);
 // Plot a single real/imaginary spectrum

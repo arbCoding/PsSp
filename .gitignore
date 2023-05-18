@@ -57,3 +57,5 @@ bin/*
 .vscode
 .vscode/settings.json
 .vscode/launch.json
+# SQLite3 databases
+*.db

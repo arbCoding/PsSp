@@ -79,29 +79,32 @@ See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more
 Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice
 or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
 
- * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
-    * This provides the OS-independent GUI.
-    * Git submodule.
- * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
-    * This adds OS-independent File Dialogs to Dear ImGui.
-    * Git submodule.
- * [ImPlot](https://github.com/epezent/implot).
-    * This adds OS-independent plotting functionality to Dear ImGui.
-    * Git submodule.
- * [sac-format](https://github.com/arbCoding/sac-format)
-    * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
-    * Git submodule.
- * [OpenGL3](https://www.opengl.org/)
-    * This is a graphical backend for the GUI.
- * [GLFW3](https://www.glfw.org/)
-    * This is a graphical backend for the GUI.
- * [FFTW3](https://www.fftw.org/)
-    * This is necessary for spectral functionality (FFT, IFFT).
-    * At present, this is not thread-safe and therefore all spectral functions (filtering) is performed on a single-thread.
- * [MessagePack](https://msgpack.org/)
-    * Provides data-serialization, used for the implementation of user projects.
- * [Boost](https://www.boost.org/)
-    * Required by MessagePack
+* [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
+   * This provides the OS-independent GUI.
+   * Git submodule.
+* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
+   * This adds OS-independent File Dialogs to Dear ImGui.
+   * Git submodule.
+* [ImPlot](https://github.com/epezent/implot).
+   * This adds OS-independent plotting functionality to Dear ImGui.
+   * Git submodule.
+* [sac-format](https://github.com/arbCoding/sac-format)
+   * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
+   * Git submodule.
+* [OpenGL3](https://www.opengl.org/)
+   * This is a graphical backend for the GUI.
+* [GLFW3](https://www.glfw.org/)
+   * This is a graphical backend for the GUI.
+* [FFTW3](https://www.fftw.org/)
+   * This is necessary for spectral functionality (FFT, IFFT).
+   * At present, this is not thread-safe and therefore all spectral functions (filtering) is performed on a single-thread.
+* [MessagePack](https://msgpack.org/)
+   * Provides data-serialization, used to program settings.
+* [Boost](https://www.boost.org/)
+   * Required by MessagePack
+* [SQLite3](https://sqlite.org/)
+   * Projects are implemented as internal sqlite3 databases.
+   * We are able to maintain data provenance information, processing checkpoints, and so on via a serverless relational database.
 
 ---
 
@@ -116,7 +119,7 @@ to setup your compilation environment on Windows.
 ### MacOS
 Using [Homebrew](https://brew.sh/)
 ```shell
-brew install fftw glfw msgpack-cxx
+brew install fftw glfw msgpack-cxx sqlite
 ```
 
 **NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
@@ -124,7 +127,7 @@ additional requirements. Please see the [additional instructions](#special-macos
 
 ### Linux (Ubuntu 22.04/Debian based)
 ```shell
-sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev
+sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
 ---
 Next you need to clone this project and initialize the [submodules](submodules)

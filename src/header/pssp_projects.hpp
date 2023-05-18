@@ -1,331 +1,282 @@
 #ifndef PSSP_PROJECTS_HPP
 #define PSSP_PROJECTS_HPP
 
-//-----------------------------------------------------------------------------
-// Include statements
-//-----------------------------------------------------------------------------
-// Dear ImGui header
-#include <imgui.h>
-// MessagePack, https://msgpack.org/
-#include <msgpack.hpp>
+#include "sac_stream.hpp"
+#include <ios>
+#include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-// Filesystem stuff
 #include <filesystem>
-// File IO
-#include <fstream>
-// std::string
-#include <string>
-// std::cout
 #include <iostream>
-//-----------------------------------------------------------------------------
-// End Include statements
-//-----------------------------------------------------------------------------
+#include <sstream>
 
 //-----------------------------------------------------------------------------
 // Description
 //-----------------------------------------------------------------------------
-// A user should be able to define a project and be able to save data/settings
-// for that project.
+// A project will be maintained as an SQLite3 database
+// For now we're going to use SQLite3 in serialized mode, meaning that
+// a single connection to the database is needed.
 //
-// A project will have a base directory.
-// * Inside the directory there will be a source data directory.
-// ** Source data is never saved over. If they add new data, it is copied into
-//  here, but upon saving current working results will be in a separate directory.
-//  This sacrifices storage space for safety. If something goes wrong, they can
-//  always revert back to the original state and try again.
-// ** Data can be removed from a project, by the user.
-// ** Data should be kept in folders that are named with the datetime of their
-// creation (helps user track when data was added, useful when they need to write
-// papers and cite when they accessed certain data from the DMC)
-// * There will be a processing directory. This is where altered data will go.
-// ** There will be a working default that current data will always go to
-// upon saving.
-// ** There will be staged directories for when a user wants to specifically
-// save a certain stage of data processing (they can define the name). That way
-// they don't necessarily need to go all the way back to the beginning upon doing
-// exploratory analysis.
-// ** These can be deleted by the user as they deem then no-longer necessary.
-// ** These should have a record of what processing steps brought them to this
-// stage
-// * In the base directory there will be a file that stores program defaults.
-// ** Window size and positions. Eventually things like fonts and other stuff.
-// * There should be a log directory for program logs (no log system yet.)
-// * There should be a notes directory, the user should be able to write
-// their own project notes in a text-file that they can access in or out
-// of the program.
-// * There should be auto-save functionality, on a timer (can be user set, or
-// disabled) that will automatically save the current state of the program and data
-// into the current working directory (in case of program crash, can quickly return
-// to a recent stable state).
+// This single connection can be passed to multiple threads at once
+// and sqlite3 will handle the synchronization and what not
 //
-// A project should be a self-contained system. Everything that is needed for a
-// given project, is in the project folder. This will facilitate backing up and
-// transporting projects (using say DropBox, github, or some other mechanism).
-// Bonus is that it'll also facilitate making pre-packaged tutorial projects
-// that are fully self-contained (possibly useful for USGS/IRIS training sessions).
+// It allows multiple threads to read at once, but only one thread may write
+// at a time. If multiple threads are trying to write, they wait their turns.
+// It threads are trying to read while a thread is writing, they must wait.
+//
+// We must be careful to avoid deadlock situations (a thread needs to write,
+// but never gets to because other threads are constantly reading)
+//
+// We may also need to handle the connection dropping (hopefully a non-issue, we'll
+// see).
+//
 //-----------------------------------------------------------------------------
 // End Description
 //-----------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
-// Begin pssp namespace
-//-----------------------------------------------------------------------------
+/*
+//-------------------------------------------------------------------------
+// SQLite3 startup
+//-------------------------------------------------------------------------
+// Make a connection
+sqlite3* sq3_connection{};
+int sq3_result{sqlite3_open_v2("./test.db", &sq3_connection, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+| SQLITE_OPEN_FULLMUTEX, nullptr)};
+if (sq3_result != SQLITE_OK) { return sq3_result; }
+// Create a single table
+std::string create_table_sql = R"(
+    CREATE TABLE original_data (
+        id INTEGER PRIMARY KEY,
+        data TEXT,
+        added DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+)";
+char* sq3_error_message{};
+sq3_result = sqlite3_exec(sq3_connection, create_table_sql.c_str(), nullptr, nullptr, &sq3_error_message);
+// Failed to create table, close connection
+if (sq3_result != SQLITE_OK) { sqlite3_close_v2(sq3_connection); return sq3_result; }
+std::string insert_sql{"INSERT INTO original_data (data) VALUES ('Some data')"};
+sq3_result = sqlite3_exec(sq3_connection, insert_sql.c_str(), 0, 0, 0);
+sqlite3_close_v2(sq3_connection);
+//-------------------------------------------------------------------------
+// End SQLite3 startup
+//-------------------------------------------------------------------------
+*/
+
 namespace pssp
 {
-//-----------------------------------------------------------------------------
-// Struct definitions
-//-----------------------------------------------------------------------------
-// These are per window settings
-struct WindowSettings
-{
-    // X position in pixels (left to right)
-    int pos_x{0};
-    // Y position in pixels (top to bottom)
-    int pos_y{0};
-    // Window width in pixels
-    int width{100};
-    // Window height in pixels
-    int height{100}; 
-    // Flag that determines whether the window should be shown or not
-    bool show{false};
-    // if false, position and size get set
-    bool is_set{false};
-    // Window flags for Dear ImGui
-    ImGuiWindowFlags img_flags{};
-    // Window title, '##' is used to prevent Dear ImGui crashes
-    std::string title{"##"};
-    // To allow msgpack to handle the components.
-    MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title)
-};
-// Settings for all windows (except main menu bar and status bar)
-struct AllWindowSettings
-{
-    // Window with welcome message
-    WindowSettings welcome{395, 340, 525, 60, false, false, ImGuiWindowFlags_NoCollapse
-    | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Welcome##"};
-    // FPS tracker window
-    WindowSettings fps{1, 756, 60, 55, false, false, ImGuiWindowFlags_NoCollapse 
-    | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "FPS##"};
-    // Header info for a single SAC file
-    WindowSettings header{1, 25, 285, 730, false, false, ImGuiWindowFlags{}, "SAC Header##"};
-    // Plot of a single sac file (time-series only)
-    WindowSettings plot_1c{287, 25, 1150, 340, false, false, ImGuiWindowFlags{}, "Seismogram##"};
-    // Plot real/imag spectrum of SAC file
-    WindowSettings spectrum_1c{288, 368, 1150, 340, false, false, ImGuiWindowFlags{}, "Spectrum##"};
-    // List of sac_1c's, allows user to select specific one in memory
-    WindowSettings sac_files{287, 709, 347, 135, false, false, ImGuiWindowFlags{}, "SAC Files##"};
-    // Small window providing access to lowpass filter options
-    WindowSettings lowpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Lowpass Options##"};
-    // Small window providing access to highpass filter options
-    WindowSettings highpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Highpass Options##"};
-    // Small window providing access to bandpass filter options
-    WindowSettings bandpass{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar 
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandpass Options##"};
-    WindowSettings bandreject{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options"};
-    // File Dialog positions
-    WindowSettings file_dialog{337, 150, 750, 450};
-    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject)
-};
-// Whether a certain menu is allow or not
-struct MenuAllowed
-{
-    // File menu
-    bool file_menu{true};
-    bool open_1c{false};
-    bool open_dir{false};
-    bool save_1c{false};
-    bool exit{true};
-    // Edit menu
-    bool edit_menu{false};
-    bool undo{false};
-    bool redo{false};
-    // Project Menu
-    bool project_menu{false};
-    // Options Menu
-    bool options_menu{false};
-    // Window Menu
-    bool window_menu{true};
-    bool center_windows{false};
-    bool save_layout{false};
-    bool reset_windows{true};
-    bool welcome{true};
-    bool fps{true};
-    bool sac_header{false};
-    bool plot_1c{false};
-    bool plot_spectrum_1c{false};
-    bool sac_deque{false};
-    // Processing Menu
-    bool processing_menu{false};
-    bool rmean{false};
-    bool rtrend{false};
-    bool lowpass{false};
-    bool highpass{false};
-    bool bandpass{false};
-    bool bandreject{false};
-    // Picking Menu
-    bool picking_menu{false};
-    // Batch Menu
-    bool batch_menu{false};
-};
-//-----------------------------------------------------------------------------
-// End Struct definitions
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Class definitions
-//-----------------------------------------------------------------------------
-//------------------------------------------------------------------------
-// Project class
-//------------------------------------------------------------------------
 class Project
 {
-    //--------------------------------------------------------------------
-    // Project class description
-    //--------------------------------------------------------------------
-    // What is a "Project"?
-    // 
-    // A Project is composed of data and the results of processing that data
-    //
-    // For our puroses, the data is simple. People read in SAC files. These
-    // SAC files are time-series (they can be other things, but for now I'm
-    // focused on taking in raw time-series data at the start [assuming project
-    // starts from freshly obtained seismographic time-series recordings]).
-    //
-    // A relational database would be quite convenient.
-    //
-    // This provides us our data provenance information
-    // Data File Table
-    // data_id, datetime-added, source, file_name
-    //  data_id: unique data-id (integer) that is automatically determined
-    //  source: the data source (original directory, IRIS webserv, whatever)
-    //  file_name: the file_name
-    //  datetime-added: we want to timestamp when data is first introduced to
-    //      analysis (YYYY-MM-DD HH:mm:ss) <- I don't think we need to be
-    //      more specific than that
-    //
-    // This provides our information on checkpoints
-    // It also provides a mechanism for a user to prevent a specific checkpoint
-    // from disappearing unless they manually delete it
-    // Checkpoint Table
-    // checkpoint_id, checkpoint_name, datetime-added, n_files, bool_auto, bool_cull
-    //  checkpoint_id: unique identifier
-    //  checkpoint_name: name of the checkpoint
-    //      default is auto
-    //      user defined is default user, or their chosen name
-    //  n_files: How many SAC files are in the checkpoint
-    //  bool_auto: automatic or user-defined
-    //  bool_cull: true if we're allowed to automatically cull it (true default for auto, false default for user)
-    //
-    // This provides our checkpoint specific information
-    // Checkpoint Data Table
-    // checkpoint_name, original_data_id, checkpoint_data_id
-    //  checkpoint_name: the name of the checkpoint
-    //  original_data_id: the data_id of the source file
-    //  checkpoint_data_id: the data_id within the checkpoint (this allows us to uniquely define the modified data)
-    //
-    // So if a file gets deleted from a project, it gets deleted from all checkpoints
-    // If a file gets deleted from a checkpoint, it remains in the project
-    // This provides a mechanism by which the user can decide what to do with
-    // the files that are in the project, but not the current checkpoint.
-    // It also proides a way to see what the most recent checkpoint containing the file is called
-    // and when it was made (to aid the decision).
-    //
-    // If a checkpoint gets deleted, every row in the data table related to the checkpoint
-    // gets deleted and the row for that checkpoint in the checkpoint table gets deleted
-    // (along with the checkpoint's directory and everything inside it)
-    //--------------------------------------------------------------------
-    // End project class description
-    //--------------------------------------------------------------------
-
-    //----------------------------------------------------------------------
-    // Project private variables/methods
-    //----------------------------------------------------------------------
     private:
-    //----------------------------------------------------------------------
-    // End project private variables/methods
-    //----------------------------------------------------------------------
+        // Name of the project, only gets set once
+        std::string_view name_{};
+        // Path to the database file
+        std::filesystem::path path_{};
+        //---
+        // Left-pad integers
+        //---
+        std::string left_pad_integers(int n, int width)
+        {
+            std::ostringstream oss{};
+            oss << std::setw(width) << std::setfill('0') << n;
+            return oss.str();
+        }
+        //---
+        // End Left-pad integers
+        //---
 
-    //----------------------------------------------------------------------
-    // Project public variables/methods
-    //----------------------------------------------------------------------
+        //---
+        // Make datetime
+        //---
+        std::string sac_reference_time(SAC::SacStream& sac)
+        {
+            std::ostringstream oss{};
+            oss << left_pad_integers(sac.nzyear, 4);
+            oss << '-';
+            oss << left_pad_integers(sac.nzjday, 3);
+            oss << ' ';
+            oss << left_pad_integers(sac.nzhour, 2);
+            oss << ':';
+            oss << left_pad_integers(sac.nzmin, 2);
+            oss << ':';
+            oss << left_pad_integers(sac.nzsec, 2);
+            oss << '.';
+            oss << left_pad_integers(sac.nzmsec, 3);
+            return oss.str();
+        }
+        //---
+        // End Make datetime
+        //---
     public:
-        //---------------------------------------------------------------
-        // Public variables
-        //---------------------------------------------------------------
-        AllWindowSettings window_settings{};
-        MenuAllowed menu_allowed{};
-        // Project base directory
-        std::filesystem::path base_dir{};
-        // Relative paths to project sub-directories
-        // Raw data directory
-        // Things can be added to this directory, or removed from it
-        // Nothing is ever over-written
-        std::filesystem::path raw_data_dir{"raw_data"};
-        // This is the current working directory.
-        // When we make a checkpoint, we save to the working_dir
-        // and then copy it to the checkpoint_dir
-        std::filesystem::path working_dir{"working_dir"};
-        // This is where check-points get saved
-        // Each check-point is a distinct directory
-        // Checkpoints are named {custom}_{datetime}
-        // {custom} allows the user to define a checkpoint name
-        // A default one will be auto_{datetime}
-        // We can have auto ones get developed on a timed-schedule
-        // with a limit to the number that stay preserved
-        std::filesystem::path checkpoints_dir{"check_points"};
-        // Names of project specific files
-        // Project meta-data file
-        std::filesystem::path md_file{"project_md.msgpack"}; 
-        //---------------------------------------------------------------
-        // End Public variables
-        //---------------------------------------------------------------
+        // Connection to the database
+        sqlite3* sq3_connection{};
+        int sq3_result{};
+        char* sq3_error_message{};
+        //---
+        // Parameterized Constructor
+        //---
+        Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".db")}
+        {
+            // Create a new connection
+            sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+            // Set the journal mode to WAL
+            sq3_result = sqlite3_exec(sq3_connection, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+            // Create a base data table
+            std::string_view sq3_create = R"(
+                CREATE TABLE base_data (
+                    base_id INTEGER PRIMARY KEY,
+                    source TEXT,
+                    added DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    sample_rate REAL,
+                    begin_time REAL,
+                    end_time REAL,
+                    origin_time REAL,
+                    a_time REAL,
+                    t0_time REAL,
+                    t1_time REAL,
+                    t2_time REAL,
+                    t3_time REAL,
+                    t4_time REAL,
+                    t5_time REAL,
+                    t6_time REAL,
+                    t7_time REAL,
+                    t8_time REAL,
+                    t9_time REAL,
+                    fini_time REAL,
+                    stla REAL,
+                    stlo REAL,
+                    stel REAL,
+                    stdp REAL,
+                    evla REAL,
+                    evlo REAL,
+                    evel REAL,
+                    evdp REAL,
+                    mag REAL,
+                    dist REAL,
+                    az REAL,
+                    baz REAL,
+                    gcarc REAL,
+                    cmpaz REAL,
+                    cmpinc REAL,
+                    reference_time DATETIME,
+                    npts INTEGER,
+                    origin_id INTEGER,
+                    event_id INTEGER,
+                    mag_type INTEGER,
+                    station TEXT,
+                    event TEXT,
+                    origin_text TEXT,
+                    a_text TEXT,
+                    t0_text TEXT,
+                    t1_text TEXT,
+                    t2_text TEXT,
+                    t3_text TEXT,
+                    t4_text TEXT,
+                    t5_text TEXT,
+                    t6_text TEXT,
+                    t7_text TEXT,
+                    t8_text TEXT,
+                    t9_text TEXT,
+                    fini_text TEXT,
+                    component TEXT,
+                    network TEXT,
+                    instrument TEXT,
+                    data BLOB
+                );
+            )";
+            sq3_result = sqlite3_exec(sq3_connection, sq3_create.data(), nullptr, nullptr, &sq3_error_message);
+        }
+        //---
+        // End Parameterized Constructor
+        //---
 
-        //---------------------------------------------------------------
-        // Public methods
-        //---------------------------------------------------------------
-        // Tell me where you want the project to go.
-        // If the directory exists we refuse (return an exception to tell
-        // the user the it exists and needs to be deleted)
-        // If it doesn't exist, we make it, a raw_data_dir
-        // and a checkpoints dir. We populate a project object
-        // and do a first time write-out to project_mod.msgpack
-        // We should track the datetime of the project creation
-        // As well as the datetime of the last modification to the project
-        // Which is dependent upon the currently active checkpoint or the
-        // most recent save/addition of new data
-        void create_new_project(std::filesystem::path new_base_dir);
-        // Give me a project file and I'll load in the project information
-        // As well as all the project data
-        void load_project(std::filesystem::path md_full_path);
-        // Will save the current project state to the given path
-        // If the save_path exists, delete and recreate it (avoid any
-        // project mixing).
-        // It will write out all the sac_1c files
-        void save_project(std::filesystem::path save_path);
-        // Unload the currently project so that we can load or create a new
-        // project fresh
-        void clear_project();
-        //---------------------------------------------------------------
-        // End public methods
-        //---------------------------------------------------------------
+        //---
+        // Destructor
+        //---
+        ~Project() { sqlite3_close_v2(sq3_connection); }
+        //---
+        // End Destructor
+        //---
 
-    //----------------------------------------------------------------------
-    // End Project Public variables/methods
-    //----------------------------------------------------------------------
+        //---
+        // Add base data
+        //---
+        // Because we store the data vector as a double instead ofa float, the data-size is roughly double
+        // but we no longer lose precision upon saving
+        void add_base_data(SAC::SacStream& sac, std::string file_path)
+        {
+            std::string_view sq3_add_base = "INSERT INTO base_data (sample_rate, begin_time, end_time, origin_time, a_time, t0_time, t1_time, t2_time, t3_time, t4_time, t5_time, t6_time, t7_time, t8_time, t9_time, fini_time, stla, stlo, stel, stdp, evla, evlo, evel, evdp, mag, dist, az, baz, gcarc, cmpaz, cmpinc, npts, origin_id, event_id, mag_type, station, event, origin_text, a_text, t0_text, t1_text, t2_text, t3_text, t4_text, t5_text, t6_text, t7_text, t8_text, t9_text, fini_text, component, network, instrument, data, reference_time, source) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection, sq3_add_base.data(), -1, &sq3_statement, nullptr);
+            //std::cout << "Prepared sq3_statement: " << sq3_result << '\n';
+            // Now to bind each object separately
+            sq3_result = sqlite3_bind_double(sq3_statement, 1, sac.delta);
+            sq3_result = sqlite3_bind_double(sq3_statement, 2, sac.b);
+            sq3_result = sqlite3_bind_double(sq3_statement, 3, sac.e);
+            sq3_result = sqlite3_bind_double(sq3_statement, 4, sac.o);
+            sq3_result = sqlite3_bind_double(sq3_statement, 5, sac.a);
+            sq3_result = sqlite3_bind_double(sq3_statement, 6, sac.t0);
+            sq3_result = sqlite3_bind_double(sq3_statement, 7, sac.t1);
+            sq3_result = sqlite3_bind_double(sq3_statement, 8, sac.t2);
+            sq3_result = sqlite3_bind_double(sq3_statement, 9, sac.t3);
+            sq3_result = sqlite3_bind_double(sq3_statement, 10, sac.t4);
+            sq3_result = sqlite3_bind_double(sq3_statement, 11, sac.t5);
+            sq3_result = sqlite3_bind_double(sq3_statement, 12, sac.t6);
+            sq3_result = sqlite3_bind_double(sq3_statement, 13, sac.t7);
+            sq3_result = sqlite3_bind_double(sq3_statement, 14, sac.t8);
+            sq3_result = sqlite3_bind_double(sq3_statement, 15, sac.t9);
+            sq3_result = sqlite3_bind_double(sq3_statement, 16, sac.f);
+            sq3_result = sqlite3_bind_double(sq3_statement, 17, sac.stla);
+            sq3_result = sqlite3_bind_double(sq3_statement, 18, sac.stlo);
+            sq3_result = sqlite3_bind_double(sq3_statement, 19, sac.stel);
+            sq3_result = sqlite3_bind_double(sq3_statement, 20, sac.stdp);
+            sq3_result = sqlite3_bind_double(sq3_statement, 21, sac.evla);
+            sq3_result = sqlite3_bind_double(sq3_statement, 22, sac.evlo);
+            sq3_result = sqlite3_bind_double(sq3_statement, 23, sac.evel);
+            sq3_result = sqlite3_bind_double(sq3_statement, 24, sac.evdp);
+            sq3_result = sqlite3_bind_double(sq3_statement, 25, sac.mag);
+            sq3_result = sqlite3_bind_double(sq3_statement, 26, sac.dist);
+            sq3_result = sqlite3_bind_double(sq3_statement, 27, sac.az);
+            sq3_result = sqlite3_bind_double(sq3_statement, 28, sac.baz);
+            sq3_result = sqlite3_bind_double(sq3_statement, 29, sac.gcarc);
+            sq3_result = sqlite3_bind_double(sq3_statement, 30, sac.cmpaz);
+            sq3_result = sqlite3_bind_double(sq3_statement, 31, sac.cmpinc);
+            sq3_result = sqlite3_bind_int(sq3_statement, 32, sac.npts);
+            sq3_result = sqlite3_bind_int(sq3_statement, 33, sac.norid);
+            sq3_result = sqlite3_bind_int(sq3_statement, 34, sac.nevid);
+            sq3_result = sqlite3_bind_int(sq3_statement, 35, sac.imagtyp);
+            sq3_result = sqlite3_bind_text(sq3_statement, 36, sac.kstnm.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 37, sac.kevnm.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 38, sac.ko.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 39, sac.ka.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 40, sac.kt0.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 41, sac.kt1.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 42, sac.kt2.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 43, sac.kt3.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 44, sac.kt4.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 45, sac.kt5.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 46, sac.kt6.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 47, sac.kt7.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 48, sac.kt8.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 49, sac.kt9.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 50, sac.kf.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 51, sac.kcmpnm.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 52, sac.knetwk.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 53, sac.kinst.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_blob(sq3_statement, 54, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
+            std::string ref_time{sac_reference_time(sac)};
+            sq3_result = sqlite3_bind_text(sq3_statement, 55, ref_time.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 56, file_path.c_str(), -1, SQLITE_STATIC);
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            //std::cout << "Adding sac-file to database: " << sq3_result << '\n';
+            // Finalize the statement
+            sqlite3_finalize(sq3_statement);
+        }
+        //---
+        // End Add base data
+        //---
+
 };
-//------------------------------------------------------------------------
-// End Project class
-//------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-// End Class definitions
-//-----------------------------------------------------------------------------
 };
-//-----------------------------------------------------------------------------
-// End pssp namespace
-//-----------------------------------------------------------------------------
+
 #endif

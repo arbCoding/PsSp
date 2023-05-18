@@ -1,4 +1,5 @@
 #include "pssp_misc.hpp"
+#include <filesystem>
 
 //-----------------------------------------------------------------------------
 // Misc functions
@@ -213,13 +214,14 @@ void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c
     }
 }
 
-void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name)
+void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name, Project& project)
 {
     pssp::sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
+        project.add_base_data(sac.sac, file_name);
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -228,7 +230,7 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
     sac_deque.push_back(sac);
 }
 
-void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory)
+void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project)
 {
     // Iterate over files in directory
     std::vector<std::string> file_names{};
@@ -237,7 +239,8 @@ void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& 
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-            file_names.push_back(entry.path().string());
+            // Using canconical so that we have the entire path for the Project database
+            file_names.push_back(std::filesystem::canonical(entry.path()).string());
         }
     }
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
@@ -247,7 +250,7 @@ void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& 
     // Queue them up!
     for (std::string file_name : file_names)
     {
-        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name);
+        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name, std::ref(project));
     }
 }
 //-----------------------------------------------------------------------------
