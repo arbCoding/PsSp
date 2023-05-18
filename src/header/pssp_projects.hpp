@@ -200,34 +200,33 @@ class Project
     //
     // This provides us our data provenance information
     // Data File Table
-    // source, file_name, datetime-added
+    // data_id, datetime-added, source, file_name
+    //  data_id: unique data-id (integer) that is automatically determined
     //  source: the data source (original directory, IRIS webserv, whatever)
     //  file_name: the file_name
     //  datetime-added: we want to timestamp when data is first introduced to
     //      analysis (YYYY-MM-DD HH:mm:ss) <- I don't think we need to be
     //      more specific than that
     //
-    // Question: What do we do if two different files have the same filename?
-    //      It is unlikely as SAC files tend to follow a datetime based naming scheme.
-    //      But that is not always true.
-    //
     // This provides our information on checkpoints
     // It also provides a mechanism for a user to prevent a specific checkpoint
     // from disappearing unless they manually delete it
     // Checkpoint Table
-    // checkpoint_name, datetime-added, n_files, bool_auto, bool_cull
+    // checkpoint_id, checkpoint_name, datetime-added, n_files, bool_auto, bool_cull
+    //  checkpoint_id: unique identifier
     //  checkpoint_name: name of the checkpoint
-    //      default is auto_{datetime}
-    //      User defined is just {user provided name} or auto_{datetime} if they don't want to make a name
+    //      default is auto
+    //      user defined is default user, or their chosen name
     //  n_files: How many SAC files are in the checkpoint
-    //  bool_auto: automatic or user-defined (since a user not making a name makes auto_ the prepend we cannot parse for it)
-    //  bool_cull: true if we're allowed to automatically cull it (true default for auto, false default for non-auto)
+    //  bool_auto: automatic or user-defined
+    //  bool_cull: true if we're allowed to automatically cull it (true default for auto, false default for user)
     //
     // This provides our checkpoint specific information
     // Checkpoint Data Table
-    // checkpoint_name, source, datetime-added, file_name
+    // checkpoint_name, original_data_id, checkpoint_data_id
     //  checkpoint_name: the name of the checkpoint
-    //  file_name: SAC file_name
+    //  original_data_id: the data_id of the source file
+    //  checkpoint_data_id: the data_id within the checkpoint (this allows us to uniquely define the modified data)
     //
     // So if a file gets deleted from a project, it gets deleted from all checkpoints
     // If a file gets deleted from a checkpoint, it remains in the project
