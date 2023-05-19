@@ -193,7 +193,7 @@ void apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options
 // Bandpass all sac_1c's in a deque
 void batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
 // Read in a single sac_file
-void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name, Project& project);
+void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project);
 // Read all SAC files in a directory
 void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project);
 // Setup the graphical backends

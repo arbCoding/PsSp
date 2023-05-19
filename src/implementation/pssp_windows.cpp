@@ -377,7 +377,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.count = 0;
             // Can only select 1 file anyway!
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), ImGuiFileDialog::Instance()->GetFilePathName(), std::ref(project));
+            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName()), std::ref(project));
         }
         ImGuiFileDialog::Instance()->Close();
     }

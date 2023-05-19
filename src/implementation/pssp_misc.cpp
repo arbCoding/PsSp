@@ -214,14 +214,14 @@ void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c
     }
 }
 
-void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name, Project& project)
+void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
 {
     pssp::sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
-        project.add_base_data(sac.sac, file_name);
+        project.add_base_data_SacStream(sac.sac, file_name);
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -233,14 +233,14 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
 void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project)
 {
     // Iterate over files in directory
-    std::vector<std::string> file_names{};
+    std::vector<std::filesystem::path> file_names{};
     for (const auto& entry : std::filesystem::directory_iterator(directory))
     {
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
             // Using canconical so that we have the entire path for the Project database
-            file_names.push_back(std::filesystem::canonical(entry.path()).string());
+            file_names.push_back(std::filesystem::canonical(entry.path()));
         }
     }
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
