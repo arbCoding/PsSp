@@ -121,6 +121,10 @@ class Project
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
             // Create a base data table
+            // This should be an ostringstream...
+            // To use local timezone use:
+            //  (CURRENT_TIMESTAMP, 'localtime')
+            // instead of just CURRENT_TIMESTAMP
             std::string_view sq3_create = R"(
                 CREATE TABLE base_data (
                     base_id INTEGER PRIMARY KEY,
