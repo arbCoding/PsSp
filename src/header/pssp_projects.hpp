@@ -45,18 +45,24 @@
 //-----------------------------------------------------------------------------
 // So, we can load base data and place it inside a database on disk
 // We cannot however load an existing database from a file on disk
+//
 // Files that are being worked on exist in memory (at the start of a project that
 // is all of the base data files).
+//
 // Files that are unloaded, stay in the database with a removed-on datetime
 // so that people can see when they removed a file from their database
+//
 // We'll need a mechanism to fully purge a file from the database (instead of tracking
 // up to when it was removed)
+//
 // We still obviously need a file manipulation record (track filters, trimming, etc).
 // That needs an action column ("function parameters...") action datetime stamp, checkpoint tag
+//
 // We need a checkpoint list table
 // Checkpoint id (automatic), checkpoint name, bool-auto, bool-cull, checkpoint datetime, n_files, spawn checkpoint id (what checkpoint built this), bool-deleted
 // By keeping track fo which checkpoint spawned one, we can track the origin of a checkpoint (allow us to follow the chain of file manipulations with a non-linear path)
 // By keeping the checkpoint id even after the checkpoint is deleted we do not loose the heritage of a checkpoint (just drop the checkpoint's unique table)
+//
 // We need a checkpoint table
 // This is basically a base_data table, except the header values may be different and obviously the data1 (and possibly data2, though we assume this is empty for now
 // because evenly sampled time-series are the default) are likely to be different
