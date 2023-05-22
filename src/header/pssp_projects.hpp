@@ -129,15 +129,12 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Create base_data table
+        // Data table creation string
         //----------------------------------------------------------------
-        // Create a base data table
-        void create_base_data_table(sqlite3* db_connection)
+        std::string data_table_creation(std::ostringstream& oss)
         {
             // Times in seconds are relative to reference time defined by the nzSTUFF headers
             // Going to keep all time-series headers (no spectral, no xy(z) nonsense)
-            std::ostringstream oss{};
-            oss << "CREATE TABLE base_data (";
             oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
             oss << "source TEXT, "; // 2 (if from filesystem, string path, prior to filename)
             oss << "file TEXT, "; // 3 (whatever.SAC filename)
@@ -242,7 +239,21 @@ class Project
             oss << "kinst TEXT, "; // 99 (sac.kinst, generic recording instrument name)
             oss << "data1 BLOB, "; // 100 (sac.data1, time-series)
             oss << "data2 BLOB);"; // 101 (sac.data1, if unevenly sampled, these are the sample times)
-            std::string sq3_create_base_data{oss.str()};
+            return oss.str();
+        }
+        //----------------------------------------------------------------
+        // End data table creation string
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Create base_data table
+        //----------------------------------------------------------------
+        // Create a base data table
+        void create_base_data_table(sqlite3* db_connection)
+        {
+            std::ostringstream oss{};
+            oss << "CREATE TABLE base_data (";
+            std::string sq3_create_base_data{data_table_creation(oss)};
             sq3_result = sqlite3_exec(db_connection, sq3_create_base_data.c_str(), nullptr, nullptr, &sq3_error_message);
         }
         //----------------------------------------------------------------
@@ -270,8 +281,10 @@ class Project
             sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
             // Database stored on system
             create_base_data_table(sq3_connection_file);
+            // List of checkpoints
+            create_checkpoint_list_table(sq3_connection_file);
             // Database maintained in memory
-            //create_base_data_table(sq3_connection_memory);
+            create_checkpoint_table(sq3_connection_memory);
         }
         //----------------------------------------------------------------
         // End Parameterized Constructor
@@ -543,6 +556,42 @@ class Project
         }
         //----------------------------------------------------------------
         // End Add base data
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add checkpoint table
+        //----------------------------------------------------------------
+        void create_checkpoint_list_table(sqlite3* db_connection)
+        {
+            std::ostringstream oss{};
+            oss << "CREATE TABLE checkpoints (";
+            oss << "checkpoint_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
+            oss << "added DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 2 (automatic UTC timestamp)
+            oss << "parent_id INTEGER, "; // 3 (id of parent checkpoints [or Null for base_data parent])
+            oss << "n_data INTEGER, "; // 4 (number of time-series objects in this checkpoint)
+            oss << "auto INTEGER, "; // 5 (0 = user-made, 1 = automatically made)
+            oss << "cull INTEGER, "; // 6 (0 = permanent, 1 = cull on checkpoint limit)
+            oss << "removed DATETIME, "; // 7 (Null is still in, a datetime is a stamp of when it was removed)
+            oss << "name TEXT);"; // 8 (auto = automatic or user-unnamed, otherwise user-defined checkpoint name)
+            std::string sq3_create_checkpoints{oss.str()};
+            sq3_result = sqlite3_exec(db_connection, sq3_create_checkpoints.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Add checkpoint table
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Current working data is in checkpoint
+        //----------------------------------------------------------------
+        void create_checkpoint_table(sqlite3* db_connection)
+        {
+            std::ostringstream oss{};
+            oss << "CREATE TABLE current_data (";
+            std::string sq3_create_checkpoint_data{data_table_creation(oss)};
+            sq3_result = sqlite3_exec(db_connection, sq3_create_checkpoint_data.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Current working data is in checkpoint
         //----------------------------------------------------------------
 
 };
