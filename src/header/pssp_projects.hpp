@@ -122,6 +122,7 @@ class Project
             formatted_datetime << std::put_time(&datetime, "%Y-%m-%d %H:%M:%S");
             // Append fractional seconds
             formatted_datetime << '.' << std::setfill('0') << std::setw(3) << frac_dur.count();
+            std::cout << formatted_datetime.str() << ',' << oss.str() << '\n';
             return formatted_datetime.str();
         }
         //----------------------------------------------------------------
@@ -135,9 +136,6 @@ class Project
         {
             // Times in seconds are relative to reference time defined by the nzSTUFF headers
             // Going to keep all time-series headers (no spectral, no xy(z) nonsense)
-            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
-            oss << "source TEXT, "; // 2 (if from filesystem, string path, prior to filename)
-            oss << "file TEXT, "; // 3 (whatever.SAC filename)
             oss << "added DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 4 (automatic UTC timestamp)
             oss << "delta REAL, "; // 5 (sac.delta, sample rate)
             oss << "b REAL, "; // 6 (sac.b, begin time in seconds)
@@ -253,6 +251,9 @@ class Project
         {
             std::ostringstream oss{};
             oss << "CREATE TABLE base_data (";
+            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
+            oss << "source TEXT, "; // 2 (if from filesystem, string path, prior to filename)
+            oss << "file TEXT, "; // 3 (whatever.SAC filename)
             std::string sq3_create_base_data{data_table_creation(oss)};
             sq3_result = sqlite3_exec(db_connection, sq3_create_base_data.c_str(), nullptr, nullptr, &sq3_error_message);
         }
@@ -587,6 +588,7 @@ class Project
         {
             std::ostringstream oss{};
             oss << "CREATE TABLE current_data (";
+            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
             std::string sq3_create_checkpoint_data{data_table_creation(oss)};
             sq3_result = sqlite3_exec(db_connection, sq3_create_checkpoint_data.c_str(), nullptr, nullptr, &sq3_error_message);
         }
