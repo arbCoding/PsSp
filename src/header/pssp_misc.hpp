@@ -103,13 +103,15 @@ struct sac_1c
     std::string file_name{};
     SAC::SacStream sac{};
     std::shared_mutex mutex_{};
+    int data_id{};
 
-    sac_1c() : file_name(), sac(), mutex_() {}
+    sac_1c() : file_name(), sac(), mutex_(), data_id() {}
     // Copy constructor
     sac_1c(const sac_1c& other)
     {
         file_name = other.file_name;
         sac = other.sac;
+        data_id = other.data_id;
         // Don't copy the mutex
     }
     // Assignment operator
@@ -119,6 +121,7 @@ struct sac_1c
         {
             file_name = other.file_name;
             sac = other.sac;
+            data_id = other.data_id;
             // Don't assign the mutex
         }
         return *this;

@@ -221,7 +221,7 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
-        project.add_base_data_SacStream(sac.sac, file_name);
+        sac.data_id = project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);

@@ -38,29 +38,7 @@
 //-----------------------------------------------------------------------------
 // ToDo
 //-----------------------------------------------------------------------------
-// So, we can load base data and place it inside a database on disk
-// We cannot however load an existing database from a file on disk
-//
-// Files that are being worked on exist in memory (at the start of a project that
-// is all of the base data files).
-//
-// Files that are unloaded, stay in the database with a removed-on datetime
-// so that people can see when they removed a file from their database
-//
-// We'll need a mechanism to fully purge a file from the database (instead of tracking
-// up to when it was removed)
-//
-// We still obviously need a file manipulation record (track filters, trimming, etc).
-// That needs an action column ("function parameters...") action datetime stamp, checkpoint tag
-//
-// We need a checkpoint list table
-// Checkpoint id (automatic), checkpoint name, bool-auto, bool-cull, checkpoint datetime, n_files, spawn checkpoint id (what checkpoint built this), bool-deleted
-// By keeping track fo which checkpoint spawned one, we can track the origin of a checkpoint (allow us to follow the chain of file manipulations with a non-linear path)
-// By keeping the checkpoint id even after the checkpoint is deleted we do not loose the heritage of a checkpoint (just drop the checkpoint's unique table)
-//
-// We need a checkpoint table
-// This is basically a base_data table, except the header values may be different and obviously the data1 (and possibly data2, though we assume this is empty for now
-// because evenly sampled time-series are the default) are likely to be different
+// TBD
 //-----------------------------------------------------------------------------
 // End ToDo
 //-----------------------------------------------------------------------------
@@ -74,6 +52,8 @@ class Project
         std::string_view name_{};
         // Path to the database file
         std::filesystem::path path_{};
+        // Checkpoint id
+        int checkpoint_id_{0};
         //----------------------------------------------------------------
         // Left-pad integers
         //----------------------------------------------------------------
@@ -162,135 +142,528 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Data table creation string
+        // Provenance table creation
         //----------------------------------------------------------------
-        std::string data_table_creation(std::ostringstream& oss)
+        // This only gets called upon creating a NEW project
+        // This is ONLY in the on-disk database file
+        // Not stored in memory
+        void create_provenance_table()
         {
-            // Times in seconds are relative to reference time defined by the nzSTUFF headers
-            // Going to keep all time-series headers (no spectral, no xy(z) nonsense)
-            oss << "added DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 4 (automatic UTC timestamp)
-            oss << "delta REAL, "; // 5 (sac.delta, sample rate)
-            oss << "b REAL, "; // 6 (sac.b, begin time in seconds)
-            oss << "e REAL, "; // 7 (sac.e, end time in seconds)
-            oss << "o REAL, "; // 8 (sac.o, origin time in seconds)
-            oss << "a REAL, "; // 9 (sac.a, first arrival pick time in seconds)
-            oss << "t0 REAL, "; // 10 (sac.t0, user time in seconds)
-            oss << "t1 REAL, "; // 11
-            oss << "t2 REAL, "; // 12
-            oss << "t3 REAL, "; // 13
-            oss << "t4 REAL, "; // 14
-            oss << "t5 REAL, "; // 15
-            oss << "t6 REAL, "; // 16
-            oss << "t7 REAL, "; // 17
-            oss << "t8 REAL, "; // 18
-            oss << "t9 REAL, "; // 19
-            oss << "f REAL, "; // 20 (sac.f, fini time in seconds [for finite source])
-            oss << "resp0 REAL, "; // 21 (sac.resp0, instrument response parameter)
-            oss << "resp1 REAL, "; // 22
-            oss << "resp2 REAL, "; // 23
-            oss << "resp3 REAL, "; // 24
-            oss << "resp4 REAL, "; // 25
-            oss << "resp5 REAL, "; // 26
-            oss << "resp6 REAL, "; // 27
-            oss << "resp7 REAL, "; // 28
-            oss << "resp8 REAL, "; // 29
-            oss << "resp9 REAL, "; // 30
-            oss << "stla REAL, "; // 31 (sac.stla, station latitude, degrees, north positive)
-            oss << "stlo REAL, "; // 32 (sac.stlo, station longitude, degrees, east positive)
-            oss << "stel REAL, "; // 33 (sac.stel, station elevation m a.s.l.)
-            oss << "stdp REAL, "; // 34 (sac.stdp, station depth below surface, meters)
-            oss << "evla REAL, "; // 35 (sac.evla, event latitude)
-            oss << "evlo REAL, "; // 36 (sac.evlo, event longitude)
-            oss << "evel REAL, "; // 37 (sac.evel, event elevation)
-            oss << "evdp REAL, "; // 38 (sac.evdp, event depth below surface, kilometers [previous meters])
-            oss << "mag REAL, "; // 39 (sac.mag, event magnitude)
-            oss << "user0 REAL, "; // 40 (sac.user0, user-defined storage)
-            oss << "user1 REAL, "; // 41
-            oss << "user2 REAL, "; // 42
-            oss << "user3 REAL, "; // 43
-            oss << "user4 REAL, "; // 44
-            oss << "user5 REAL, "; // 45
-            oss << "user6 REAL, "; // 46
-            oss << "user7 REAL, "; // 47
-            oss << "user8 REAL, "; // 48
-            oss << "user9 REAL, "; // 49
-            oss << "dist REAL, "; // 50 (sac.dist, station-event distance, kilometers)
-            oss << "az REAL, "; // 51 (sac.az, station-event azimuth, degrees)
-            oss << "baz REAL, "; // 52 (sac.baz, event-station azimuth, degrees)
-            oss << "gcarc REAL, "; // 53 (sac.gcarc, station_event great circle-arc distance, degrees)
-            oss << "depmin REAL, "; // 54 (sac.depmin, minimum amplitude)
-            oss << "depmen REAL, "; // 55 (sac.depmen, mean amplitude)
-            oss << "depmax REAL, "; // 56 (sac.depmax, maximum amplitude)
-            oss << "cmpaz REAL, "; // 57 (sac.cmpaz, component azimuth, degrees clockwise from North)
-            oss << "cmpinc REAL, "; // 58 (sac.cmpinc, component incident angle, degrees from upward vertical (incident 0 = -90 dip), (dip 0 = incident 90)
-            oss << "reference_time DATETIME, "; // 59 (take all sac.nzStuff headers and format into a string, then convert to standard format)
-            oss << "norid INTEGER, "; // 60 (sac.norid, origin id)
-            oss << "nevid INTEGER, "; // 61 (sac.nevid, event id)
-            oss << "npts INTEGER, "; // 62 (sac.npts, number of points in time-series)
-            oss << "nwfid INTEGER, "; // 63 (sac.nwfid, waveform id)
-            oss << "iftype INTEGER, "; // 64 (sac.iftype, type of file (should always be 1 = ITIME = Time-series!))
-            oss << "idep INTEGER, "; // 65 (sac.idep, amplitude type, see SAC::SacStream for details)
-            oss << "iztype INTEGER, "; // 66 (sac.iztype, reference time equivalent, see SAC::SacStream for details)
-            oss << "iinst INTEGER, "; // 67 (sac.iints, type of recording instrument)
-            oss << "istreg INTEGER, "; // 68 (sac.istreg, station geographic region)
-            oss << "ievreg INTEGER, "; // 69 (sac.ievreg, event geographic region)
-            oss << "ievtyp INTEGER, "; // 70 (sac.ievtyp, type of event)
-            oss << "iqual INTEGER, "; // 71 (sac.iqual, data quality)
-            oss << "isynth INTEGER, "; // 72 (sac.isynth, synthetic data flag)
-            oss << "imagtyp INTEGER, "; // 73 (sac.imagtyp, type of magnitude)
-            oss << "imagsrc INTEGER, "; // 74 (sac.imagsrc, source of magnitude information)
-            oss << "ibody INTEGER, "; // 75 (sac.ibody, body/spheroid definition)
-            // True/False = 1/0
-            oss << "leven INTEGER, "; // 76 (sac.leven, evenly-spaced flag)
-            oss << "lpspol INTEGER, "; // 77 (sac.lpspol, positive polarity (left-hand reul NEZ [North-East-Up]))
-            // Skip lovrok and lcalda because they're stupider headers than normal
-            oss << "kstnm TEXT, "; // 78 (sac.kstnm, station name)
-            oss << "kevnm TEXT, "; // 79 (sac.kevnm, event name)
-            oss << "khole TEXT, "; // 80 (sac.khole, hole identifier or location ID)
-            oss << "ko TEXT, "; // 81 (sac.ko, origin time text)
-            oss << "ka TEXT, "; // 82 (sac.ka, first arrival time text)
-            oss << "kt0 TEXT, "; // 83 (sac.kt0, user time text)
-            oss << "kt1 TEXT, "; // 84
-            oss << "kt2 TEXT, "; // 85
-            oss << "kt3 TEXT, "; // 86
-            oss << "kt4 TEXT, "; // 87
-            oss << "kt5 TEXT, "; // 88
-            oss << "kt6 TEXT, "; // 89
-            oss << "kt7 TEXT, "; // 90
-            oss << "kt8 TEXT, "; // 91
-            oss << "kt9 TEXT, "; // 92
-            oss << "kf TEXT, "; // 93 (sac.kf, fini text)
-            oss << "kuser0 TEXT, "; // 94 (sac.kuser0, user text storage)
-            oss << "kuser1 TEXT, "; // 95
-            oss << "kuser2 TEXT, "; // 96
-            oss << "kcmpnm TEXT, "; // 97 (sac.kcmpnm, compnent name)
-            oss << "knetwk TEXT, "; // 98 (sac.knetwk, network name)
-            // Skip kdatrd, stupid
-            oss << "kinst TEXT, "; // 99 (sac.kinst, generic recording instrument name)
-            oss << "data1 BLOB, "; // 100 (sac.data1, time-series)
-            oss << "data2 BLOB);"; // 101 (sac.data1, if unevenly sampled, these are the sample times)
-            return oss.str();
+            std::ostringstream oss{};
+            oss << "CREATE TABLE provenance (";
+            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
+            // If from file on filesystem, full canonical path for it
+            // If from an FDSN (future), then that info
+            // If internally generated (synthetic, new copy, whatever) then internal
+            oss << "source TEXT, "; // 2
+            oss << "added DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 3 (automatic)
+            oss << "removed DATETIME);"; // 4 (NULL if not removed, timestamp if removed)
+            std::string sq3_string{oss.str()};
+            sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
         }
         //----------------------------------------------------------------
-        // End data table creation string
+        // End provenance table creation
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Create base_data table
+        // Checkpoint list table creation
         //----------------------------------------------------------------
-        // Create a base data table
-        void create_base_data_table(sqlite3* db_connection)
+        // This only gets called upon creating a NEW project
+        // This is ONLY in the on-disk database file
+        // Not stored in memory
+        void create_checkpoint_list_table()
         {
             std::ostringstream oss{};
-            oss << "CREATE TABLE base_data (";
-            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
-            oss << "source TEXT, "; // 2 (if from filesystem, string path, prior to filename)
-            oss << "file TEXT, "; // 3 (whatever.SAC filename)
-            std::string sq3_create_base_data{data_table_creation(oss)};
-            sq3_result = sqlite3_exec(db_connection, sq3_create_base_data.c_str(), nullptr, nullptr, &sq3_error_message);
+            oss << "CREATE TABLE checkpoints (";
+            oss << "checkpoint_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
+            oss << "parent_id INTEGER, "; // 2 (id of parent checkpoint this spawned from)
+            oss << "created DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 3 (when the checkpoint was made)
+            oss << "author INTEGER, "; // 4 (0 = automatic, 1 = user)
+            oss << "cull INTEGER, "; // 5 (0 = can cull on limit hit, 1 = keep)
+            oss << "removed DATETIME)"; // 7 (NULL = in data, a timestamp = when it was removed)
+            std::string sq3_string{oss.str()};
+            sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
         }
         //----------------------------------------------------------------
-        // End create base_data table
+        // End checkpoint list table creation
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // data header table creation
+        //----------------------------------------------------------------
+        // This only gets called upon a piece of data being added to the project
+        // This is stored on disk
+        void create_data_header_table(int data_id)
+        {
+            std::ostringstream oss{};
+            oss << "CREATE TABLE header_" << data_id << " (";
+            oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the header is associated with
+            // Now we need to include the ~100 header values...
+            //------------------------------------------------------------
+            // SAC headers
+            //------------------------------------------------------------
+            oss << "delta REAL, "; // 2 (sac.delta, sample rate)
+            oss << "b REAL, "; // 3 (sac.b, begin time in seconds)
+            oss << "e REAL, "; // 4 (sac.e, end time in seconds)
+            oss << "o REAL, "; // 5 (sac.o, origin time in seconds)
+            oss << "a REAL, "; // 6 (sac.a, first arrival pick time in seconds)
+            oss << "t0 REAL, "; // 7 (sac.t0, user time in seconds)
+            oss << "t1 REAL, "; // 8
+            oss << "t2 REAL, "; // 9
+            oss << "t3 REAL, "; // 10
+            oss << "t4 REAL, "; // 11
+            oss << "t5 REAL, "; // 12
+            oss << "t6 REAL, "; // 13
+            oss << "t7 REAL, "; // 14
+            oss << "t8 REAL, "; // 15
+            oss << "t9 REAL, "; // 16
+            oss << "f REAL, "; // 17 (sac.f, fini time in seconds [for finite source])
+            oss << "resp0 REAL, "; // 18 (sac.resp0, instrument response parameter)
+            oss << "resp1 REAL, "; // 19
+            oss << "resp2 REAL, "; // 20
+            oss << "resp3 REAL, "; // 21
+            oss << "resp4 REAL, "; // 22
+            oss << "resp5 REAL, "; // 23
+            oss << "resp6 REAL, "; // 24
+            oss << "resp7 REAL, "; // 25
+            oss << "resp8 REAL, "; // 26
+            oss << "resp9 REAL, "; // 27
+            oss << "stla REAL, "; // 28 (sac.stla, station latitude, degrees, north positive)
+            oss << "stlo REAL, "; // 29 (sac.stlo, station longitude, degrees, east positive)
+            oss << "stel REAL, "; // 30 (sac.stel, station elevation m a.s.l.)
+            oss << "stdp REAL, "; // 31 (sac.stdp, station depth below surface, meters)
+            oss << "evla REAL, "; // 32 (sac.evla, event latitude)
+            oss << "evlo REAL, "; // 33 (sac.evlo, event longitude)
+            oss << "evel REAL, "; // 34 (sac.evel, event elevation)
+            oss << "evdp REAL, "; // 35 (sac.evdp, event depth below surface, kilometers [previous meters])
+            oss << "mag REAL, "; // 36 (sac.mag, event magnitude)
+            oss << "user0 REAL, "; // 37 (sac.user0, user-defined storage)
+            oss << "user1 REAL, "; // 38
+            oss << "user2 REAL, "; // 39
+            oss << "user3 REAL, "; // 40
+            oss << "user4 REAL, "; // 41
+            oss << "user5 REAL, "; // 42
+            oss << "user6 REAL, "; // 43
+            oss << "user7 REAL, "; // 44
+            oss << "user8 REAL, "; // 45
+            oss << "user9 REAL, "; // 46
+            oss << "dist REAL, "; // 47 (sac.dist, station-event distance, kilometers)
+            oss << "az REAL, "; // 48 (sac.az, station-event azimuth, degrees)
+            oss << "baz REAL, "; // 49 (sac.baz, event-station azimuth, degrees)
+            oss << "gcarc REAL, "; // 50 (sac.gcarc, station_event great circle-arc distance, degrees)
+            oss << "depmin REAL, "; // 51 (sac.depmin, minimum amplitude)
+            oss << "depmen REAL, "; // 52 (sac.depmen, mean amplitude)
+            oss << "depmax REAL, "; // 53 (sac.depmax, maximum amplitude)
+            oss << "cmpaz REAL, "; // 54 (sac.cmpaz, component azimuth, degrees clockwise from North)
+            oss << "cmpinc REAL, "; // 55 (sac.cmpinc, component incident angle, degrees from upward vertical (incident 0 = -90 dip), (dip 0 = incident 90)
+            oss << "reference_time DATETIME, "; // 56 (take all sac.nzStuff headers and format into a string, then convert to standard format)
+            oss << "norid INTEGER, "; // 57 (sac.norid, origin id)
+            oss << "nevid INTEGER, "; // 58 (sac.nevid, event id)
+            oss << "npts INTEGER, "; // 59 (sac.npts, number of points in time-series)
+            oss << "nwfid INTEGER, "; // 60 (sac.nwfid, waveform id)
+            oss << "iftype INTEGER, "; // 61 (sac.iftype, type of file (should always be 1 = ITIME = Time-series!))
+            oss << "idep INTEGER, "; // 62 (sac.idep, amplitude type, see SAC::SacStream for details)
+            oss << "iztype INTEGER, "; // 63 (sac.iztype, reference time equivalent, see SAC::SacStream for details)
+            oss << "iinst INTEGER, "; // 64 (sac.iints, type of recording instrument)
+            oss << "istreg INTEGER, "; // 65 (sac.istreg, station geographic region)
+            oss << "ievreg INTEGER, "; // 66 (sac.ievreg, event geographic region)
+            oss << "ievtyp INTEGER, "; // 67 (sac.ievtyp, type of event)
+            oss << "iqual INTEGER, "; // 68 (sac.iqual, data quality)
+            oss << "isynth INTEGER, "; // 69 (sac.isynth, synthetic data flag)
+            oss << "imagtyp INTEGER, "; // 70 (sac.imagtyp, type of magnitude)
+            oss << "imagsrc INTEGER, "; // 71 (sac.imagsrc, source of magnitude information)
+            oss << "ibody INTEGER, "; // 72 (sac.ibody, body/spheroid definition)
+            // True/False = 1/0
+            oss << "leven INTEGER, "; // 73 (sac.leven, evenly-spaced flag)
+            oss << "lpspol INTEGER, "; // 74 (sac.lpspol, positive polarity (left-hand reul NEZ [North-East-Up]))
+            // Skip lovrok and lcalda because they're stupider headers than normal
+            oss << "kstnm TEXT, "; // 75 (sac.kstnm, station name)
+            oss << "kevnm TEXT, "; // 76 (sac.kevnm, event name)
+            oss << "khole TEXT, "; // 77 (sac.khole, hole identifier or location ID)
+            oss << "ko TEXT, "; // 78 (sac.ko, origin time text)
+            oss << "ka TEXT, "; // 79 (sac.ka, first arrival time text)
+            oss << "kt0 TEXT, "; // 80 (sac.kt0, user time text)
+            oss << "kt1 TEXT, "; // 81
+            oss << "kt2 TEXT, "; // 82
+            oss << "kt3 TEXT, "; // 83
+            oss << "kt4 TEXT, "; // 84
+            oss << "kt5 TEXT, "; // 85
+            oss << "kt6 TEXT, "; // 86
+            oss << "kt7 TEXT, "; // 87
+            oss << "kt8 TEXT, "; // 88
+            oss << "kt9 TEXT, "; // 89
+            oss << "kf TEXT, "; // 90 (sac.kf, fini text)
+            oss << "kuser0 TEXT, "; // 91 (sac.kuser0, user text storage)
+            oss << "kuser1 TEXT, "; // 92
+            oss << "kuser2 TEXT, "; // 93
+            oss << "kcmpnm TEXT, "; // 94 (sac.kcmpnm, compnent name)
+            oss << "knetwk TEXT, "; // 95 (sac.knetwk, network name)
+            // Skip kdatrd, stupid
+            oss << "kinst TEXT);"; // 96 (sac.kinst, generic recording instrument name)
+            //------------------------------------------------------------
+            // End SAC headers
+            //------------------------------------------------------------
+            std::string sq3_string{oss.str()};
+            sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+            if (sq3_result != SQLITE_OK)
+            {
+                std::cout << sqlite3_errmsg(sq3_connection_file) << '\n';
+            }
+        }
+        //----------------------------------------------------------------
+        // End data header table creation
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // data processing table creation
+        //----------------------------------------------------------------
+        // This only gets called upon a piece of data being added to the project
+        // This is stored on disk by default, no need to keep data in memory (it is already there!)
+        void create_data_processing_table(int data_id)
+        {
+            std::ostringstream oss{};
+            oss << "CREATE TABLE processing_" << data_id << " (";
+            oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the data is associated with
+            oss << "comment TEXT, "; // 2 (on processing it is the action and parameters, on checkpoint it is CHECKPOINT)
+            oss << "data1 BLOB, "; // 3 (sac.data1, time-series) (null if not checkpoint)
+            oss << "data2 BLOB);"; // 4 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
+            std::string sq3_string{oss.str()};
+            sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End data processing table creation
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add data provenance
+        //----------------------------------------------------------------
+        // This gets called ONLY when data gets added to a project
+        // You get the data_id back upon insertion
+        int add_data_provenance(const std::string& source)
+        {
+            std::ostringstream oss{};
+            oss << "INSERT INTO provenance (source) VALUES (?)";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_text(sq3_statement, 1, source.c_str(), -1, SQLITE_STATIC);
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            // Get the ID of the newly inserted data
+            // Normally it is an sqlite3_int64, but I want a normal integer for now
+            int data_id{static_cast<int>(sqlite3_last_insert_rowid(sq3_connection_file))};
+            // Finalize the statement
+            sqlite3_finalize(sq3_statement);
+            return data_id;
+        }
+        //----------------------------------------------------------------
+        // End Add data provenance
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add data header
+        //----------------------------------------------------------------
+        // This gets called when data gets added to a project
+        // OR when a checkpoint gets made
+        // This goes on file when data is added, or when a checkpoint happens
+        void add_data_header(SAC::SacStream& sac, int data_id)
+        {
+            std::ostringstream oss{};
+            oss << "INSERT INTO header_" << data_id << " (";
+            oss << "delta, "; // 1
+            oss << "b, "; // 2
+            oss << "e, "; // 3
+            oss << "o, "; // 4
+            oss << "a, "; // 5
+            oss << "t0, "; // 6
+            oss << "t1, "; // 7
+            oss << "t2, "; // 8
+            oss << "t3, "; // 9
+            oss << "t4, "; // 10
+            oss << "t5, "; // 11
+            oss << "t6, "; // 12
+            oss << "t7, "; // 13
+            oss << "t8, "; // 14
+            oss << "t9, "; // 15
+            oss << "f, "; // 16
+            oss << "resp0, "; // 17
+            oss << "resp1, "; // 18
+            oss << "resp2, "; // 19
+            oss << "resp3, "; // 20
+            oss << "resp4, "; // 21
+            oss << "resp5, "; // 22
+            oss << "resp6, "; // 23
+            oss << "resp7, "; // 24
+            oss << "resp8, "; // 25
+            oss << "resp9, "; // 26
+            oss << "stla, "; // 27
+            oss << "stlo, "; // 28
+            oss << "stel, "; // 29
+            oss << "stdp, "; // 30
+            oss << "evla, "; // 31
+            oss << "evlo, "; // 32
+            oss << "evel, "; // 33
+            oss << "evdp, "; // 34
+            oss << "mag, "; // 35
+            oss << "user0, "; // 36
+            oss << "user1, "; // 37
+            oss << "user2, "; // 38
+            oss << "user3, "; // 39
+            oss << "user4, "; // 40
+            oss << "user5, "; // 41
+            oss << "user6, "; // 42
+            oss << "user7, "; // 43
+            oss << "user8, "; // 44
+            oss << "user9, "; // 45
+            oss << "dist, "; // 46
+            oss << "az, "; // 47
+            oss << "baz, "; // 48
+            oss << "gcarc, "; // 49
+            oss << "depmin, "; // 50
+            oss << "depmen, "; // 51
+            oss << "depmax, "; // 52
+            oss << "cmpaz, "; // 53
+            oss << "cmpinc, "; // 54
+            oss << "reference_time, "; // 55
+            oss << "norid, "; // 56
+            oss << "nevid, "; // 57
+            oss << "npts, "; // 58
+            oss << "nwfid, "; // 59
+            oss << "iftype, "; // 60
+            oss << "idep, "; // 61
+            oss << "iztype, "; // 62
+            oss << "iinst, "; // 63
+            oss << "istreg, "; // 64
+            oss << "ievreg, "; // 65
+            oss << "ievtyp, "; // 66
+            oss << "iqual, "; // 67
+            oss << "isynth, "; // 68
+            oss << "imagtyp, "; // 69
+            oss << "imagsrc, "; // 70
+            oss << "ibody, "; // 71
+            oss << "leven, "; // 72
+            oss << "lpspol, "; // 73
+            oss << "kstnm, "; // 74
+            oss << "kevnm, "; // 75
+            oss << "khole, "; // 76
+            oss << "ko, "; // 77
+            oss << "ka, "; // 78
+            oss << "kt0, "; // 79
+            oss << "kt1, "; // 80
+            oss << "kt2, "; // 81
+            oss << "kt3, "; // 82
+            oss << "kt4, "; // 83
+            oss << "kt5, "; // 84
+            oss << "kt6, "; // 85
+            oss << "kt7, "; // 86
+            oss << "kt8, "; // 87
+            oss << "kt9, "; // 88
+            oss << "kf, "; // 89
+            oss << "kuser0, "; // 90
+            oss << "kuser1, "; // 91
+            oss << "kuser2, "; // 92
+            oss << "kcmpnm, "; // 93
+            oss << "knetwk, "; // 94
+            oss << "kinst, "; // 95
+            oss << "checkpoint_id)"; // 96
+            oss << " Values (";
+            for (int i{0}; i < 95; ++i)
+            {
+                oss << "?, ";
+            }
+            oss << "?);";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            // If a header is unset, bind as null, otherwise bind with the actuall value
+            // For now do unset double for all non-int numbers
+            // then modify to unset_float for those that need it
+            if (sac.delta == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 1); } else { sq3_result = sqlite3_bind_double(sq3_statement, 1, sac.delta); }
+            if (sac.b == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 2); } else{ sq3_result = sqlite3_bind_double(sq3_statement, 2, sac.b); }
+            if (sac.e == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 3); } else { sq3_result = sqlite3_bind_double(sq3_statement, 3, sac.e); }
+            if (sac.o == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 4); } else { sq3_result = sqlite3_bind_double(sq3_statement, 4, sac.o); }
+            if (sac.a == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 5); } else { sq3_result = sqlite3_bind_double(sq3_statement, 5, sac.a); }
+            if (sac.t0 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 6); } else { sq3_result = sqlite3_bind_double(sq3_statement, 6, sac.t0); }
+            if (sac.t1 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 7); } else { sq3_result = sqlite3_bind_double(sq3_statement, 7, sac.t1); }
+            if (sac.t2 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 8); } else { sq3_result = sqlite3_bind_double(sq3_statement, 8, sac.t2); }
+            if (sac.t3 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 9); } else { sq3_result = sqlite3_bind_double(sq3_statement, 9, sac.t3); }
+            if (sac.t4 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 10); } else { sq3_result = sqlite3_bind_double(sq3_statement, 10, sac.t4); }
+            if (sac.t5 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 11); } else { sq3_result = sqlite3_bind_double(sq3_statement, 11, sac.t5); }
+            if (sac.t6 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 12); } else { sq3_result = sqlite3_bind_double(sq3_statement, 12, sac.t6); }
+            if (sac.t7 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 13); } else { sq3_result = sqlite3_bind_double(sq3_statement, 13, sac.t7); }
+            if (sac.t8 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 14); } else { sq3_result = sqlite3_bind_double(sq3_statement, 14, sac.t8); }
+            if (sac.t9 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 15); } else { sq3_result = sqlite3_bind_double(sq3_statement, 15, sac.t9); }
+            if (sac.f == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 16); } else { sq3_result = sqlite3_bind_double(sq3_statement, 16, sac.f); }
+            if (sac.resp0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 17); } else { sq3_result = sqlite3_bind_double(sq3_statement, 17, sac.resp0); }
+            if (sac.resp1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 18); } else { sq3_result = sqlite3_bind_double(sq3_statement, 18, sac.resp1); }
+            if (sac.resp2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 19); } else { sq3_result = sqlite3_bind_double(sq3_statement, 19, sac.resp2); }
+            if (sac.resp3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 20); } else { sq3_result = sqlite3_bind_double(sq3_statement, 20, sac.resp3); }
+            if (sac.resp4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 21); } else { sq3_result = sqlite3_bind_double(sq3_statement, 21, sac.resp4); }
+            if (sac.resp5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 22); } else { sq3_result = sqlite3_bind_double(sq3_statement, 22, sac.resp5); }
+            if (sac.resp6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 23); } else { sq3_result = sqlite3_bind_double(sq3_statement, 23, sac.resp6); }
+            if (sac.resp7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 24); } else { sq3_result = sqlite3_bind_double(sq3_statement, 24, sac.resp7); }
+            if (sac.resp8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 25); } else { sq3_result = sqlite3_bind_double(sq3_statement, 25, sac.resp8); }
+            if (sac.resp9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 26); } else { sq3_result = sqlite3_bind_double(sq3_statement, 26, sac.resp9); }
+            if (sac.stla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 27); } else { sq3_result = sqlite3_bind_double(sq3_statement, 27, sac.stla); }
+            if (sac.stlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 28); } else { sq3_result = sqlite3_bind_double(sq3_statement, 28, sac.stlo); }
+            if (sac.stel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 29); } else { sq3_result = sqlite3_bind_double(sq3_statement, 29, sac.stel); }
+            if (sac.stdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 30); } else { sq3_result = sqlite3_bind_double(sq3_statement, 30, sac.stdp); }
+            if (sac.evla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 31); } else { sq3_result = sqlite3_bind_double(sq3_statement, 31, sac.evla); }
+            if (sac.evlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 32); } else { sq3_result = sqlite3_bind_double(sq3_statement, 32, sac.evlo); }
+            if (sac.evel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 33); } else { sq3_result = sqlite3_bind_double(sq3_statement, 33, sac.evel); }
+            if (sac.evdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 34); } else { sq3_result = sqlite3_bind_double(sq3_statement, 34, sac.evdp); }
+            if (sac.mag == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 35); } else { sq3_result = sqlite3_bind_double(sq3_statement, 35, sac.mag); }
+            if (sac.user0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 36); } else { sq3_result = sqlite3_bind_double(sq3_statement, 36, sac.user0); }
+            if (sac.user1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 37); } else { sq3_result = sqlite3_bind_double(sq3_statement, 37, sac.user1); }
+            if (sac.user2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 38); } else { sq3_result = sqlite3_bind_double(sq3_statement, 38, sac.user2); }
+            if (sac.user3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 39); } else { sq3_result = sqlite3_bind_double(sq3_statement, 39, sac.user3); }
+            if (sac.user4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 40); } else { sq3_result = sqlite3_bind_double(sq3_statement, 40, sac.user4); }
+            if (sac.user5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 41); } else { sq3_result = sqlite3_bind_double(sq3_statement, 41, sac.user5); }
+            if (sac.user6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 42); } else { sq3_result = sqlite3_bind_double(sq3_statement, 42, sac.user6); }
+            if (sac.user7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 43); } else { sq3_result = sqlite3_bind_double(sq3_statement, 43, sac.user7); }
+            if (sac.user8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 44); } else { sq3_result = sqlite3_bind_double(sq3_statement, 44, sac.user8); }
+            if (sac.user9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 45); } else { sq3_result = sqlite3_bind_double(sq3_statement, 45, sac.user9); }
+            if (sac.dist == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 46); } else { sq3_result = sqlite3_bind_double(sq3_statement, 46, sac.dist); }
+            if (sac.az == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 47); } else { sq3_result = sqlite3_bind_double(sq3_statement, 47, sac.az); }
+            if (sac.baz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 48); } else { sq3_result = sqlite3_bind_double(sq3_statement, 48, sac.baz); }
+            if (sac.gcarc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 49); } else { sq3_result = sqlite3_bind_double(sq3_statement, 49, sac.gcarc); }
+            if (sac.depmin == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 50); } else { sq3_result = sqlite3_bind_double(sq3_statement, 50, sac.depmin); }
+            if (sac.depmen == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 51); } else { sq3_result = sqlite3_bind_double(sq3_statement, 51, sac.depmen); }
+            if (sac.depmax == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 52); } else { sq3_result = sqlite3_bind_double(sq3_statement, 52, sac.depmax); }
+            if (sac.cmpaz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 53); } else { sq3_result = sqlite3_bind_double(sq3_statement, 53, sac.cmpaz); }
+            if (sac.cmpinc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 54); } else { sq3_result = sqlite3_bind_double(sq3_statement, 54, sac.cmpinc); }
+            std::string ref_time{sac_reference_time(sac)};
+            // Need to handle if the nzSTUFF not set to make a null reference time
+            sq3_result = sqlite3_bind_text(sq3_statement, 55, ref_time.c_str(), -1, SQLITE_STATIC);
+            if (sac.norid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 56); } else { sq3_result = sqlite3_bind_int(sq3_statement, 56, sac.norid); }
+            if (sac.nevid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 57); } else { sq3_result = sqlite3_bind_int(sq3_statement, 57, sac.nevid); }
+            if (sac.npts == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 58); } else { sq3_result = sqlite3_bind_int(sq3_statement, 58, sac.npts); }
+            if (sac.nwfid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 59); } else { sq3_result = sqlite3_bind_int(sq3_statement, 59, sac.nwfid); }
+            if (sac.iftype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 60); } else { sq3_result = sqlite3_bind_int(sq3_statement, 60, sac.iftype); }
+            if (sac.idep == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 61); } else { sq3_result = sqlite3_bind_int(sq3_statement, 61, sac.idep); }
+            if (sac.iztype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 62); } else { sq3_result = sqlite3_bind_int(sq3_statement, 62, sac.iztype); }
+            if (sac.iinst == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 63); } else { sq3_result = sqlite3_bind_int(sq3_statement, 63, sac.iinst); }
+            if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 64); } else { sq3_result = sqlite3_bind_int(sq3_statement, 64, sac.istreg); }
+            if (sac.ievreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 65); } else { sq3_result = sqlite3_bind_int(sq3_statement, 65, sac.ievreg); }
+            if (sac.ievtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 66); } else { sq3_result = sqlite3_bind_int(sq3_statement, 66, sac.ievtyp); }
+            if (sac.iqual == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 67); } else { sq3_result = sqlite3_bind_int(sq3_statement, 67, sac.iqual); }
+            if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 68); } else { sq3_result = sqlite3_bind_int(sq3_statement, 68, sac.isynth); }
+            if (sac.imagtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 69); } else { sq3_result = sqlite3_bind_int(sq3_statement, 69, sac.imagtyp); }
+            if (sac.imagsrc == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 70); } else { sq3_result = sqlite3_bind_int(sq3_statement, 70, sac.imagsrc); }
+            if (sac.ibody == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 71); } else { sq3_result = sqlite3_bind_int(sq3_statement, 71, sac.ibody); }
+            // If not set, they're 0 anyway
+            sq3_result = sqlite3_bind_int(sq3_statement, 72, sac.leven);
+            sq3_result = sqlite3_bind_int(sq3_statement, 73, sac.lpspol);
+            std::string trim_unset_word{SAC::unset_word};
+            boost::algorithm::trim(trim_unset_word);
+            boost::algorithm::trim(sac.kstnm);
+            if (sac.kstnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 74); } else { sq3_result = sqlite3_bind_text(sq3_statement, 74, sac.kstnm.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kevnm);
+            if (sac.kevnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 75); } else { sq3_result = sqlite3_bind_text(sq3_statement, 75, sac.kevnm.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.khole);
+            if (sac.khole == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 76); } else { sq3_result = sqlite3_bind_text(sq3_statement, 76, sac.khole.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.ko);
+            if (sac.ko == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 77); } else { sq3_result = sqlite3_bind_text(sq3_statement, 77, sac.ko.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.ka);
+            if (sac.ka == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 78); } else { sq3_result = sqlite3_bind_text(sq3_statement, 78, sac.ka.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt0);
+            if (sac.kt0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 79); } else { sq3_result = sqlite3_bind_text(sq3_statement, 79, sac.kt0.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt1);
+            if (sac.kt1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 80); } else { sq3_result = sqlite3_bind_text(sq3_statement, 80, sac.kt1.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt2);
+            if (sac.kt2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 81); } else { sq3_result = sqlite3_bind_text(sq3_statement, 81, sac.kt2.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt3);
+            if (sac.kt3 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 82); } else { sq3_result = sqlite3_bind_text(sq3_statement, 82, sac.kt3.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt4);
+            if (sac.kt4 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 83); } else { sq3_result = sqlite3_bind_text(sq3_statement, 83, sac.kt4.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt5);
+            if (sac.kt5 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 84); } else { sq3_result = sqlite3_bind_text(sq3_statement, 84, sac.kt5.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt6);
+            if (sac.kt6 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 85); } else { sq3_result = sqlite3_bind_text(sq3_statement, 85, sac.kt6.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt7);
+            if (sac.kt7 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 86); } else { sq3_result = sqlite3_bind_text(sq3_statement, 86, sac.kt7.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt8);
+            if (sac.kt8 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 87); } else { sq3_result = sqlite3_bind_text(sq3_statement, 87, sac.kt8.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kt9);
+            if (sac.kt9 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 88); } else { sq3_result = sqlite3_bind_text(sq3_statement, 88, sac.kt9.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kf);
+            if (sac.kf == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 89); } else { sq3_result = sqlite3_bind_text(sq3_statement, 89, sac.kf.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kuser0);
+            if (sac.kuser0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 90); } else { sq3_result = sqlite3_bind_text(sq3_statement, 90, sac.kuser0.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kuser1);
+            if (sac.kuser1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 91); } else { sq3_result = sqlite3_bind_text(sq3_statement, 91, sac.kuser1.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kuser2);
+            if (sac.kuser2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 92); } else { sq3_result = sqlite3_bind_text(sq3_statement, 92, sac.kuser2.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kcmpnm);
+            if (sac.kcmpnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 93); } else { sq3_result = sqlite3_bind_text(sq3_statement, 93, sac.kcmpnm.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.knetwk);
+            if (sac.knetwk == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 94); } else { sq3_result = sqlite3_bind_text(sq3_statement, 94, sac.knetwk.c_str(), -1, SQLITE_STATIC); }
+            boost::algorithm::trim(sac.kinst);
+            if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kinst.c_str(), -1, SQLITE_STATIC); }
+            sq3_result = sqlite3_bind_int(sq3_statement, 96, checkpoint_id_);
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            // Finalize the statement
+            sqlite3_finalize(sq3_statement);
+        }
+        //----------------------------------------------------------------
+        // End add data header
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add actual data
+        //----------------------------------------------------------------
+        // This gets called when:
+        // Data is added to the project
+        // OR when a checkpoint is made
+        // This goes on file, not into memory (data is already in memory!)
+        void add_actual_data(SAC::SacStream& sac, int data_id)
+        {
+            std::ostringstream oss{};
+            oss << "INSERT INTO processing_" << data_id << " (";
+            oss << "checkpoint_id, "; // 1
+            oss << "comment, "; // 2
+            oss << "data1, "; // 3
+            oss << "data2)"; //4
+            oss << " VALUES (?, ?, ?, ?);";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
+            std::string comment{};
+            if (checkpoint_id_ == 0) { comment = "ADD"; } else { comment = "CHECKPOINT"; }
+            sq3_result = sqlite3_bind_text(sq3_statement, 2, comment.c_str(), -1, SQLITE_STATIC);
+            sq3_result = sqlite3_bind_blob(sq3_statement, 3, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
+            // This auto does null if empty
+            sq3_result = sqlite3_bind_blob(sq3_statement, 4, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            // Finalize the statement
+            sqlite3_finalize(sq3_statement);
+        }
+        //----------------------------------------------------------------
+        // End add actual data
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add processing data
+        //----------------------------------------------------------------
+        // This gets called whenever data is manipulated for analysis
+        // This stays in memory, then on checkpointing gets appended between the last checkpoint's data
+        // and the current checkpoint's data
+        void add_processing_data(int data_id, const std::string comment)
+        {
+            (void) data_id;
+            (void) checkpoint_id_;
+            (void) comment;
+            /*
+            std::ostringstream oss{};
+            std::string sq3_string{oss.str()};
+            sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+            */
+        }
+        //----------------------------------------------------------------
+        // End add processing data
         //----------------------------------------------------------------
     public:
         // Connection to the database (file)
@@ -312,12 +685,9 @@ class Project
             sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
-            // Database stored on system
-            create_base_data_table(sq3_connection_file);
-            // List of checkpoints
-            create_checkpoint_list_table(sq3_connection_file);
-            // Database maintained in memory
-            create_checkpoint_table(sq3_connection_memory);
+            // Create the base provenance and checkpoint tables
+            create_provenance_table();
+            create_checkpoint_list_table();
         }
         //----------------------------------------------------------------
         // End Parameterized Constructor
@@ -332,302 +702,49 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Add base data
+        // Add data to project
         //----------------------------------------------------------------
-        // Because we store the data vector as a double instead ofa float, the data-size is roughly double
-        // but we no longer lose precision upon saving
-        void add_base_data_SacStream(SAC::SacStream& sac, std::filesystem::path file_path)
+        int add_sac(SAC::SacStream& sac, const std::string& source)
         {
-            // Build the insert statement
+            int data_id{add_data_provenance(source)};
+            create_data_header_table(data_id);
+            add_data_header(sac, data_id);
+            create_data_processing_table(data_id);
+            add_actual_data(sac, data_id);
+            return data_id;
+        }
+        //----------------------------------------------------------------
+        // End Add data to project
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Write checkpoint
+        //----------------------------------------------------------------
+        void write_checkpoint(bool author, bool cull)
+        {
             std::ostringstream oss{};
-            oss << "INSERT INTO base_data (";
-            oss << "source, "; // 1
-            oss << "file, "; // 2
-            oss << "delta, "; // 3
-            oss << "b, "; // 4
-            oss << "e, "; // 5
-            oss << "o, "; // 6
-            oss << "a, "; // 7
-            oss << "t0, "; // 8
-            oss << "t1, "; // 9
-            oss << "t2, "; // 10
-            oss << "t3, "; // 11
-            oss << "t4, "; // 12
-            oss << "t5, "; // 13
-            oss << "t6, "; // 14
-            oss << "t7, "; // 15
-            oss << "t8, "; // 16
-            oss << "t9, "; // 17
-            oss << "f, "; // 18
-            oss << "resp0, "; // 19
-            oss << "resp1, "; // 20
-            oss << "resp2, "; // 21
-            oss << "resp3, "; // 22
-            oss << "resp4, "; // 23
-            oss << "resp5, "; // 24
-            oss << "resp6, "; // 25
-            oss << "resp7, "; // 26
-            oss << "resp8, "; // 27
-            oss << "resp9, "; // 28
-            oss << "stla, "; // 29
-            oss << "stlo, "; // 30
-            oss << "stel, "; // 31
-            oss << "stdp, "; // 32
-            oss << "evla, "; // 33
-            oss << "evlo, "; // 34
-            oss << "evel, "; // 35
-            oss << "evdp, "; // 36
-            oss << "mag, "; // 37
-            oss << "user0, "; // 38
-            oss << "user1, "; // 39
-            oss << "user2, "; // 40
-            oss << "user3, "; // 41
-            oss << "user4, "; // 42
-            oss << "user5, "; // 43
-            oss << "user6, "; // 44
-            oss << "user7, "; // 45
-            oss << "user8, "; // 46
-            oss << "user9, "; // 47
-            oss << "dist, "; // 48
-            oss << "az, "; // 49
-            oss << "baz, "; // 50
-            oss << "gcarc, "; // 51
-            oss << "depmin, "; // 52
-            oss << "depmen, "; // 53
-            oss << "depmax, "; // 54
-            oss << "cmpaz, "; // 55
-            oss << "cmpinc, "; // 56
-            oss << "reference_time, "; // 57
-            oss << "norid, "; // 58
-            oss << "nevid, "; // 59
-            oss << "npts, "; // 60
-            oss << "nwfid, "; // 61
-            oss << "iftype, "; // 62
-            oss << "idep, "; // 63
-            oss << "iztype, "; // 64
-            oss << "iinst, "; // 65
-            oss << "istreg, "; // 66
-            oss << "ievreg, "; // 67
-            oss << "ievtyp, "; // 68
-            oss << "iqual, "; // 69
-            oss << "isynth, "; // 70
-            oss << "imagtyp, "; // 71
-            oss << "imagsrc, "; // 72
-            oss << "ibody, "; // 73
-            oss << "leven, "; // 74
-            oss << "lpspol, "; // 75
-            oss << "kstnm, "; // 76
-            oss << "kevnm, "; // 77
-            oss << "khole, "; // 78
-            oss << "ko, "; // 79
-            oss << "ka, "; // 80
-            oss << "kt0, "; // 81
-            oss << "kt1, "; // 82
-            oss << "kt2, "; // 83
-            oss << "kt3, "; // 84
-            oss << "kt4, "; // 85
-            oss << "kt5, "; // 86
-            oss << "kt6, "; // 87
-            oss << "kt7, "; // 88
-            oss << "kt8, "; // 89
-            oss << "kt9, "; // 90
-            oss << "kf, "; // 91
-            oss << "kuser0, "; // 92
-            oss << "kuser1, "; // 93
-            oss << "kuser2, "; // 94
-            oss << "kcmpnm, "; // 95
-            oss << "knetwk, "; // 96
-            oss << "kinst, "; // 97
-            oss << "data1, "; // 98
-            oss << "data2)"; // 99
-            oss << " Values (";
-            for (int i{0}; i < 98; ++i)
-            {
-                oss << "?, ";
-            }
-            oss << "?)";
-            std::string sq3_add_base_sac{oss.str()};
+            oss << "INSERT INTO checkpoints (";
+            oss << "parent_id, "; // 1
+            oss << "author, "; // 2
+            oss << "cull)"; // 3
+            oss << " VALUES (?, ?, ?);";
+            std::string sq3_string{oss.str()};
             sqlite3_stmt* sq3_statement{};
-            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_add_base_sac.c_str(), -1, &sq3_statement, nullptr);
-            // Bing values for the insert statement
-            std::string filepath{file_path.parent_path().string()};
-            sq3_result = sqlite3_bind_text(sq3_statement, 1, filepath.c_str(), -1, SQLITE_STATIC);
-            std::string filename{file_path.filename().string()};
-            sq3_result = sqlite3_bind_text(sq3_statement, 2, filename.c_str(), -1, SQLITE_STATIC);
-            // If a header is unset, bind as null, otherwise bind with the actuall value
-            // For now do unset double for all non-int numbers
-            // then modify to unset_float for those that need it
-            if (sac.delta == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 3); } else { sq3_result = sqlite3_bind_double(sq3_statement, 3, sac.delta); }
-            if (sac.b == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 4); } else{ sq3_result = sqlite3_bind_double(sq3_statement, 4, sac.b); }
-            if (sac.e == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 5); } else { sq3_result = sqlite3_bind_double(sq3_statement, 5, sac.e); }
-            if (sac.o == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 6); } else { sq3_result = sqlite3_bind_double(sq3_statement, 6, sac.o); }
-            if (sac.a == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 7); } else { sq3_result = sqlite3_bind_double(sq3_statement, 7, sac.a); }
-            if (sac.t0 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 8); } else { sq3_result = sqlite3_bind_double(sq3_statement, 8, sac.t0); }
-            if (sac.t1 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 9); } else { sq3_result = sqlite3_bind_double(sq3_statement, 9, sac.t1); }
-            if (sac.t2 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 10); } else { sq3_result = sqlite3_bind_double(sq3_statement, 10, sac.t2); }
-            if (sac.t3 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 11); } else { sq3_result = sqlite3_bind_double(sq3_statement, 11, sac.t3); }
-            if (sac.t4 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 12); } else { sq3_result = sqlite3_bind_double(sq3_statement, 12, sac.t4); }
-            if (sac.t5 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 13); } else { sq3_result = sqlite3_bind_double(sq3_statement, 13, sac.t5); }
-            if (sac.t6 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 14); } else { sq3_result = sqlite3_bind_double(sq3_statement, 14, sac.t6); }
-            if (sac.t7 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 15); } else { sq3_result = sqlite3_bind_double(sq3_statement, 15, sac.t7); }
-            if (sac.t8 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 16); } else { sq3_result = sqlite3_bind_double(sq3_statement, 16, sac.t8); }
-            if (sac.t9 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 17); } else { sq3_result = sqlite3_bind_double(sq3_statement, 17, sac.t9); }
-            if (sac.f == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 18); } else { sq3_result = sqlite3_bind_double(sq3_statement, 18, sac.f); }
-            if (sac.resp0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 19); } else { sq3_result = sqlite3_bind_double(sq3_statement, 19, sac.resp0); }
-            if (sac.resp1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 20); } else { sq3_result = sqlite3_bind_double(sq3_statement, 20, sac.resp1); }
-            if (sac.resp2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 21); } else { sq3_result = sqlite3_bind_double(sq3_statement, 21, sac.resp2); }
-            if (sac.resp3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 22); } else { sq3_result = sqlite3_bind_double(sq3_statement, 22, sac.resp3); }
-            if (sac.resp4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 23); } else { sq3_result = sqlite3_bind_double(sq3_statement, 23, sac.resp4); }
-            if (sac.resp5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 24); } else { sq3_result = sqlite3_bind_double(sq3_statement, 24, sac.resp5); }
-            if (sac.resp6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 25); } else { sq3_result = sqlite3_bind_double(sq3_statement, 25, sac.resp6); }
-            if (sac.resp7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 26); } else { sq3_result = sqlite3_bind_double(sq3_statement, 26, sac.resp7); }
-            if (sac.resp8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 27); } else { sq3_result = sqlite3_bind_double(sq3_statement, 27, sac.resp8); }
-            if (sac.resp9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 28); } else { sq3_result = sqlite3_bind_double(sq3_statement, 28, sac.resp9); }
-            if (sac.stla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 29); } else { sq3_result = sqlite3_bind_double(sq3_statement, 29, sac.stla); }
-            if (sac.stlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 30); } else { sq3_result = sqlite3_bind_double(sq3_statement, 30, sac.stlo); }
-            if (sac.stel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 31); } else { sq3_result = sqlite3_bind_double(sq3_statement, 31, sac.stel); }
-            if (sac.stdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 32); } else { sq3_result = sqlite3_bind_double(sq3_statement, 32, sac.stdp); }
-            if (sac.evla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 33); } else { sq3_result = sqlite3_bind_double(sq3_statement, 33, sac.evla); }
-            if (sac.evlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 34); } else { sq3_result = sqlite3_bind_double(sq3_statement, 34, sac.evlo); }
-            if (sac.evel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 35); } else { sq3_result = sqlite3_bind_double(sq3_statement, 35, sac.evel); }
-            if (sac.evdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 36); } else { sq3_result = sqlite3_bind_double(sq3_statement, 36, sac.evdp); }
-            if (sac.mag == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 37); } else { sq3_result = sqlite3_bind_double(sq3_statement, 37, sac.mag); }
-            if (sac.user0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 38); } else { sq3_result = sqlite3_bind_double(sq3_statement, 38, sac.user0); }
-            if (sac.user1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 39); } else { sq3_result = sqlite3_bind_double(sq3_statement, 39, sac.user1); }
-            if (sac.user2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 40); } else { sq3_result = sqlite3_bind_double(sq3_statement, 40, sac.user2); }
-            if (sac.user3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 41); } else { sq3_result = sqlite3_bind_double(sq3_statement, 41, sac.user3); }
-            if (sac.user4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 42); } else { sq3_result = sqlite3_bind_double(sq3_statement, 42, sac.user4); }
-            if (sac.user5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 43); } else { sq3_result = sqlite3_bind_double(sq3_statement, 43, sac.user5); }
-            if (sac.user6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 44); } else { sq3_result = sqlite3_bind_double(sq3_statement, 44, sac.user6); }
-            if (sac.user7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 45); } else { sq3_result = sqlite3_bind_double(sq3_statement, 45, sac.user7); }
-            if (sac.user8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 46); } else { sq3_result = sqlite3_bind_double(sq3_statement, 46, sac.user8); }
-            if (sac.user9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 47); } else { sq3_result = sqlite3_bind_double(sq3_statement, 47, sac.user9); }
-            if (sac.dist == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 48); } else { sq3_result = sqlite3_bind_double(sq3_statement, 48, sac.dist); }
-            if (sac.az == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 49); } else { sq3_result = sqlite3_bind_double(sq3_statement, 49, sac.az); }
-            if (sac.baz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 50); } else { sq3_result = sqlite3_bind_double(sq3_statement, 50, sac.baz); }
-            if (sac.gcarc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 51); } else { sq3_result = sqlite3_bind_double(sq3_statement, 51, sac.gcarc); }
-            if (sac.depmin == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 52); } else { sq3_result = sqlite3_bind_double(sq3_statement, 52, sac.depmin); }
-            if (sac.depmen == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 53); } else { sq3_result = sqlite3_bind_double(sq3_statement, 53, sac.depmen); }
-            if (sac.depmax == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 54); } else { sq3_result = sqlite3_bind_double(sq3_statement, 54, sac.depmax); }
-            if (sac.cmpaz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 55); } else { sq3_result = sqlite3_bind_double(sq3_statement, 55, sac.cmpaz); }
-            if (sac.cmpinc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 56); } else { sq3_result = sqlite3_bind_double(sq3_statement, 56, sac.cmpinc); }
-            std::string ref_time{sac_reference_time(sac)};
-            // Need to handle if the nzSTUFF not set to make a null reference time
-            sq3_result = sqlite3_bind_text(sq3_statement, 57, ref_time.c_str(), -1, SQLITE_STATIC);
-            if (sac.norid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 58); } else { sq3_result = sqlite3_bind_int(sq3_statement, 58, sac.norid); }
-            if (sac.nevid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 59); } else { sq3_result = sqlite3_bind_int(sq3_statement, 59, sac.nevid); }
-            if (sac.npts == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 60); } else { sq3_result = sqlite3_bind_int(sq3_statement, 60, sac.npts); }
-            if (sac.nwfid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 61); } else { sq3_result = sqlite3_bind_int(sq3_statement, 61, sac.nwfid); }
-            if (sac.iftype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 62); } else { sq3_result = sqlite3_bind_int(sq3_statement, 62, sac.iftype); }
-            if (sac.idep == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 63); } else { sq3_result = sqlite3_bind_int(sq3_statement, 63, sac.idep); }
-            if (sac.iztype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 64); } else { sq3_result = sqlite3_bind_int(sq3_statement, 64, sac.iztype); }
-            if (sac.iinst == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 65); } else { sq3_result = sqlite3_bind_int(sq3_statement, 65, sac.iinst); }
-            if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 66); } else { sq3_result = sqlite3_bind_int(sq3_statement, 66, sac.istreg); }
-            if (sac.ievreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 67); } else { sq3_result = sqlite3_bind_int(sq3_statement, 67, sac.ievreg); }
-            if (sac.ievtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 68); } else { sq3_result = sqlite3_bind_int(sq3_statement, 68, sac.ievtyp); }
-            if (sac.iqual == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 69); } else { sq3_result = sqlite3_bind_int(sq3_statement, 69, sac.iqual); }
-            if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 70); } else { sq3_result = sqlite3_bind_int(sq3_statement, 70, sac.isynth); }
-            if (sac.imagtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 71); } else { sq3_result = sqlite3_bind_int(sq3_statement, 71, sac.imagtyp); }
-            if (sac.imagsrc == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 72); } else { sq3_result = sqlite3_bind_int(sq3_statement, 72, sac.imagsrc); }
-            if (sac.ibody == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 73); } else { sq3_result = sqlite3_bind_int(sq3_statement, 73, sac.ibody); }
-            // If not set, they're 0 anyway
-            sq3_result = sqlite3_bind_int(sq3_statement, 74, sac.leven);
-            sq3_result = sqlite3_bind_int(sq3_statement, 75, sac.lpspol);
-            std::string trim_unset_word{SAC::unset_word};
-            boost::algorithm::trim(trim_unset_word);
-            boost::algorithm::trim(sac.kstnm);
-            if (sac.kstnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 76); } else { sq3_result = sqlite3_bind_text(sq3_statement, 76, sac.kstnm.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kevnm);
-            if (sac.kevnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 77); } else { sq3_result = sqlite3_bind_text(sq3_statement, 77, sac.kevnm.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.khole);
-            if (sac.khole == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 78); } else { sq3_result = sqlite3_bind_text(sq3_statement, 78, sac.khole.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.ko);
-            if (sac.ko == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 79); } else { sq3_result = sqlite3_bind_text(sq3_statement, 79, sac.ko.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.ka);
-            if (sac.ka == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 80); } else { sq3_result = sqlite3_bind_text(sq3_statement, 80, sac.ka.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt0);
-            if (sac.kt0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 81); } else { sq3_result = sqlite3_bind_text(sq3_statement, 81, sac.kt0.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt1);
-            if (sac.kt1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 82); } else { sq3_result = sqlite3_bind_text(sq3_statement, 82, sac.kt1.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt2);
-            if (sac.kt2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 83); } else { sq3_result = sqlite3_bind_text(sq3_statement, 83, sac.kt2.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt3);
-            if (sac.kt3 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 84); } else { sq3_result = sqlite3_bind_text(sq3_statement, 84, sac.kt3.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt4);
-            if (sac.kt4 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 85); } else { sq3_result = sqlite3_bind_text(sq3_statement, 85, sac.kt4.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt5);
-            if (sac.kt5 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 86); } else { sq3_result = sqlite3_bind_text(sq3_statement, 86, sac.kt5.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt6);
-            if (sac.kt6 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 87); } else { sq3_result = sqlite3_bind_text(sq3_statement, 87, sac.kt6.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt7);
-            if (sac.kt7 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 88); } else { sq3_result = sqlite3_bind_text(sq3_statement, 88, sac.kt7.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt8);
-            if (sac.kt8 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 89); } else { sq3_result = sqlite3_bind_text(sq3_statement, 89, sac.kt8.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kt9);
-            if (sac.kt9 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 90); } else { sq3_result = sqlite3_bind_text(sq3_statement, 90, sac.kt9.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kf);
-            if (sac.kf == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 91); } else { sq3_result = sqlite3_bind_text(sq3_statement, 91, sac.kf.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kuser0);
-            if (sac.kuser0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 92); } else { sq3_result = sqlite3_bind_text(sq3_statement, 92, sac.kuser0.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kuser1);
-            if (sac.kuser1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 93); } else { sq3_result = sqlite3_bind_text(sq3_statement, 93, sac.kuser1.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kuser2);
-            if (sac.kuser2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 94); } else { sq3_result = sqlite3_bind_text(sq3_statement, 94, sac.kuser2.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kcmpnm);
-            if (sac.kcmpnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kcmpnm.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.knetwk);
-            if (sac.knetwk == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 96); } else { sq3_result = sqlite3_bind_text(sq3_statement, 96, sac.knetwk.c_str(), -1, SQLITE_STATIC); }
-            boost::algorithm::trim(sac.kinst);
-            if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_text(sq3_statement, 97, sac.kinst.c_str(), -1, SQLITE_STATIC); }
-            sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
-            // This auto does null if empty
-            sq3_result = sqlite3_bind_blob(sq3_statement, 99, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
+            if (author) { sq3_result = sqlite3_bind_int(sq3_statement, 2, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 2, 0); }
+            if (cull) { sq3_result = sqlite3_bind_int(sq3_statement, 3, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 3, 0); }
             // Execute the statement
             sq3_result = sqlite3_step(sq3_statement);
+            // Get the ID of the newly inserted data
+            // Normally it is an sqlite3_int64, but I want a normal integer for now
+            checkpoint_id_ = static_cast<int>(sqlite3_last_insert_rowid(sq3_connection_file));
             // Finalize the statement
             sqlite3_finalize(sq3_statement);
         }
         //----------------------------------------------------------------
-        // End Add base data
+        // End Write checkpoint
         //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Add checkpoint table
-        //----------------------------------------------------------------
-        void create_checkpoint_list_table(sqlite3* db_connection)
-        {
-            std::ostringstream oss{};
-            oss << "CREATE TABLE checkpoints (";
-            oss << "checkpoint_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
-            oss << "added DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 2 (automatic UTC timestamp)
-            oss << "parent_id INTEGER, "; // 3 (id of parent checkpoints [or Null for base_data parent])
-            oss << "n_data INTEGER, "; // 4 (number of time-series objects in this checkpoint)
-            oss << "auto INTEGER, "; // 5 (0 = user-made, 1 = automatically made)
-            oss << "cull INTEGER, "; // 6 (0 = permanent, 1 = cull on checkpoint limit)
-            oss << "removed DATETIME, "; // 7 (Null is still in, a datetime is a stamp of when it was removed)
-            oss << "name TEXT);"; // 8 (auto = automatic or user-unnamed, otherwise user-defined checkpoint name)
-            std::string sq3_create_checkpoints{oss.str()};
-            sq3_result = sqlite3_exec(db_connection, sq3_create_checkpoints.c_str(), nullptr, nullptr, &sq3_error_message);
-        }
-        //----------------------------------------------------------------
-        // End Add checkpoint table
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Current working data is in checkpoint
-        //----------------------------------------------------------------
-        void create_checkpoint_table(sqlite3* db_connection)
-        {
-            std::ostringstream oss{};
-            oss << "CREATE TABLE current_data (";
-            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
-            std::string sq3_create_checkpoint_data{data_table_creation(oss)};
-            sq3_result = sqlite3_exec(db_connection, sq3_create_checkpoint_data.c_str(), nullptr, nullptr, &sq3_error_message);
-        }
-        //----------------------------------------------------------------
-        // End Current working data is in checkpoint
-        //----------------------------------------------------------------
-
 };
 };
 
