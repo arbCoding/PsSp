@@ -11,11 +11,6 @@
 #include <filesystem>
 #include <iostream>
 #include <sstream>
-// Needed for formatting datetime string
-// std::tm, std::get_time, std::put_time
-#include <iomanip>
-#include <chrono>
-#include <ctime>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -93,14 +88,61 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Day of Year to Month and Day of Month
+        //----------------------------------------------------------------
+        std::string doy_2_ymd(int year, int doy)
+        {
+            // Standard days in month for non-leap years
+            constexpr int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            // Being a leap year only matters is the DoY is >= 31 + 28 = 59
+            int month{0};
+            int days{0};
+            // Infinite loop if we don't break out of it
+            while (true)
+            {
+                days = days_in_month[month];
+                if (month == 1)
+                {
+                    // February, so we care if leap year or not
+                    // Check if it is a leap year
+                    if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
+                    {
+                        // Is a leap year
+                        ++days;
+                    }
+                }
+                // Subtract whole month of days from the doy
+                if (doy >= days)
+                {
+                    doy -= days;
+                    ++month;
+                }
+                else 
+                {
+                    // We're done removing months
+                    break;
+                }
+            }
+            std::ostringstream oss{};
+            oss << left_pad_integers(year, 4);
+            oss << '-';
+            oss << left_pad_integers(month + 1, 2);
+            oss << '-';
+            oss << left_pad_integers(doy, 2);
+            // YYYY-MM-DD
+            return oss.str();
+        }
+        //----------------------------------------------------------------
+        // End Day of Year to Month and Day of Month
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // Make datetime
         //----------------------------------------------------------------
         std::string sac_reference_time(SAC::SacStream& sac)
         {
             std::ostringstream oss{};
-            oss << left_pad_integers(sac.nzyear, 4);
-            oss << '-';
-            oss << left_pad_integers(sac.nzjday, 3);
+            oss << doy_2_ymd(sac.nzyear, sac.nzjday);
             oss << ' ';
             oss << left_pad_integers(sac.nzhour, 2);
             oss << ':';
@@ -109,21 +151,11 @@ class Project
             oss << left_pad_integers(sac.nzsec, 2);
             oss << '.';
             oss << left_pad_integers(sac.nzmsec, 3);
-            std::string tmp{oss.str()};
-            std::tm datetime{};
-            std::istringstream iss(tmp);
-            iss >> std::get_time(&datetime, "%Y-%j %H:%M:%S");
-            // Extract fractional seconds for the original datetime string
-            int frac_secs{};
-            if (iss.peek() == '.') { iss.ignore(); iss >> frac_secs; }
-            // Chrono duration for the fracitonal seconds
-            std::chrono::duration<int, std::ratio<1, 1000>> frac_dur{frac_secs};
-            std::ostringstream formatted_datetime{};
-            formatted_datetime << std::put_time(&datetime, "%Y-%m-%d %H:%M:%S");
-            // Append fractional seconds
-            formatted_datetime << '.' << std::setfill('0') << std::setw(3) << frac_dur.count();
-            std::cout << formatted_datetime.str() << ',' << oss.str() << '\n';
-            return formatted_datetime.str();
+            // We cannot have this work in an OS-independent way
+            // unless we handle this manually (unfortunately)
+            // So I need to go from YYYY-JJJ to YYYY-MM-DD
+            // manually while account for leap years
+            return oss.str();
         }
         //----------------------------------------------------------------
         // End Make datetime
