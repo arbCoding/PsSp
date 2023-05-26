@@ -106,7 +106,10 @@ int main(int arg_count, char* arg_array[])
     //---------------------------------------------------------------------------
     // End Misc Draw loop variables
     //---------------------------------------------------------------------------
+    // Make a fresh project
     pssp::Project project("test", program_path);
+    // Need to test making a checkpoint
+    // That requires the Main Menu Bar to be updated...
 
     //---------------------------------------------------------------------------
     // Draw loop
