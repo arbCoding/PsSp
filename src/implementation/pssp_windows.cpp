@@ -1,4 +1,6 @@
 #include "pssp_windows.hpp"
+#include "imgui.h"
+#include <filesystem>
 
 //-----------------------------------------------------------------------------
 // Status Bar
@@ -261,32 +263,35 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         
         ImGui::EndMenu();
     }
-    // Edit menu
-    if (ImGui::BeginMenu("Edit##", menu_allowed.edit_menu))
-    {
-        if (ImGui::MenuItem("Undo##", nullptr, nullptr, menu_allowed.undo))
-        {
-            // To be implemented at some point
-        }
-        
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Not implemented"); }
-        
-        if (ImGui::MenuItem("Redo##", nullptr, nullptr, menu_allowed.redo))
-        {
-            // TO be implemented at some point
-        }
-        
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Not implemented"); }
-        
-        ImGui::EndMenu();
-    }
     // Project Menu
     // Eventually projects will be supported
     // That will involve keeping track of files, actions, etc.
     // Place-holder for now as a promise and reminder of my intentions
-    if (ImGui::BeginMenu("Project##", menu_allowed.project_menu)) { ImGui::EndMenu(); }
+    if (ImGui::BeginMenu("Project##", menu_allowed.project_menu))
+    {
+        if (ImGui::MenuItem("New Project##", nullptr, nullptr, menu_allowed.new_project))
+        {
+            ImGuiFileDialog::Instance()->OpenDialog("MakeProjDlgKey", "Create Project File", ".proj", home_path, ImGuiFileDialogFlags_Modal);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        { ImGui::SetTooltip("Create a brand new project"); }
+        if (ImGui::MenuItem("Load Project##", nullptr, nullptr, menu_allowed.load_project))
+        {
+            // To be implemented
+            // Need to use a filedialog to get a file
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        { ImGui::SetTooltip("Load an existing project"); }
+        if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
+        {
+            // To be implemented
+            // Need to unload everything in memory
+            // Rather, set a flag to unload everything in memeory
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        { ImGui::SetTooltip("Unload current project"); }
+        ImGui::EndMenu();
+    }
     // Options Menu
     // Changing fonts, their sizes, etc.
     if (ImGui::BeginMenu("Options##", menu_allowed.options_menu)) { ImGui::EndMenu(); }
@@ -388,6 +393,19 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
             program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), std::ref(sac_deque), directory, std::ref(project));
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    // Make project file
+    if (ImGuiFileDialog::Instance()->Display("MakeProjDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::filesystem::path full_file = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::filesystem::path parent_path = std::filesystem::canonical(full_file.parent_path());
+            std::string project_name = full_file.stem().string();
+            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            project.new_project(project_name, parent_path);
         }
         ImGuiFileDialog::Instance()->Close();
     }

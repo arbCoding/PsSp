@@ -665,17 +665,11 @@ class Project
         //----------------------------------------------------------------
         // End add processing data
         //----------------------------------------------------------------
-    public:
-        // Connection to the database (file)
-        sqlite3* sq3_connection_file{};
-        // Connection to the database (memory)
-        sqlite3* sq3_connection_memory{};
-        int sq3_result{};
-        char* sq3_error_message{};
+
         //----------------------------------------------------------------
-        // Parameterized Constructor
+        // Project connection initializer
         //----------------------------------------------------------------
-        Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".db")}
+        void connect()
         {
             // Create a new connection
             sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
@@ -685,18 +679,87 @@ class Project
             sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Project connection initializer
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // New project tables
+        //----------------------------------------------------------------
+        void fresh_tables()
+        {
             // Create the base provenance and checkpoint tables
             create_provenance_table();
             create_checkpoint_list_table();
+        }
+        //----------------------------------------------------------------
+        // End New project tables
+        //----------------------------------------------------------------
+    public:
+        // Connection to the database (file)
+        sqlite3* sq3_connection_file{};
+        // Connection to the database (memory)
+        sqlite3* sq3_connection_memory{};
+        int sq3_result{};
+        char* sq3_error_message{};
+        // Empty constructor
+        Project() {};
+        //----------------------------------------------------------------
+        // Parameterized Constructor
+        //----------------------------------------------------------------
+        Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".proj")}
+        {
+            connect();
+            fresh_tables();
         }
         //----------------------------------------------------------------
         // End Parameterized Constructor
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Connect to existing project
+        //----------------------------------------------------------------
+        void connect_2_existing(std::filesystem::path full_path)
+        {
+            name_ = full_path.stem().string();
+            path_ = full_path;
+            connect();
+        }
+        //----------------------------------------------------------------
+        // End Connect to existing project
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Setter to modify the project object
+        //----------------------------------------------------------------
+        void new_project(std::string name, std::filesystem::path base_path)
+        {
+            name_ = name;
+            path_ = base_path / (name + ".proj");
+            connect();
+            fresh_tables();
+        }
+        //----------------------------------------------------------------
+        // End setter to modify the project object
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // Destructor
         //----------------------------------------------------------------
-        ~Project() { sqlite3_close_v2(sq3_connection_file); sqlite3_close_v2(sq3_connection_memory); }
+        ~Project() 
+        {
+            // Close connections
+            sqlite3_close_v2(sq3_connection_file);
+            sqlite3_close_v2(sq3_connection_memory);
+            // Remove extraneous files (shm = shared memory, wal = write ahead log)
+            std::filesystem::path shm_file{path_};
+            shm_file += "-shm";
+            std::filesystem::remove(shm_file);
+            std::filesystem::path wal_file{path_};
+            wal_file += "-wal";
+            std::filesystem::remove(wal_file);
+        }
         //----------------------------------------------------------------
         // End Destructor
         //----------------------------------------------------------------

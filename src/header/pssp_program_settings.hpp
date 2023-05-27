@@ -102,12 +102,16 @@ struct MenuAllowed
     bool open_dir{false};
     bool save_1c{false};
     bool exit{true};
-    // Edit menu
-    bool edit_menu{false};
-    bool undo{false};
-    bool redo{false};
     // Project Menu
-    bool project_menu{false};
+    bool project_menu{true};
+    bool new_project{true};
+    bool load_project{true};
+    bool unload_project{false};
+    // Checkpoint Menu
+    bool checkpoint_menu{false};
+    bool new_checkpoint{false};
+    bool load_checkpoint{false};
+    bool delete_checkpoint{false};
     // Options Menu
     bool options_menu{false};
     // Window Menu
