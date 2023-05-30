@@ -442,7 +442,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.is_processing = true;
             program_status.fileio.count = 0;
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from active data."); }
@@ -453,7 +453,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.is_processing = true;
             program_status.fileio.count = 0;
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove linear trend from active data."); }
@@ -506,7 +506,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status), std::ref(sac_deque));
+            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(project), std::ref(program_status), std::ref(sac_deque));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from all data."); }
@@ -514,7 +514,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status), std::ref(sac_deque));
+            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(project), std::ref(program_status), std::ref(sac_deque));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove trend value from all data."); }

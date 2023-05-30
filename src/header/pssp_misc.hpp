@@ -168,33 +168,33 @@ struct AllFilterOptions
 // Updates the FPS tracker
 void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
-void cleanup_sac(std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
+void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
 void calc_spectrum(sac_1c& sac, sac_1c& spectrum);
 // Remove mean from sac_1c object
-void remove_mean(FileIO& fileio, sac_1c& sac);
+void remove_mean(Project& project, FileIO& fileio, sac_1c& sac);
 // Remove mean from all sac_1c objects in a deque
-void batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
 // Remove trend from a sac_1c object
-void remove_trend(FileIO& fileio, sac_1c& sac);
+void remove_trend(Project& project, FileIO& fileio, sac_1c& sac);
 // Remove trend from all sac_1c objects in a deque
-void batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
 // Turns out FFTW is not thread-safe and doesn't provide that on Mac
 // I could compile it manually, but I don't want to
 // So we're going to change how we do this, one function for solo
 // One function for many
 // Lowpass one sac_1c
-void apply_lowpass(FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options);
+void apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
-void batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options);
+void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options);
 // Highpass one sac_1c
-void apply_highpass(FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options);
+void apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
-void batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options);
+void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options);
 // Bandpass one sac_1c
-void apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options);
+void apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
-void batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
+void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
 // Read in a single sac_file
 void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project);
 // Read all SAC files in a directory

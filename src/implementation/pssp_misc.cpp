@@ -1,6 +1,8 @@
 #include "pssp_misc.hpp"
 #include <filesystem>
 #include <mutex>
+#include <shared_mutex>
+#include <sstream>
 
 //-----------------------------------------------------------------------------
 // Misc functions
@@ -18,11 +20,17 @@ void pssp::update_fps(fps_info& fps, ImGuiIO& io)
     ++fps.frame_count;
 }
 
-void pssp::cleanup_sac(std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
+void pssp::cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
 {
     if (clear)
     {
+        (void) project;
         --selected;
+        {
+            // I still need to add in timestamping the removal in the database
+            std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
+            project.add_data_processing(sac_deque[selected].data_id, "REMOVED");
+        }
         sac_deque.erase(sac_deque.begin() + selected + 1);
         if (selected < 0 && sac_deque.size() > 0)
         {
@@ -44,10 +52,11 @@ void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
     SAC::fft_real_imaginary(spectrum.sac);
 }
 
-void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
+void pssp::remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        project.add_data_processing(sac.data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
         if (sac.sac.depmen != SAC::unset_float)
@@ -79,7 +88,7 @@ void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void pssp::batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -87,13 +96,14 @@ void pssp::batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& 
     program_status.fileio.total = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
     }
 }
 
-void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
+void pssp::remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
 {
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    project.add_data_processing(sac.data_id, "REMOVE TREND");
     double mean_amplitude{0};
     // Static_cast just to be sure no funny business
     double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
@@ -131,7 +141,7 @@ void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void pssp::batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -139,21 +149,28 @@ void pssp::batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>&
     program_status.fileio.total = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
     }
 }
 
-void pssp::apply_lowpass(FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
+void pssp::apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "LOWPASS; ORDER ";
+        oss << lowpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << lowpass_options.freq_low;
+        oss << ";";
+        project.add_data_processing(sac.data_id, oss.str());
         SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
+void pssp::batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -163,21 +180,28 @@ void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_lowpass(program_status.fileio, sac_deque[i], lowpass_options);
+        apply_lowpass(project, program_status.fileio, sac_deque[i], lowpass_options);
     }
 }
 
-void pssp::apply_highpass(FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
+void pssp::apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "HIGHPASS; ORDER ";
+        oss << highpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << highpass_options.freq_low;
+        oss << ";";
+        project.add_data_processing(sac.data_id, oss.str());
         SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
+void pssp::batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -187,21 +211,30 @@ void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_highpass(program_status.fileio, sac_deque[i], highpass_options);
+        apply_highpass(project, program_status.fileio, sac_deque[i], highpass_options);
     }
 }
 
-void pssp::apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
+void pssp::apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "BANDPASS; ORDER ";
+        oss << bandpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << bandpass_options.freq_low;
+        oss << "; FREQ HIGH ";
+        oss << bandpass_options.freq_high;
+        oss << ";";
+        project.add_data_processing(sac.data_id, oss.str());
         SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
+void pssp::batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -211,7 +244,7 @@ void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_bandpass(program_status.fileio, sac_deque[i], bandpass_options);
+        apply_bandpass(project, program_status.fileio, sac_deque[i], bandpass_options);
     }
 }
 

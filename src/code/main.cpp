@@ -119,7 +119,7 @@ int main(int arg_count, char* arg_array[])
     while (!glfwWindowShouldClose(window))
     {
         // Do we need to remove a sac_1c from the sac_deque?
-        cleanup_sac(sac_deque, active_sac, clear_sac);
+        cleanup_sac(project, sac_deque, active_sac, clear_sac);
         // Start the frame
         pssp::prep_newframe();
         pssp::status_bar(program_status);
@@ -235,13 +235,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.lowpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
                 af_settings.lowpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
             }
             af_settings.lowpass.apply_filter = false;
         }
@@ -252,13 +252,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.highpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
                 af_settings.highpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
             }
             af_settings.highpass.apply_filter = false;
         }
@@ -269,13 +269,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.bandpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
                 af_settings.bandpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
             }
             af_settings.bandpass.apply_filter = false;
         }
