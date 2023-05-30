@@ -3,6 +3,7 @@
 
 #include "sac_io.hpp"
 #include "sac_stream.hpp"
+#include "pssp_threadpool.hpp"
 #include <ios>
 #include <sqlite3.h>
 // String comparisons in C++ suck, boost adds needed functionality!
@@ -189,14 +190,14 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // data header table creation
+        // data checkpoint table creation
         //----------------------------------------------------------------
         // This only gets called upon a piece of data being added to the project
         // This is stored on disk
-        void create_data_header_table(int data_id)
+        void create_data_checkpoint_table(int data_id)
         {
             std::ostringstream oss{};
-            oss << "CREATE TABLE header_" << data_id << " (";
+            oss << "CREATE TABLE checkpoint_" << data_id << " (";
             oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the header is associated with
             // Now we need to include the ~100 header values...
             //------------------------------------------------------------
@@ -299,10 +300,12 @@ class Project
             oss << "kcmpnm TEXT, "; // 94 (sac.kcmpnm, compnent name)
             oss << "knetwk TEXT, "; // 95 (sac.knetwk, network name)
             // Skip kdatrd, stupid
-            oss << "kinst TEXT);"; // 96 (sac.kinst, generic recording instrument name)
+            oss << "kinst TEXT, "; // 96 (sac.kinst, generic recording instrument name)
             //------------------------------------------------------------
             // End SAC headers
             //------------------------------------------------------------
+            oss << "data1 BLOB, "; // 97 (sac.data1, time-series) (null if not checkpoint)
+            oss << "data2 BLOB);"; // 98 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
             std::string sq3_string{oss.str()};
             sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
             if (sq3_result != SQLITE_OK)
@@ -311,7 +314,7 @@ class Project
             }
         }
         //----------------------------------------------------------------
-        // End data header table creation
+        // End data checkpoint table creation
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
@@ -324,9 +327,7 @@ class Project
             std::ostringstream oss{};
             oss << "CREATE TABLE processing_" << data_id << " (";
             oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the data is associated with
-            oss << "comment TEXT, "; // 2 (on processing it is the action and parameters, on checkpoint it is CHECKPOINT)
-            oss << "data1 BLOB, "; // 3 (sac.data1, time-series) (null if not checkpoint)
-            oss << "data2 BLOB);"; // 4 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
+            oss << "comment TEXT);"; // 2 (on processing it is the action and parameters, on checkpoint it is CHECKPOINT)
             std::string sq3_string{oss.str()};
             sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
         }
@@ -361,15 +362,158 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Add data header
+        // Project connection initializer
+        //----------------------------------------------------------------
+        void connect()
+        {
+            // Create a new connection
+            sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+            // Set the journal mode to WAL
+            sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+            // Create a new connection
+            sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+            // Set the journal mode to WAL
+            sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Project connection initializer
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // New project tables
+        //----------------------------------------------------------------
+        void fresh_tables()
+        {
+            // Create the base provenance and checkpoint tables
+            create_provenance_table();
+            create_checkpoint_list_table();
+        }
+        //----------------------------------------------------------------
+        // End New project tables
+        //----------------------------------------------------------------
+    public:
+        // Connection to the database (file)
+        sqlite3* sq3_connection_file{};
+        // Connection to the database (memory)
+        sqlite3* sq3_connection_memory{};
+        int sq3_result{};
+        char* sq3_error_message{};
+        // Empty constructor
+        Project() {};
+        //----------------------------------------------------------------
+        // Parameterized Constructor
+        //----------------------------------------------------------------
+        Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".proj")}
+        {
+            connect();
+            fresh_tables();
+        }
+        //----------------------------------------------------------------
+        // End Parameterized Constructor
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Connect to existing project
+        //----------------------------------------------------------------
+        void connect_2_existing(std::filesystem::path full_path)
+        {
+            name_ = full_path.stem().string();
+            path_ = full_path;
+            connect();
+        }
+        //----------------------------------------------------------------
+        // End Connect to existing project
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Setter to modify the project object
+        //----------------------------------------------------------------
+        void new_project(std::string name, std::filesystem::path base_path)
+        {
+            name_ = name;
+            path_ = base_path / (name + ".proj");
+            connect();
+            fresh_tables();
+        }
+        //----------------------------------------------------------------
+        // End setter to modify the project object
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Destructor
+        //----------------------------------------------------------------
+        ~Project() 
+        {
+            // Close connections
+            sqlite3_close_v2(sq3_connection_file);
+            sqlite3_close_v2(sq3_connection_memory);
+            // Remove extraneous files (shm = shared memory, wal = write ahead log)
+            std::filesystem::path shm_file{path_};
+            shm_file += "-shm";
+            std::filesystem::remove(shm_file);
+            std::filesystem::path wal_file{path_};
+            wal_file += "-wal";
+            std::filesystem::remove(wal_file);
+        }
+        //----------------------------------------------------------------
+        // End Destructor
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add data to project
+        //----------------------------------------------------------------
+        int add_sac(SAC::SacStream& sac, const std::string& source)
+        {
+            int data_id{add_data_provenance(source)};
+            create_data_checkpoint_table(data_id);
+            add_data_checkpoint(sac, data_id);
+            create_data_processing_table(data_id);
+            add_data_processing(data_id, "ADD");
+            return data_id;
+        }
+        //----------------------------------------------------------------
+        // End Add data to project
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Write checkpoint
+        //----------------------------------------------------------------
+        void write_checkpoint(bool author, bool cull)
+        {
+            std::ostringstream oss{};
+            oss << "INSERT INTO checkpoints (";
+            oss << "parent_id, "; // 1
+            oss << "author, "; // 2
+            oss << "cull)"; // 3
+            oss << " VALUES (?, ?, ?);";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
+            if (author) { sq3_result = sqlite3_bind_int(sq3_statement, 2, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 2, 0); }
+            if (cull) { sq3_result = sqlite3_bind_int(sq3_statement, 3, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 3, 0); }
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            // Get the ID of the newly inserted data
+            // Normally it is an sqlite3_int64, but I want a normal integer for now
+            checkpoint_id_ = static_cast<int>(sqlite3_last_insert_rowid(sq3_connection_file));
+            // Finalize the statement
+            sqlite3_finalize(sq3_statement);
+        }
+        //----------------------------------------------------------------
+        // End Write checkpoint
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Add data checkpoint
         //----------------------------------------------------------------
         // This gets called when data gets added to a project
         // OR when a checkpoint gets made
         // This goes on file when data is added, or when a checkpoint happens
-        void add_data_header(SAC::SacStream& sac, int data_id)
+        void add_data_checkpoint(SAC::SacStream& sac, int data_id)
         {
             std::ostringstream oss{};
-            oss << "INSERT INTO header_" << data_id << " (";
+            oss << "INSERT INTO checkpoint_" << data_id << " (";
             oss << "delta, "; // 1
             oss << "b, "; // 2
             oss << "e, "; // 3
@@ -465,9 +609,11 @@ class Project
             oss << "kcmpnm, "; // 93
             oss << "knetwk, "; // 94
             oss << "kinst, "; // 95
-            oss << "checkpoint_id)"; // 96
+            oss << "checkpoint_id, "; // 96
+            oss << "data1, "; // 97
+            oss << "data2)"; // 98
             oss << " Values (";
-            for (int i{0}; i < 95; ++i)
+            for (int i{0}; i < 97; ++i)
             {
                 oss << "?, ";
             }
@@ -601,212 +747,44 @@ class Project
             boost::algorithm::trim(sac.kinst);
             if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kinst.c_str(), -1, SQLITE_STATIC); }
             sq3_result = sqlite3_bind_int(sq3_statement, 96, checkpoint_id_);
+            sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
+            // This auto does null if empty
+            sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
             // Execute the statement
             sq3_result = sqlite3_step(sq3_statement);
             // Finalize the statement
             sqlite3_finalize(sq3_statement);
         }
         //----------------------------------------------------------------
-        // End add data header
+        // End add data checkpoint
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Add actual data
+        // Add processing information
         //----------------------------------------------------------------
         // This gets called when:
-        // Data is added to the project
-        // OR when a checkpoint is made
-        // This goes on file, not into memory (data is already in memory!)
-        void add_actual_data(SAC::SacStream& sac, int data_id)
+        // Data gets added (ADD)
+        // Data gets modified (processing)
+        // A checkpoint gets made
+        void add_data_processing(int data_id, std::string processing_comment)
         {
             std::ostringstream oss{};
             oss << "INSERT INTO processing_" << data_id << " (";
             oss << "checkpoint_id, "; // 1
-            oss << "comment, "; // 2
-            oss << "data1, "; // 3
-            oss << "data2)"; //4
-            oss << " VALUES (?, ?, ?, ?);";
+            oss << "comment)"; // 2
+            oss << " VALUES (?, ?);";
             std::string sq3_string{oss.str()};
             sqlite3_stmt* sq3_statement{};
             sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
             sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
-            std::string comment{};
-            if (checkpoint_id_ == 0) { comment = "ADD"; } else { comment = "CHECKPOINT"; }
-            sq3_result = sqlite3_bind_text(sq3_statement, 2, comment.c_str(), -1, SQLITE_STATIC);
-            sq3_result = sqlite3_bind_blob(sq3_statement, 3, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
-            // This auto does null if empty
-            sq3_result = sqlite3_bind_blob(sq3_statement, 4, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
+            sq3_result = sqlite3_bind_text(sq3_statement, 2, processing_comment.c_str(), -1, SQLITE_STATIC);
             // Execute the statement
             sq3_result = sqlite3_step(sq3_statement);
             // Finalize the statement
             sqlite3_finalize(sq3_statement);
         }
         //----------------------------------------------------------------
-        // End add actual data
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Add processing data
-        //----------------------------------------------------------------
-        // This gets called whenever data is manipulated for analysis
-        // This stays in memory, then on checkpointing gets appended between the last checkpoint's data
-        // and the current checkpoint's data
-        void add_processing_data(int data_id, const std::string comment)
-        {
-            (void) data_id;
-            (void) checkpoint_id_;
-            (void) comment;
-            /*
-            std::ostringstream oss{};
-            std::string sq3_string{oss.str()};
-            sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
-            */
-        }
-        //----------------------------------------------------------------
-        // End add processing data
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Project connection initializer
-        //----------------------------------------------------------------
-        void connect()
-        {
-            // Create a new connection
-            sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
-            // Set the journal mode to WAL
-            sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
-            // Create a new connection
-            sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
-            // Set the journal mode to WAL
-            sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
-        }
-        //----------------------------------------------------------------
-        // End Project connection initializer
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // New project tables
-        //----------------------------------------------------------------
-        void fresh_tables()
-        {
-            // Create the base provenance and checkpoint tables
-            create_provenance_table();
-            create_checkpoint_list_table();
-        }
-        //----------------------------------------------------------------
-        // End New project tables
-        //----------------------------------------------------------------
-    public:
-        // Connection to the database (file)
-        sqlite3* sq3_connection_file{};
-        // Connection to the database (memory)
-        sqlite3* sq3_connection_memory{};
-        int sq3_result{};
-        char* sq3_error_message{};
-        // Empty constructor
-        Project() {};
-        //----------------------------------------------------------------
-        // Parameterized Constructor
-        //----------------------------------------------------------------
-        Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".proj")}
-        {
-            connect();
-            fresh_tables();
-        }
-        //----------------------------------------------------------------
-        // End Parameterized Constructor
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Connect to existing project
-        //----------------------------------------------------------------
-        void connect_2_existing(std::filesystem::path full_path)
-        {
-            name_ = full_path.stem().string();
-            path_ = full_path;
-            connect();
-        }
-        //----------------------------------------------------------------
-        // End Connect to existing project
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Setter to modify the project object
-        //----------------------------------------------------------------
-        void new_project(std::string name, std::filesystem::path base_path)
-        {
-            name_ = name;
-            path_ = base_path / (name + ".proj");
-            connect();
-            fresh_tables();
-        }
-        //----------------------------------------------------------------
-        // End setter to modify the project object
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Destructor
-        //----------------------------------------------------------------
-        ~Project() 
-        {
-            // Close connections
-            sqlite3_close_v2(sq3_connection_file);
-            sqlite3_close_v2(sq3_connection_memory);
-            // Remove extraneous files (shm = shared memory, wal = write ahead log)
-            std::filesystem::path shm_file{path_};
-            shm_file += "-shm";
-            std::filesystem::remove(shm_file);
-            std::filesystem::path wal_file{path_};
-            wal_file += "-wal";
-            std::filesystem::remove(wal_file);
-        }
-        //----------------------------------------------------------------
-        // End Destructor
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Add data to project
-        //----------------------------------------------------------------
-        int add_sac(SAC::SacStream& sac, const std::string& source)
-        {
-            int data_id{add_data_provenance(source)};
-            create_data_header_table(data_id);
-            add_data_header(sac, data_id);
-            create_data_processing_table(data_id);
-            add_actual_data(sac, data_id);
-            return data_id;
-        }
-        //----------------------------------------------------------------
-        // End Add data to project
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // Write checkpoint
-        //----------------------------------------------------------------
-        void write_checkpoint(bool author, bool cull)
-        {
-            std::ostringstream oss{};
-            oss << "INSERT INTO checkpoints (";
-            oss << "parent_id, "; // 1
-            oss << "author, "; // 2
-            oss << "cull)"; // 3
-            oss << " VALUES (?, ?, ?);";
-            std::string sq3_string{oss.str()};
-            sqlite3_stmt* sq3_statement{};
-            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
-            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
-            if (author) { sq3_result = sqlite3_bind_int(sq3_statement, 2, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 2, 0); }
-            if (cull) { sq3_result = sqlite3_bind_int(sq3_statement, 3, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 3, 0); }
-            // Execute the statement
-            sq3_result = sqlite3_step(sq3_statement);
-            // Get the ID of the newly inserted data
-            // Normally it is an sqlite3_int64, but I want a normal integer for now
-            checkpoint_id_ = static_cast<int>(sqlite3_last_insert_rowid(sq3_connection_file));
-            // Finalize the statement
-            sqlite3_finalize(sq3_statement);
-        }
-        //----------------------------------------------------------------
-        // End Write checkpoint
+        // End addprocessing information
         //----------------------------------------------------------------
 };
 };

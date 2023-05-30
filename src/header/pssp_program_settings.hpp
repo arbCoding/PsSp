@@ -108,10 +108,10 @@ struct MenuAllowed
     bool load_project{true};
     bool unload_project{false};
     // Checkpoint Menu
-    bool checkpoint_menu{false};
-    bool new_checkpoint{false};
-    bool load_checkpoint{false};
-    bool delete_checkpoint{false};
+    bool checkpoint_menu{true};
+    bool new_checkpoint{true};
+    bool load_checkpoint{true};
+    bool delete_checkpoint{true};
     // Options Menu
     bool options_menu{false};
     // Window Menu

@@ -1,5 +1,6 @@
 #include "pssp_misc.hpp"
 #include <filesystem>
+#include <mutex>
 
 //-----------------------------------------------------------------------------
 // Misc functions
@@ -386,6 +387,23 @@ void pssp::finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 }
 //-----------------------------------------------------------------------------
 // End General GUI functions
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Checkpoint data (inside thread_pool)
+//-----------------------------------------------------------------------------
+void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
+{
+    {
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        project.add_data_checkpoint(sac.sac, sac.data_id);
+        project.add_data_processing(sac.data_id, "CHECKPOINT");
+    }
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
+    ++fileio.count;
+}
+//-----------------------------------------------------------------------------
+// End checkpoint data (inside thread_pool)
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------

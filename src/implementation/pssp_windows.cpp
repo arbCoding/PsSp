@@ -1,5 +1,6 @@
 #include "pssp_windows.hpp"
 #include "imgui.h"
+#include "pssp_misc.hpp"
 #include <filesystem>
 
 //-----------------------------------------------------------------------------
@@ -264,9 +265,6 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         ImGui::EndMenu();
     }
     // Project Menu
-    // Eventually projects will be supported
-    // That will involve keeping track of files, actions, etc.
-    // Place-holder for now as a promise and reminder of my intentions
     if (ImGui::BeginMenu("Project##", menu_allowed.project_menu))
     {
         if (ImGui::MenuItem("New Project##", nullptr, nullptr, menu_allowed.new_project))
@@ -286,10 +284,26 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         {
             // To be implemented
             // Need to unload everything in memory
-            // Rather, set a flag to unload everything in memeory
+            // Rather, set a flag to unload everything in memory
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Unload current project"); }
+        if (ImGui::MenuItem("Create Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
+        {
+            {
+                std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+                program_status.is_idle = false;
+                program_status.fileio.total = static_cast<int>(sac_deque.size());
+                program_status.fileio.count = 0;
+            }
+            // Add a checkpoint to the list (made by user)
+            project.write_checkpoint(true, false);
+            // Checkpoint each piece of data
+            for (std::size_t i{0}; i < sac_deque.size(); ++i)
+            {
+                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
+            }
+        }
         ImGui::EndMenu();
     }
     // Options Menu

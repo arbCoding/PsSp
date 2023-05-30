@@ -212,6 +212,8 @@ void glfw_error_callback(int error, const char *description);
 void prep_newframe();
 // Ran at end of new frame draw cycle
 void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
+// Add all each datapoint ot a checkpoint
+void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------
