@@ -108,9 +108,6 @@ int main(int arg_count, char* arg_array[])
     //---------------------------------------------------------------------------
     // Make a fresh project
     pssp::Project project{};
-    // Need to test making a checkpoint
-    // That requires the Main Menu Bar to be updated...
-
     //---------------------------------------------------------------------------
     // Draw loop
     //---------------------------------------------------------------------------

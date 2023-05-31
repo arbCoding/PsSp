@@ -275,16 +275,13 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         { ImGui::SetTooltip("Create a brand new project"); }
         if (ImGui::MenuItem("Load Project##", nullptr, nullptr, menu_allowed.load_project))
         {
-            // To be implemented
-            // Need to use a filedialog to get a file
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseProjDlgKey", "Choose Project", ".proj", home_path, ImGuiFileDialogFlags_Modal);
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Load an existing project"); }
         if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
         {
-            // To be implemented
-            // Need to unload everything in memory
-            // Rather, set a flag to unload everything in memory
+            unload_data(project, program_status, sac_deque);
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Unload current project"); }
@@ -420,6 +417,17 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             std::string project_name = full_file.stem().string();
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
             project.new_project(project_name, parent_path);
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    if (ImGuiFileDialog::Instance()->Display("ChooseProjDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+    {
+        // Read the SAC-File safely
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::filesystem::path project_file{std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName())};
+            // Queue it up in the background!
+            program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file);
         }
         ImGuiFileDialog::Instance()->Close();
     }

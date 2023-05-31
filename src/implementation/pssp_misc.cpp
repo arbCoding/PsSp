@@ -250,7 +250,7 @@ void pssp::batch_apply_bandpass(Project& project, ProgramStatus& program_status,
 
 void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
 {
-    pssp::sac_1c sac{};
+    sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
@@ -437,6 +437,74 @@ void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
 }
 //-----------------------------------------------------------------------------
 // End checkpoint data (inside thread_pool)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Unload data from memory
+//-----------------------------------------------------------------------------
+void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+{
+    // Remove the SQLite3 connections and the file paths
+    project.unload_project();
+    // Clear data from the sac_deque
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
+    program_status.fileio.count = 0;
+    program_status.fileio.total = 0;
+    sac_deque.clear();
+}
+//-----------------------------------------------------------------------------
+// End Unload data from memory
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Get SacStream from project, add to sac_deque
+//-----------------------------------------------------------------------------
+void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
+{
+    sac_1c sac{};
+    {
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        sac.sac = project.load_sacstream(data_id);
+        sac.file_name = project.get_source(data_id);
+        sac.data_id = data_id;
+    }
+    std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
+    fileio.is_reading = true;
+    ++fileio.count;
+    sac_deque.push_back(sac);
+}
+
+//-----------------------------------------------------------------------------
+// End Get SacStream from project, add to sac_deque
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Load a project from a project file
+//-----------------------------------------------------------------------------
+void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file)
+{
+    // First make sure we unload the present project
+    //unload_data(project, program_status, sac_deque);
+    // Connection to the project file
+    project.connect_2_existing(project_file);
+    // Set the checkpoint id to the latest checkpoint
+    project.set_checkpoint_id(project.get_latest_checkpoint_id());
+    // Get the data-ids to load
+    std::vector<int> data_ids{project.get_data_ids_for_current_checkpoint()};
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.is_idle = false;
+    program_status.fileio.total = static_cast<int>(data_ids.size());
+    program_status.fileio.count = 0;
+    // Queue it up!
+    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    {
+        program_status.thread_pool.enqueue(fill_deque_project, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque), data_ids[i]);
+    }
+}
+//-----------------------------------------------------------------------------
+// End load a project from a project file
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------

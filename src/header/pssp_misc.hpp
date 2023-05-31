@@ -2,6 +2,7 @@
 #define PSSP_MISC_HPP
 
 // Silence OpenGL deprecation warnings on compile
+#include "pssp_program_settings.hpp"
 #define GL_SILENCE_DEPRECATION
 
 //-----------------------------------------------------------------------------
@@ -214,6 +215,11 @@ void prep_newframe();
 void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 // Add all each datapoint ot a checkpoint
 void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac);
+// Unload the project
+void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id);
+// Load an existing project
+void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 #ifndef PSSP_PROJECTS_HPP
 #define PSSP_PROJECTS_HPP
 
+#include "boost/token_functions.hpp"
 #include "sac_io.hpp"
 #include "sac_stream.hpp"
 #include "pssp_threadpool.hpp"
@@ -8,6 +9,8 @@
 #include <sqlite3.h>
 // String comparisons in C++ suck, boost adds needed functionality!
 #include <boost/algorithm/string.hpp>
+// Tokenize strings
+#include <boost/tokenizer.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <filesystem>
 #include <iostream>
@@ -69,29 +72,56 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Days per month
+        //----------------------------------------------------------------
+        int days_per_month(int year, int month)
+        {
+            // Standard days in month for non-leap years
+            constexpr int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            int days{days_in_month[month]};
+            if (month == 1)
+            {
+                // February, check if it is a leap year
+                if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
+                {
+                    // Is a leap year
+                    ++days;
+                }
+            }
+            return days;   
+        }
+        //----------------------------------------------------------------
+        // End days per month
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // YMD to Day of Year
+        //----------------------------------------------------------------
+        int ymd_2_doy(int year, int month, int day)
+        {
+            int doy{0};
+            for (int i{0}; i < month; ++i)
+            {
+                doy += days_per_month(year, i);
+            }
+            doy += day;
+            return doy;
+        }
+        //----------------------------------------------------------------
+        // End YMD to Day of Year
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // Day of Year to Month and Day of Month
         //----------------------------------------------------------------
         std::string doy_2_ymd(int year, int doy)
         {
-            // Standard days in month for non-leap years
-            constexpr int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-            // Being a leap year only matters is the DoY is >= 31 + 28 = 59
             int month{0};
             int days{0};
             // Infinite loop if we don't break out of it
             while (true)
             {
-                days = days_in_month[month];
-                if (month == 1)
-                {
-                    // February, so we care if leap year or not
-                    // Check if it is a leap year
-                    if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
-                    {
-                        // Is a leap year
-                        ++days;
-                    }
-                }
+                days = days_per_month(year, month);
                 // Subtract whole month of days from the doy
                 if (doy >= days)
                 {
@@ -132,14 +162,70 @@ class Project
             oss << left_pad_integers(sac.nzsec, 2);
             oss << '.';
             oss << left_pad_integers(sac.nzmsec, 3);
-            // We cannot have this work in an OS-independent way
-            // unless we handle this manually (unfortunately)
-            // So I need to go from YYYY-JJJ to YYYY-MM-DD
-            // manually while account for leap years
             return oss.str();
         }
         //----------------------------------------------------------------
         // End Make datetime
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Given a timestamp string, populate the SAC reference time headers
+        //----------------------------------------------------------------
+        void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& sac)
+        {
+            std::string timestamp{raw_timestamp};
+            char space_delimiter{' '};
+            // String is YYYY-MM-DD HH:mm:ss.SSS format
+            // Want YYYY, JJJ, HH, mm, ss, SSS extracted
+            boost::tokenizer<boost::char_separator<char>> space_tokens(timestamp, boost::char_separator<char>(&space_delimiter));
+            auto space_iterator{space_tokens.begin()};
+            // YYYY-MM-DD
+            std::string ymd{std::string(*space_iterator)};
+            char hyphen_delimiter{'-'};
+            boost::tokenizer<boost::char_separator<char>> hyphen_tokens(ymd, boost::char_separator<char>(&hyphen_delimiter));
+            auto hyphen_iterator{hyphen_tokens.begin()};
+            sac.nzyear = std::stoi(*hyphen_iterator);
+            int month{std::stoi(*hyphen_iterator)};
+            int day{std::stoi(*hyphen_iterator)};
+            sac.nzjday = ymd_2_doy(sac.nzyear, month, day);
+            // Need to calculate the day of the year
+            // HH:mm:ss.SSS
+            std::string hms{std::string(*space_iterator)};
+            char period_delimiter{'.'};
+            boost::tokenizer<boost::char_separator<char>> period_tokens(hms, boost::char_separator<char>(&period_delimiter));
+            auto period_iterator{period_tokens.begin()};
+            // HH:mm:ss
+            std::string trim_hms{*period_iterator};
+            // SSS
+            sac.nzmsec = std::stoi(*period_iterator);
+            char colon_delimiter{':'};
+            boost::tokenizer<boost::char_separator<char>> colon_tokens(trim_hms, boost::char_separator<char>(&colon_delimiter));
+            auto colon_iterator{colon_tokens.begin()};
+            sac.nzhour = std::stoi(*colon_iterator);
+            sac.nzmin = std::stoi(*colon_iterator);
+            sac.nzsec = std::stoi(*colon_iterator);
+            }
+        //----------------------------------------------------------------
+        // End Given a timestamp string, puplate the SAC reference time headers
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // BLOB to std::vector<double>
+        //----------------------------------------------------------------
+        std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index)
+        {
+            if (sqlite3_column_type(blob_statement, column_index) == SQLITE_NULL) { return std::vector<double>(); }
+
+            const void* blob_data{sqlite3_column_blob(blob_statement, column_index)};
+            int blob_size{sqlite3_column_bytes(blob_statement, column_index)};
+            std::vector<unsigned char> blob_vector_char(blob_size);
+            std::memcpy(blob_vector_char.data(), blob_data, blob_size);
+            std::vector<double> blob_vector_double(blob_size / sizeof(double));
+            std::memcpy(blob_vector_double.data(), blob_vector_char.data(), blob_size);
+            return blob_vector_double;
+        }
+        //----------------------------------------------------------------
+        // End BLOB to std::vector<double>
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
@@ -152,7 +238,7 @@ class Project
         {
             std::ostringstream oss{};
             oss << "CREATE TABLE provenance (";
-            oss << "base_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
+            oss << "data_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
             // If from file on filesystem, full canonical path for it
             // If from an FDSN (future), then that info
             // If internally generated (synthetic, new copy, whatever) then internal
@@ -371,9 +457,9 @@ class Project
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
             // Create a new connection
-            sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+            //sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
             // Set the journal mode to WAL
-            sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+            //sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
         }
         //----------------------------------------------------------------
         // End Project connection initializer
@@ -395,7 +481,7 @@ class Project
         // Connection to the database (file)
         sqlite3* sq3_connection_file{};
         // Connection to the database (memory)
-        sqlite3* sq3_connection_memory{};
+        //sqlite3* sq3_connection_memory{};
         int sq3_result{};
         char* sq3_error_message{};
         // Empty constructor
@@ -440,13 +526,53 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Unload project
+        //----------------------------------------------------------------
+        // This is very similar to the destructor, but that gets called only
+        // when the program is closed.
+        void unload_project()
+        {
+            // Close the connections
+            bool connection_closed{false};
+            while (!connection_closed)
+            {
+                int connection_status{sqlite3_close_v2(sq3_connection_file)};
+                if (connection_status == SQLITE_OK) { connection_closed = true; }
+                else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+                else { break; }
+            }
+            /*
+            // Remove extraneous files (shm = shared memory, wal = write ahead log)
+            std::filesystem::path shm_file{path_};
+            shm_file += "-shm";
+            std::filesystem::remove(shm_file);
+            std::filesystem::path wal_file{path_};
+            wal_file += "-wal";
+            std::filesystem::remove(wal_file);
+            */
+            // Clear the paths
+            name_ = "";
+            path_ = "";
+        }
+        //----------------------------------------------------------------
+        // End unload project
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // Destructor
         //----------------------------------------------------------------
         ~Project() 
         {
             // Close connections
-            sqlite3_close_v2(sq3_connection_file);
-            sqlite3_close_v2(sq3_connection_memory);
+            bool connection_closed{false};
+            int connection_status{};
+            while (!connection_closed)
+            {
+                connection_status = sqlite3_close_v2(sq3_connection_file);
+                if (connection_status == SQLITE_OK) { connection_closed = true; }
+                else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+                else { break; }
+            }
             // Remove extraneous files (shm = shared memory, wal = write ahead log)
             std::filesystem::path shm_file{path_};
             shm_file += "-shm";
@@ -784,7 +910,282 @@ class Project
             sqlite3_finalize(sq3_statement);
         }
         //----------------------------------------------------------------
-        // End addprocessing information
+        // End add processing information
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Retrieve all checkpoint_ids
+        //----------------------------------------------------------------
+        std::vector<int> get_checkpoint_ids()
+        {
+            std::string sq3_string{"SELECT checkpoint_id FROM checkpoints;"};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            std::vector<int> checkpoint_ids{};
+            while (sqlite3_step(sq3_statement) == SQLITE_ROW)
+            {
+                checkpoint_ids.push_back(sqlite3_column_int(sq3_statement, 0));
+            }
+            return checkpoint_ids;
+        }
+        //----------------------------------------------------------------
+        // End Retrieve all checkpoint_ids
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Retrieve newest checkpoint_id
+        //----------------------------------------------------------------
+        int get_latest_checkpoint_id()
+        {
+            std::vector<int> checkpoint_ids{get_checkpoint_ids()};
+            // Default is 0.
+            int checkpoint_id{0};
+            if (checkpoint_ids.size() > 0)
+            {
+                // Get the last element
+                checkpoint_id = checkpoint_ids.back();
+            }
+            return checkpoint_id;
+        }
+        //----------------------------------------------------------------
+        // End Retrieve newest checkpoint_id
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Get data_ids
+        //----------------------------------------------------------------
+        std::vector<int> get_data_ids()
+        {
+            std::string sq3_string{"SELECT data_id FROM provenance;"};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            std::vector<int> data_ids{};
+            while (sqlite3_step(sq3_statement) == SQLITE_ROW)
+            {
+                data_ids.push_back(sqlite3_column_int(sq3_statement, 0));
+            }
+            return data_ids;
+        }
+        //----------------------------------------------------------------
+        // End Get data_ids
+        //----------------------------------------------------------------
+        
+        //----------------------------------------------------------------
+        // Get data_ids for a specific checkpoint_id
+        //----------------------------------------------------------------
+        std::vector<int> get_data_ids_for_checkpoint(int checkpoint_id)
+        {
+            std::vector<int> raw_ids{get_data_ids()};
+            std::vector<int> final_ids{};
+            for (int raw_id : raw_ids)
+            {
+                std::ostringstream oss{};
+                oss << "SELECT * FROM checkpoint_" << raw_id << " WHERE checkpoint_id = ?";
+                std::string sq3_string{oss.str()};
+                sqlite3_stmt* sq3_statement{};
+                sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+                sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id);
+                // Execute the statement
+                sq3_result = sqlite3_step(sq3_statement);
+                // If found, add to the list
+                if (sq3_result == SQLITE_ROW) { final_ids.push_back(raw_id); }
+                sqlite3_finalize(sq3_statement);
+            }
+            return final_ids;
+        }
+        //----------------------------------------------------------------
+        // End Get data_ids for a specific checkpoint_id
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Get data_ids for current checkpoint_id
+        //----------------------------------------------------------------
+        std::vector<int> get_data_ids_for_current_checkpoint()
+        {
+            std::vector<int> data_ids{get_data_ids_for_checkpoint(checkpoint_id_)};
+            return data_ids;
+        }
+        //----------------------------------------------------------------
+        // End Get data_ids for current checkpoint_id
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Given a checkpoint_id and a data_id, return a SacStream object
+        //----------------------------------------------------------------
+        // This is going to be long since there are a lot of values to load...
+        SAC::SacStream load_sacstream_from_checkpoint(int data_id, int checkpoint_id)
+        {
+            std::ostringstream oss{};
+            oss << "SELECT * FROM checkpoint_" << data_id << " WHERE checkpoint_id = ?";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id);
+            // Execute the statement
+            sq3_result = sqlite3_step(sq3_statement);
+            //------------------------------------------------------------
+            // Build the SacStream
+            //------------------------------------------------------------
+            // Create an empty SacStream
+            SAC::SacStream sac{};
+            //------------------------------------------------------------
+            // SAC headers
+            //------------------------------------------------------------
+            if (sqlite3_column_type(sq3_statement, 1) != SQLITE_NULL) { sac.delta = sqlite3_column_double(sq3_statement, 1); }
+            if (sqlite3_column_type(sq3_statement, 2) != SQLITE_NULL) { sac.b = sqlite3_column_double(sq3_statement, 2); }
+            if (sqlite3_column_type(sq3_statement, 3) != SQLITE_NULL) { sac.e = sqlite3_column_double(sq3_statement, 3); }
+            if (sqlite3_column_type(sq3_statement, 4) != SQLITE_NULL) { sac.o = sqlite3_column_double(sq3_statement, 4); }
+            if (sqlite3_column_type(sq3_statement, 5) != SQLITE_NULL) { sac.a = sqlite3_column_double(sq3_statement, 5); }
+            if (sqlite3_column_type(sq3_statement, 6) != SQLITE_NULL) { sac.t0 = sqlite3_column_double(sq3_statement, 6); }
+            if (sqlite3_column_type(sq3_statement, 7) != SQLITE_NULL) { sac.t1 = sqlite3_column_double(sq3_statement, 7); }
+            if (sqlite3_column_type(sq3_statement, 8) != SQLITE_NULL) { sac.t2 = sqlite3_column_double(sq3_statement, 8); }
+            if (sqlite3_column_type(sq3_statement, 9) != SQLITE_NULL) { sac.t3 = sqlite3_column_double(sq3_statement, 9); }
+            if (sqlite3_column_type(sq3_statement, 10) != SQLITE_NULL) { sac.t4 = sqlite3_column_double(sq3_statement, 10); }
+            if (sqlite3_column_type(sq3_statement, 11) != SQLITE_NULL) { sac.t5 = sqlite3_column_double(sq3_statement, 11); }
+            if (sqlite3_column_type(sq3_statement, 12) != SQLITE_NULL) { sac.t6 = sqlite3_column_double(sq3_statement, 12); }
+            if (sqlite3_column_type(sq3_statement, 13) != SQLITE_NULL) { sac.t7 = sqlite3_column_double(sq3_statement, 13); }
+            if (sqlite3_column_type(sq3_statement, 14) != SQLITE_NULL) { sac.t8 = sqlite3_column_double(sq3_statement, 14); }
+            if (sqlite3_column_type(sq3_statement, 15) != SQLITE_NULL) { sac.t9 = sqlite3_column_double(sq3_statement, 15); }
+            if (sqlite3_column_type(sq3_statement, 16) != SQLITE_NULL) { sac.f = sqlite3_column_double(sq3_statement, 16); }
+            if (sqlite3_column_type(sq3_statement, 17) != SQLITE_NULL) { sac.resp0 = sqlite3_column_double(sq3_statement, 17); }
+            if (sqlite3_column_type(sq3_statement, 18) != SQLITE_NULL) { sac.resp1 = sqlite3_column_double(sq3_statement, 18); }
+            if (sqlite3_column_type(sq3_statement, 19) != SQLITE_NULL) { sac.resp2 = sqlite3_column_double(sq3_statement, 19); }
+            if (sqlite3_column_type(sq3_statement, 20) != SQLITE_NULL) { sac.resp3 = sqlite3_column_double(sq3_statement, 20); }
+            if (sqlite3_column_type(sq3_statement, 21) != SQLITE_NULL) { sac.resp4 = sqlite3_column_double(sq3_statement, 21); }
+            if (sqlite3_column_type(sq3_statement, 22) != SQLITE_NULL) { sac.resp5 = sqlite3_column_double(sq3_statement, 22); }
+            if (sqlite3_column_type(sq3_statement, 23) != SQLITE_NULL) { sac.resp6 = sqlite3_column_double(sq3_statement, 23); }
+            if (sqlite3_column_type(sq3_statement, 24) != SQLITE_NULL) { sac.resp7 = sqlite3_column_double(sq3_statement, 24); }
+            if (sqlite3_column_type(sq3_statement, 25) != SQLITE_NULL) { sac.resp8 = sqlite3_column_double(sq3_statement, 25); }
+            if (sqlite3_column_type(sq3_statement, 26) != SQLITE_NULL) { sac.resp9 = sqlite3_column_double(sq3_statement, 26); }
+            if (sqlite3_column_type(sq3_statement, 27) != SQLITE_NULL) { sac.stla = sqlite3_column_double(sq3_statement, 27); }
+            if (sqlite3_column_type(sq3_statement, 28) != SQLITE_NULL) { sac.stlo = sqlite3_column_double(sq3_statement, 28); }
+            if (sqlite3_column_type(sq3_statement, 29) != SQLITE_NULL) { sac.stel = sqlite3_column_double(sq3_statement, 29); }
+            if (sqlite3_column_type(sq3_statement, 30) != SQLITE_NULL) { sac.stdp = sqlite3_column_double(sq3_statement, 30); }
+            if (sqlite3_column_type(sq3_statement, 31) != SQLITE_NULL) { sac.evla = sqlite3_column_double(sq3_statement, 31); }
+            if (sqlite3_column_type(sq3_statement, 32) != SQLITE_NULL) { sac.evlo = sqlite3_column_double(sq3_statement, 32); }
+            if (sqlite3_column_type(sq3_statement, 33) != SQLITE_NULL) { sac.evel = sqlite3_column_double(sq3_statement, 33); }
+            if (sqlite3_column_type(sq3_statement, 34) != SQLITE_NULL) { sac.evdp = sqlite3_column_double(sq3_statement, 34); }
+            if (sqlite3_column_type(sq3_statement, 35) != SQLITE_NULL) { sac.mag = sqlite3_column_double(sq3_statement, 35); }
+            if (sqlite3_column_type(sq3_statement, 36) != SQLITE_NULL) { sac.user0 = sqlite3_column_double(sq3_statement, 36); }
+            if (sqlite3_column_type(sq3_statement, 37) != SQLITE_NULL) { sac.user1 = sqlite3_column_double(sq3_statement, 37); }
+            if (sqlite3_column_type(sq3_statement, 38) != SQLITE_NULL) { sac.user2 = sqlite3_column_double(sq3_statement, 38); }
+            if (sqlite3_column_type(sq3_statement, 39) != SQLITE_NULL) { sac.user3 = sqlite3_column_double(sq3_statement, 39); }
+            if (sqlite3_column_type(sq3_statement, 40) != SQLITE_NULL) { sac.user4 = sqlite3_column_double(sq3_statement, 40); }
+            if (sqlite3_column_type(sq3_statement, 41) != SQLITE_NULL) { sac.user5 = sqlite3_column_double(sq3_statement, 41); }
+            if (sqlite3_column_type(sq3_statement, 42) != SQLITE_NULL) { sac.user6 = sqlite3_column_double(sq3_statement, 42); }
+            if (sqlite3_column_type(sq3_statement, 43) != SQLITE_NULL) { sac.user7 = sqlite3_column_double(sq3_statement, 43); }
+            if (sqlite3_column_type(sq3_statement, 44) != SQLITE_NULL) { sac.user8 = sqlite3_column_double(sq3_statement, 44); }
+            if (sqlite3_column_type(sq3_statement, 45) != SQLITE_NULL) { sac.user9 = sqlite3_column_double(sq3_statement, 45); }
+            if (sqlite3_column_type(sq3_statement, 46) != SQLITE_NULL) { sac.dist = sqlite3_column_double(sq3_statement, 46); }
+            if (sqlite3_column_type(sq3_statement, 47) != SQLITE_NULL) { sac.az = sqlite3_column_double(sq3_statement, 47); }
+            if (sqlite3_column_type(sq3_statement, 48) != SQLITE_NULL) { sac.baz = sqlite3_column_double(sq3_statement, 48); }
+            if (sqlite3_column_type(sq3_statement, 49) != SQLITE_NULL) { sac.gcarc = sqlite3_column_double(sq3_statement, 49); }
+            if (sqlite3_column_type(sq3_statement, 50) != SQLITE_NULL) { sac.depmin = sqlite3_column_double(sq3_statement, 50); }
+            if (sqlite3_column_type(sq3_statement, 51) != SQLITE_NULL) { sac.depmen = sqlite3_column_double(sq3_statement, 51); }
+            if (sqlite3_column_type(sq3_statement, 52) != SQLITE_NULL) { sac.depmax = sqlite3_column_double(sq3_statement, 52); }
+            if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.cmpaz = sqlite3_column_double(sq3_statement, 53); }
+            if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpinc = sqlite3_column_double(sq3_statement, 54); }
+            // Need a way to handle 56, reference time (text) since it is multiple headers and needs string tokenizing
+            //if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 55)), sac); }
+            if (sqlite3_column_type(sq3_statement, 56) != SQLITE_NULL) { sac.norid = sqlite3_column_int(sq3_statement, 56); }
+            if (sqlite3_column_type(sq3_statement, 57) != SQLITE_NULL) { sac.nevid = sqlite3_column_int(sq3_statement, 57); }
+            if (sqlite3_column_type(sq3_statement, 58) != SQLITE_NULL) { sac.npts = sqlite3_column_int(sq3_statement, 58); }
+            if (sqlite3_column_type(sq3_statement, 59) != SQLITE_NULL) { sac.nwfid = sqlite3_column_int(sq3_statement, 59); }
+            if (sqlite3_column_type(sq3_statement, 60) != SQLITE_NULL) { sac.iftype = sqlite3_column_int(sq3_statement, 60); }
+            if (sqlite3_column_type(sq3_statement, 61) != SQLITE_NULL) { sac.idep = sqlite3_column_int(sq3_statement, 61); }
+            if (sqlite3_column_type(sq3_statement, 62) != SQLITE_NULL) { sac.iztype = sqlite3_column_int(sq3_statement, 62); }
+            if (sqlite3_column_type(sq3_statement, 63) != SQLITE_NULL) { sac.iinst = sqlite3_column_int(sq3_statement, 63); }
+            if (sqlite3_column_type(sq3_statement, 64) != SQLITE_NULL) { sac.istreg = sqlite3_column_int(sq3_statement, 64); }
+            if (sqlite3_column_type(sq3_statement, 65) != SQLITE_NULL) { sac.ievreg = sqlite3_column_int(sq3_statement, 65); }
+            if (sqlite3_column_type(sq3_statement, 66) != SQLITE_NULL) { sac.ievtyp = sqlite3_column_int(sq3_statement, 66); }
+            if (sqlite3_column_type(sq3_statement, 67) != SQLITE_NULL) { sac.iqual = sqlite3_column_int(sq3_statement, 67); }
+            if (sqlite3_column_type(sq3_statement, 68) != SQLITE_NULL) { sac.isynth = sqlite3_column_int(sq3_statement, 68); }
+            if (sqlite3_column_type(sq3_statement, 69) != SQLITE_NULL) { sac.imagtyp = sqlite3_column_int(sq3_statement, 69); }
+            if (sqlite3_column_type(sq3_statement, 70) != SQLITE_NULL) { sac.imagsrc = sqlite3_column_int(sq3_statement, 70); }
+            if (sqlite3_column_type(sq3_statement, 71) != SQLITE_NULL) { sac.ibody = sqlite3_column_int(sq3_statement, 71); }
+            if (sqlite3_column_type(sq3_statement, 72) != SQLITE_NULL) { sac.leven = sqlite3_column_int(sq3_statement, 72); }
+            if (sqlite3_column_type(sq3_statement, 73) != SQLITE_NULL) { sac.lpspol = sqlite3_column_int(sq3_statement, 73); }
+            // reinterpret_cast is needed to go from 'const unsigned char*' to 'const char*' for string assignment
+            if (sqlite3_column_type(sq3_statement, 74) != SQLITE_NULL) { sac.kstnm.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 74))); }
+            if (sqlite3_column_type(sq3_statement, 75) != SQLITE_NULL) { sac.kevnm.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 75))); }
+            if (sqlite3_column_type(sq3_statement, 76) != SQLITE_NULL) { sac.khole.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 76))); }
+            if (sqlite3_column_type(sq3_statement, 77) != SQLITE_NULL) { sac.ko.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 77))); }
+            if (sqlite3_column_type(sq3_statement, 78) != SQLITE_NULL) { sac.ka.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 78))); }
+            if (sqlite3_column_type(sq3_statement, 79) != SQLITE_NULL) { sac.kt0.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 79))); }
+            if (sqlite3_column_type(sq3_statement, 80) != SQLITE_NULL) { sac.kt1.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 80))); }
+            if (sqlite3_column_type(sq3_statement, 81) != SQLITE_NULL) { sac.kt2.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 81))); }
+            if (sqlite3_column_type(sq3_statement, 82) != SQLITE_NULL) { sac.kt3.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 82))); }
+            if (sqlite3_column_type(sq3_statement, 83) != SQLITE_NULL) { sac.kt4.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 83))); }
+            if (sqlite3_column_type(sq3_statement, 84) != SQLITE_NULL) { sac.kt5.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 84))); }
+            if (sqlite3_column_type(sq3_statement, 85) != SQLITE_NULL) { sac.kt6.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 85))); }
+            if (sqlite3_column_type(sq3_statement, 86) != SQLITE_NULL) { sac.kt7.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 86))); }
+            if (sqlite3_column_type(sq3_statement, 87) != SQLITE_NULL) { sac.kt8.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 87))); }
+            if (sqlite3_column_type(sq3_statement, 88) != SQLITE_NULL) { sac.kt9.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 88))); }
+            if (sqlite3_column_type(sq3_statement, 89) != SQLITE_NULL) { sac.kf.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 89))); }
+            if (sqlite3_column_type(sq3_statement, 90) != SQLITE_NULL) { sac.kuser0.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 90))); }
+            if (sqlite3_column_type(sq3_statement, 91) != SQLITE_NULL) { sac.kuser1.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 91))); }
+            if (sqlite3_column_type(sq3_statement, 92) != SQLITE_NULL) { sac.kuser2.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 92))); }
+            if (sqlite3_column_type(sq3_statement, 93) != SQLITE_NULL) { sac.kcmpnm.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 93))); }
+            if (sqlite3_column_type(sq3_statement, 94) != SQLITE_NULL) { sac.knetwk.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 94))); }
+            if (sqlite3_column_type(sq3_statement, 95) != SQLITE_NULL) { sac.kinst.assign(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 95))); }
+            //------------------------------------------------------------
+            // End SAC headers
+            //------------------------------------------------------------
+            sac.data1 = blob_to_vector_double(sq3_statement, 96);
+            sac.data2 = blob_to_vector_double(sq3_statement, 97);
+            //------------------------------------------------------------
+            // End Build the SacStream
+            //------------------------------------------------------------
+            // Cleanup the statement
+            sqlite3_finalize(sq3_statement);
+            return sac;
+        }
+        //----------------------------------------------------------------
+        // End Given a checkpoint_id and a data_id, return a SacStream object
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Given data_id, get SacStream for current checkpoint
+        //----------------------------------------------------------------
+        SAC::SacStream load_sacstream(int data_id)
+        {
+            SAC::SacStream sac{load_sacstream_from_checkpoint(data_id, checkpoint_id_)};
+            return sac;
+        }
+        //----------------------------------------------------------------
+        // End Given data_id, get SacStream for current checkpoint
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Given data_id, get source name from provenance table
+        //----------------------------------------------------------------
+        std::string get_source(int data_id)
+        {
+            std::ostringstream oss{};
+            oss << "SELECT source FROM provenance WHERE data_id = ?";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, data_id);
+            sq3_result = sqlite3_step(sq3_statement);
+            const char* tmp{reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 0))};
+            std::string source{tmp};
+            sqlite3_finalize(sq3_statement);
+            return source;
+        }
+        //----------------------------------------------------------------
+        // End Given data_id, get source name from proenance table
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Checkpoint_id setter
+        //----------------------------------------------------------------
+        void set_checkpoint_id(int checkpoint_id)
+        {
+            checkpoint_id_ = checkpoint_id;
+        }
+        //----------------------------------------------------------------
+        // End Checkpoint_id setter
         //----------------------------------------------------------------
 };
 };

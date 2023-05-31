@@ -106,7 +106,7 @@ struct MenuAllowed
     bool project_menu{true};
     bool new_project{true};
     bool load_project{true};
-    bool unload_project{false};
+    bool unload_project{true};
     // Checkpoint Menu
     bool checkpoint_menu{true};
     bool new_checkpoint{true};
