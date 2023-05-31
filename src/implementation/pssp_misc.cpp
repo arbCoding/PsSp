@@ -447,10 +447,12 @@ void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deq
     // Remove the SQLite3 connections and the file paths
     project.unload_project();
     // Clear data from the sac_deque
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-    program_status.fileio.count = 0;
-    program_status.fileio.total = 0;
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
+        program_status.fileio.count = 0;
+        program_status.fileio.total = 0;
+    }
     sac_deque.clear();
 }
 //-----------------------------------------------------------------------------
@@ -465,6 +467,8 @@ void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1
     sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        // This is sometimes failing after unload and reload
+        // It seems that the data_id is repeated...
         sac.sac = project.load_sacstream(data_id);
         sac.file_name = project.get_source(data_id);
         sac.data_id = data_id;
@@ -493,10 +497,12 @@ void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque
     project.set_checkpoint_id(project.get_latest_checkpoint_id());
     // Get the data-ids to load
     std::vector<int> data_ids{project.get_data_ids_for_current_checkpoint()};
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.is_idle = false;
-    program_status.fileio.total = static_cast<int>(data_ids.size());
-    program_status.fileio.count = 0;
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.is_idle = false;
+        program_status.fileio.total = static_cast<int>(data_ids.size());
+        program_status.fileio.count = 0;
+    }
     // Queue it up!
     for (std::size_t i{0}; i < data_ids.size(); ++i)
     {

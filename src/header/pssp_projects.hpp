@@ -456,10 +456,6 @@ class Project
             sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
-            // Create a new connection
-            //sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
-            // Set the journal mode to WAL
-            //sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
         }
         //----------------------------------------------------------------
         // End Project connection initializer
@@ -480,8 +476,6 @@ class Project
     public:
         // Connection to the database (file)
         sqlite3* sq3_connection_file{};
-        // Connection to the database (memory)
-        //sqlite3* sq3_connection_memory{};
         int sq3_result{};
         char* sq3_error_message{};
         // Empty constructor

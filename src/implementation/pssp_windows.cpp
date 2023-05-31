@@ -282,6 +282,8 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
         {
             unload_data(project, program_status, sac_deque);
+            // If we don't do this, program crashes on reload if anything was selected
+            active_sac = 0;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Unload current project"); }
@@ -355,19 +357,19 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Frames Per Second display"); }
         
-        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, menu_allowed.sac_header))
+        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
         { allwindow_settings.header.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Displays SAC header values"); }
         
-        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, menu_allowed.plot_1c))
+        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, (menu_allowed.plot_1c && program_status.is_idle)))
         { allwindow_settings.plot_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("1-component SAC plot"); }
         
-        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, menu_allowed.plot_spectrum_1c))
+        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, (menu_allowed.plot_spectrum_1c && program_status.is_idle)))
         { allwindow_settings.spectrum_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
