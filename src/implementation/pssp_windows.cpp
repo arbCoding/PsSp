@@ -322,6 +322,23 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Delete Checkpoint##", menu_allowed.delete_checkpoint))
+        {
+            std::vector<int> checkpoint_ids{project.get_checkpoint_ids()};
+            for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
+            {
+                std::ostringstream oss{};
+                oss << checkpoint_ids[i];
+                oss << "##";
+                std::string checkpoint_name{oss.str()};
+                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                {
+                    // To be implemented
+                    program_status.thread_pool.enqueue(delete_checkpoint, std::ref(project), checkpoint_ids[i]);
+                }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
     // Options Menu

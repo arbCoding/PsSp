@@ -4,8 +4,7 @@
 #include "boost/token_functions.hpp"
 #include "sac_io.hpp"
 #include "sac_stream.hpp"
-#include "pssp_threadpool.hpp"
-#include <ios>
+// SQLite3 official library
 #include <sqlite3.h>
 // String comparisons in C++ suck, boost adds needed functionality!
 #include <boost/algorithm/string.hpp>
@@ -13,6 +12,8 @@
 #include <filesystem>
 #include <iostream>
 #include <sstream>
+#include <thread>
+#include <ios>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -448,6 +449,26 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Disconnect
+        //----------------------------------------------------------------
+        void disconnect()
+        {
+            // Close connections
+            bool connection_closed{false};
+            int connection_status{};
+            while (!connection_closed)
+            {
+                connection_status = sqlite3_close_v2(sq3_connection_file);
+                if (connection_status == SQLITE_OK) { connection_closed = true; }
+                else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+                else { break; }
+            }
+        }
+        //----------------------------------------------------------------
+        // End Disconnect
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // New project tables
         //----------------------------------------------------------------
         void fresh_tables()
@@ -512,15 +533,7 @@ class Project
         // when the program is closed.
         void unload_project()
         {
-            // Close the connections
-            bool connection_closed{false};
-            while (!connection_closed)
-            {
-                int connection_status{sqlite3_close_v2(sq3_connection_file)};
-                if (connection_status == SQLITE_OK) { connection_closed = true; }
-                else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
-                else { break; }
-            }
+            disconnect();
             /*
             // Remove extraneous files (shm = shared memory, wal = write ahead log)
             std::filesystem::path shm_file{path_};
@@ -543,16 +556,7 @@ class Project
         //----------------------------------------------------------------
         ~Project() 
         {
-            // Close connections
-            bool connection_closed{false};
-            int connection_status{};
-            while (!connection_closed)
-            {
-                connection_status = sqlite3_close_v2(sq3_connection_file);
-                if (connection_status == SQLITE_OK) { connection_closed = true; }
-                else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
-                else { break; }
-            }
+            disconnect();
             // Remove extraneous files (shm = shared memory, wal = write ahead log)
             std::filesystem::path shm_file{path_};
             shm_file += "-shm";
@@ -898,7 +902,8 @@ class Project
         //----------------------------------------------------------------
         std::vector<int> get_checkpoint_ids()
         {
-            std::string sq3_string{"SELECT checkpoint_id FROM checkpoints;"};
+            // Only get checkpoints that have not been removed!
+            std::string sq3_string{"SELECT checkpoint_id FROM checkpoints WHERE removed IS NULL;"};
             sqlite3_stmt* sq3_statement{};
             sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
             std::vector<int> checkpoint_ids{};
@@ -1168,16 +1173,52 @@ class Project
         // End Checkpoint_id setter
         //----------------------------------------------------------------
 
-        //---
+        //----------------------------------------------------------------
         // Path getter
-        //---
+        //----------------------------------------------------------------
         std::filesystem::path get_path()
         {
             return path_;
         }
-        //---
+        //----------------------------------------------------------------
         // End Path getter
-        //---
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Checkpoint deleter
+        //----------------------------------------------------------------
+        void delete_checkpoint(int checkpoint_id)
+        {
+            // Timestamp that we got rid of the checkpoint
+            std::string sq3_string{"UPDATE checkpoints SET removed = (SELECT CURRENT_TIMESTAMP) WHERE checkpoint_id = ?;"};
+            sqlite3_stmt* sq3_statement_time{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement_time, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement_time, 1, checkpoint_id);
+            sq3_result = sqlite3_step(sq3_statement_time);
+            sqlite3_finalize(sq3_statement_time);
+            std::vector<int> data_ids{get_data_ids()};
+            // Clear the actual data values
+            for (int data_id : data_ids)
+            {
+                std::ostringstream oss{};
+                oss << "DELETE FROM checkpoint_" << data_id << " WHERE checkpoint_id = ?;";
+                sq3_string = oss.str();
+                sqlite3_stmt* sq3_statement_clear{};
+                sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement_clear, nullptr);
+                sq3_result = sqlite3_bind_int(sq3_statement_clear, 1, checkpoint_id);
+                sq3_result = sqlite3_step(sq3_statement_clear);
+                sqlite3_finalize(sq3_statement_clear);
+            }
+            // Clear the physical space using the vacuum command.
+            sq3_result = sqlite3_exec(sq3_connection_file, "VACUUM;", nullptr, nullptr, nullptr);
+            // Vacuum requires disconnect before it'll activate
+            disconnect();
+            // Reconnect once it is done
+            connect();
+        }
+        //----------------------------------------------------------------
+        // End Checkpoint deleter
+        //----------------------------------------------------------------
 };
 };
 
