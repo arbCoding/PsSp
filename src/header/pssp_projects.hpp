@@ -9,8 +9,6 @@
 #include <sqlite3.h>
 // String comparisons in C++ suck, boost adds needed functionality!
 #include <boost/algorithm/string.hpp>
-// Tokenize strings
-#include <boost/tokenizer.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <filesystem>
 #include <iostream>
@@ -174,37 +172,25 @@ class Project
         void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& sac)
         {
             std::string timestamp{raw_timestamp};
-            char space_delimiter{' '};
-            // String is YYYY-MM-DD HH:mm:ss.SSS format
-            // Want YYYY, JJJ, HH, mm, ss, SSS extracted
-            boost::tokenizer<boost::char_separator<char>> space_tokens(timestamp, boost::char_separator<char>(&space_delimiter));
-            auto space_iterator{space_tokens.begin()};
-            // YYYY-MM-DD
-            std::string ymd{std::string(*space_iterator)};
-            char hyphen_delimiter{'-'};
-            boost::tokenizer<boost::char_separator<char>> hyphen_tokens(ymd, boost::char_separator<char>(&hyphen_delimiter));
-            auto hyphen_iterator{hyphen_tokens.begin()};
-            sac.nzyear = std::stoi(*hyphen_iterator);
-            int month{std::stoi(*hyphen_iterator)};
-            int day{std::stoi(*hyphen_iterator)};
+            // Extracting components from timestamp string
+            std::istringstream iss(timestamp);
+            std::string s_year{}, s_month{}, s_day{}, s_hour{}, s_minute{}, s_second{}, s_milliseconds{};
+            std::getline(iss, s_year, '-');
+            std::getline(iss, s_month, '-');
+            std::getline(iss, s_day, ' ');
+            std::getline(iss, s_hour, ':');
+            std::getline(iss, s_minute, ':');
+            std::getline(iss, s_second, '.');
+            std::getline(iss, s_milliseconds);
+            sac.nzyear = std::stoi(s_year);
+            int month{std::stoi(s_month)};
+            int day{std::stoi(s_day)};
             sac.nzjday = ymd_2_doy(sac.nzyear, month, day);
-            // Need to calculate the day of the year
-            // HH:mm:ss.SSS
-            std::string hms{std::string(*space_iterator)};
-            char period_delimiter{'.'};
-            boost::tokenizer<boost::char_separator<char>> period_tokens(hms, boost::char_separator<char>(&period_delimiter));
-            auto period_iterator{period_tokens.begin()};
-            // HH:mm:ss
-            std::string trim_hms{*period_iterator};
-            // SSS
-            sac.nzmsec = std::stoi(*period_iterator);
-            char colon_delimiter{':'};
-            boost::tokenizer<boost::char_separator<char>> colon_tokens(trim_hms, boost::char_separator<char>(&colon_delimiter));
-            auto colon_iterator{colon_tokens.begin()};
-            sac.nzhour = std::stoi(*colon_iterator);
-            sac.nzmin = std::stoi(*colon_iterator);
-            sac.nzsec = std::stoi(*colon_iterator);
-            }
+            sac.nzmsec = std::stoi(s_milliseconds);
+            sac.nzhour = std::stoi(s_hour);
+            sac.nzmin = std::stoi(s_minute);
+            sac.nzsec = std::stoi(s_second);
+        }
         //----------------------------------------------------------------
         // End Given a timestamp string, puplate the SAC reference time headers
         //----------------------------------------------------------------
@@ -1080,7 +1066,7 @@ class Project
             if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.cmpaz = sqlite3_column_double(sq3_statement, 53); }
             if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpinc = sqlite3_column_double(sq3_statement, 54); }
             // Need a way to handle 56, reference time (text) since it is multiple headers and needs string tokenizing
-            //if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 55)), sac); }
+            if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 55)), sac); }
             if (sqlite3_column_type(sq3_statement, 56) != SQLITE_NULL) { sac.norid = sqlite3_column_int(sq3_statement, 56); }
             if (sqlite3_column_type(sq3_statement, 57) != SQLITE_NULL) { sac.nevid = sqlite3_column_int(sq3_statement, 57); }
             if (sqlite3_column_type(sq3_statement, 58) != SQLITE_NULL) { sac.npts = sqlite3_column_int(sq3_statement, 58); }

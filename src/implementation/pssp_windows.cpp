@@ -282,8 +282,6 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
         {
             unload_data(project, program_status, sac_deque);
-            // If we don't do this, program crashes on reload if anything was selected
-            active_sac = 0;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Unload current project"); }

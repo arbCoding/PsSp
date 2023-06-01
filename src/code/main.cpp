@@ -176,7 +176,7 @@ int main(int arg_count, char* arg_array[])
           current_settings.menu_allowed.plot_spectrum_1c = true;
           // This fixes the issue of deleting all sac_1cs in the deque
           // loading new ones, and then trying to access the -1 element
-          if (active_sac < 0) { active_sac = 0; }
+          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(sac_deque.size())) { active_sac = sac_deque.size() - 1; }
           pssp::window_sac_header(program_status, current_settings.window_settings.header, sac_deque[active_sac]);
           // Show the Sac Plot window if appropriate
           pssp::window_plot_sac(current_settings.window_settings.plot_1c, sac_deque, active_sac);
@@ -185,6 +185,8 @@ int main(int arg_count, char* arg_array[])
           // every frame)
           if (current_settings.window_settings.spectrum_1c.show)
           {
+            // This logic needs to be modified so that we have a better mechanism to avoid
+            // calculating this when it isn't desired
               bool compare_names{true};
               {
                   std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
