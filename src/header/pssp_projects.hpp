@@ -857,6 +857,7 @@ class Project
             boost::algorithm::trim(sac.kinst);
             if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kinst.c_str(), -1, SQLITE_STATIC); }
             sq3_result = sqlite3_bind_int(sq3_statement, 96, checkpoint_id_);
+            // I should bind to null if their size is 0...
             sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
             // This auto does null if empty
             sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
@@ -1218,6 +1219,20 @@ class Project
         }
         //----------------------------------------------------------------
         // End Checkpoint deleter
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Processing Root-Search
+        //----------------------------------------------------------------
+        // Given a checkpoint and a data_id
+        // I want to get the relevant processing logs
+        // So we get the logs from the checkpoint until we hit the first one
+        // Then get get the parent_id from that, and then proceed as before
+        // This continues until the parent_id = minimum checkpoint id (addition of the data)
+        // This will be useful when SHOWING the user what they have done to their data
+        // up to the present stage of analysis.
+        //----------------------------------------------------------------
+        // End Processing Root-Search
         //----------------------------------------------------------------
 };
 };
