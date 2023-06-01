@@ -487,14 +487,15 @@ void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1
 //-----------------------------------------------------------------------------
 // Load a project from a project file
 //-----------------------------------------------------------------------------
-void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file)
+void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
 {
     // First make sure we unload the present project
     //unload_data(project, program_status, sac_deque);
     // Connection to the project file
     project.connect_2_existing(project_file);
+    if (checkpoint_id == -1){ checkpoint_id = project.get_latest_checkpoint_id(); }
     // Set the checkpoint id to the latest checkpoint
-    project.set_checkpoint_id(project.get_latest_checkpoint_id());
+    project.set_checkpoint_id(checkpoint_id);
     // Get the data-ids to load
     std::vector<int> data_ids{project.get_data_ids_for_current_checkpoint()};
     {

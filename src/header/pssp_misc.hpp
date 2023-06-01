@@ -219,7 +219,7 @@ void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac);
 void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
 void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id);
 // Load an existing project
-void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file);
+void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

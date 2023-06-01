@@ -1167,6 +1167,17 @@ class Project
         //----------------------------------------------------------------
         // End Checkpoint_id setter
         //----------------------------------------------------------------
+
+        //---
+        // Path getter
+        //---
+        std::filesystem::path get_path()
+        {
+            return path_;
+        }
+        //---
+        // End Path getter
+        //---
 };
 };
 

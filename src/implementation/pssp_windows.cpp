@@ -301,6 +301,27 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
                 program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
             }
         }
+        if (ImGui::BeginMenu("Load Checkpoint##", menu_allowed.load_checkpoint))
+        {
+            std::vector<int> checkpoint_ids{project.get_checkpoint_ids()};
+            for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
+            {
+                std::ostringstream oss{};
+                oss << checkpoint_ids[i];
+                oss << "##";
+                std::string checkpoint_name{oss.str()};
+                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                {
+                    std::filesystem::path project_file{project.get_path()};
+                    int checkpoint_id{checkpoint_ids[i]};
+                    // Unload
+                    unload_data(project, program_status, sac_deque);
+                    // Load
+                    program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file, checkpoint_id);
+                }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
     // Options Menu
@@ -427,7 +448,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         {
             std::filesystem::path project_file{std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName())};
             // Queue it up in the background!
-            program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file);
+            program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file, -1);
         }
         ImGuiFileDialog::Instance()->Close();
     }
