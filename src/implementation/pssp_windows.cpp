@@ -282,6 +282,10 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
         {
             unload_data(project, program_status, sac_deque);
+            project.clear_name = true;
+            project.clear_notes = true;
+            project.copy_name = false;
+            project.copy_notes = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Unload current project"); }
@@ -333,6 +337,10 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
                     project.checkpoint_name = checkpoint_metadata["name"];
                     project.checkpoint_notes = checkpoint_metadata["notes"];
                     project.checkpoint_timestamp = checkpoint_metadata["created"];
+                    project.clear_name = false;
+                    project.clear_notes = false;
+                    project.copy_name = true;
+                    project.copy_notes = true;
                     // Load
                     program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file, checkpoint_ids[i]);
                 }
@@ -977,6 +985,16 @@ void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus
         ImGui::Text("Checkpoint Notes:");
         ImGui::Separator();
         static std::string checkpoint_name_buffer{project.checkpoint_name};
+        if (project.clear_name)
+        {
+            checkpoint_name_buffer = "";
+            project.clear_name = false;
+        }
+        else if (project.copy_name)
+        {
+            checkpoint_name_buffer = project.checkpoint_name;
+            project.copy_name = false;
+        }
         ImGui::InputText("##", &checkpoint_name_buffer);
         if (ImGui::Button("Ok##"))
         {
@@ -1026,6 +1044,16 @@ void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& pro
         ImGui::Text("Checkpoint Notes:");
         ImGui::Separator();
         static std::string checkpoint_notes_buffer{project.checkpoint_notes};
+        if (project.clear_notes)
+        {
+            checkpoint_notes_buffer = "";
+            project.clear_notes = false;
+        }
+        else if (project.copy_notes)
+        {
+            checkpoint_notes_buffer = project.checkpoint_notes;
+            project.copy_notes = false;
+        }
         // Set the initial value of checkpoint_notes_buffer
         ImGui::InputTextMultiline("##", &checkpoint_notes_buffer);
         if (ImGui::Button("Ok##"))

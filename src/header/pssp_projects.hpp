@@ -495,6 +495,10 @@ class Project
         std::string checkpoint_notes{};
         std::string checkpoint_name{};
         std::string checkpoint_timestamp{};
+        bool clear_name{false};
+        bool clear_notes{false};
+        bool copy_name{true};
+        bool copy_notes{true};
         // Empty constructor
         Project() {};
         //----------------------------------------------------------------
@@ -626,6 +630,11 @@ class Project
             // Clear the checkpoint name and notes for the new checkpoint
             checkpoint_name.clear();
             checkpoint_notes.clear();
+            // Set flags for windows
+            clear_name = true;
+            clear_notes = true;
+            copy_name = false;
+            copy_notes = false;
         }
         //----------------------------------------------------------------
         // End Write checkpoint
