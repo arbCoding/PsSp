@@ -95,7 +95,8 @@ struct AllWindowSettings
     WindowSettings name_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Name##"};
     // Notes for current checkpoint
     WindowSettings notes_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Notes##"};
-    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint)
+    WindowSettings processing_history{1, 25, 285, 730, false, false, ImGuiWindowFlags{}, "History##"};
+    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint, processing_history)
 };
 // Whether a certain menu is allow or not
 struct MenuAllowed

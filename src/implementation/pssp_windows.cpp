@@ -427,9 +427,12 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         
         if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
         { allwindow_settings.header.show = true; }
+
+        if (ImGui::MenuItem("History##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
+        { allwindow_settings.processing_history.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Displays SAC header values"); }
+        { ImGui::SetTooltip("Displays processing header"); }
         
         if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, (menu_allowed.plot_1c && program_status.is_idle)))
         { allwindow_settings.plot_1c.show = true; }
@@ -1070,4 +1073,36 @@ void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& pro
 }
 //-----------------------------------------------------------------------------
 // End Checkpoint notes window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Processing history window
+//-----------------------------------------------------------------------------
+void pssp::window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
+{
+    if (window_settings.show)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            window_settings.is_set = true;
+        }
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        {
+            static int current_data_id{-1};
+            static std::string processing_history{};
+            // We only update this is we need to update it!
+            if (current_data_id != data_id)
+            {
+                current_data_id = data_id;
+                processing_history = project.get_current_processing_history(current_data_id);
+            }
+            ImGui::TextWrapped("%s", processing_history.c_str());
+        }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Processing history window
 //-----------------------------------------------------------------------------

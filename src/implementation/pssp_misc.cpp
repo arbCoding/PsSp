@@ -430,7 +430,11 @@ void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         project.add_data_checkpoint(sac.sac, sac.data_id);
-        project.add_data_processing(sac.data_id, "CHECKPOINT");
+        std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_current_checkpoint_metadata()};
+        std::ostringstream oss{};
+        oss << "CHECKPOINT; NAME " << checkpoint_metadata["name"] << "; CREATED: " << checkpoint_metadata["created"] << ";";
+        std::string checkpoint_string{oss.str()};
+        project.add_data_processing(sac.data_id, checkpoint_string.c_str());
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;

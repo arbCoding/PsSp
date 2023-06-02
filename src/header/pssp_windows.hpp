@@ -65,6 +65,8 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
 void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque);
 // Window to make notes for a checkpoint
 void window_notes_checkpoint(WindowSettings& window_settings, Project& project);
+// Window to show processing history for the active_sac
+void window_processing_history(WindowSettings& window_settings, Project& project, int data_id);
 //-----------------------------------------------------------------------------
 // End UI Windows
 //-----------------------------------------------------------------------------

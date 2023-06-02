@@ -15,6 +15,7 @@
 #include <thread>
 #include <ios>
 #include <unordered_map>
+#include <algorithm>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -1252,9 +1253,7 @@ class Project
         std::unordered_map<std::string, std::string> get_checkpoint_metadata(int checkpoint_id)
         {
             std::unordered_map<std::string, std::string> checkpoint_metadata{};
-            std::ostringstream oss{};
-            oss << "SELECT name, notes, created FROM checkpoints WHERE checkpoint_id = ?";
-            std::string sq3_string{oss.str()};
+            std::string sq3_string{"SELECT name, notes, created FROM checkpoints WHERE checkpoint_id = ?"};
             sqlite3_stmt* sq3_statement{};
             sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
             sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id);
@@ -1273,17 +1272,84 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Processing Root-Search
+        // Get checkpoint meta-data of current checkpoint
         //----------------------------------------------------------------
-        // Given a checkpoint and a data_id
-        // I want to get the relevant processing logs
-        // So we get the logs from the checkpoint until we hit the first one
-        // Then get get the parent_id from that, and then proceed as before
-        // This continues until the parent_id = minimum checkpoint id (addition of the data)
-        // This will be useful when SHOWING the user what they have done to their data
-        // up to the present stage of analysis.
+        std::unordered_map<std::string, std::string> get_current_checkpoint_metadata()
+        {
+            return get_checkpoint_metadata(checkpoint_id_);
+        }
         //----------------------------------------------------------------
-        // End Processing Root-Search
+        // End Get checkpoint meta-data of current checkpoint
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Get checkpoint history
+        //----------------------------------------------------------------
+        std::vector<int> get_checkpoint_lineage(int checkpoint_id)
+        {
+            std::vector<int> lineage{};
+            while (true)
+            {
+                // Add the checkpoint_id to the lineage
+                lineage.push_back(checkpoint_id);
+                // Get the parent_id
+                std::string sq3_string{"SELECT parent_id FROM checkpoints where checkpoint_id = ?"};
+                sqlite3_stmt* sq3_statement{};
+                sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+                sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id);
+                sq3_result = sqlite3_step(sq3_statement);
+                if (sq3_result == SQLITE_ROW) { checkpoint_id = sqlite3_column_int(sq3_statement, 0); sqlite3_finalize(sq3_statement); } else { sqlite3_finalize(sq3_statement); break; }
+            }
+            return lineage;
+        }
+        //----------------------------------------------------------------
+        // End Get checkpoint history
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Get data_id,checkpoint_id processing history
+        //----------------------------------------------------------------
+        std::string get_processing_history(int data_id, int checkpoint_id)
+        {
+            std::vector<int> lineage{get_checkpoint_lineage(checkpoint_id)};
+            std::ostringstream oss{};
+            int step_num{0};
+            // While there are things to do
+            while (!lineage.empty())
+            {
+                // We want to go through the lineage in reverse order
+                int cid_ofinterest{lineage.back()};
+                lineage.pop_back();
+                // Now we get all rows related to the checkpoint id
+                std::ostringstream sq3_oss{};
+                sq3_oss << "SELECT comment FROM processing_" << data_id << " where checkpoint_id = ?";
+                std::string sq3_string{sq3_oss.str()};
+                sqlite3_stmt* sq3_statement{};
+                sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+                sq3_result = sqlite3_bind_int(sq3_statement, 1, cid_ofinterest);
+                // If there are multiple rows, we add to it
+                while (sqlite3_step(sq3_statement) == SQLITE_ROW)
+                {
+                    oss << "Step " << step_num << ": " << reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 0)) << '\n';
+                    ++step_num;
+                }
+                sqlite3_finalize(sq3_statement);
+            }
+            return oss.str();
+        }
+        //----------------------------------------------------------------
+        // End Get data_id,checkpoint_id processing history
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Get data_id current checkpoint history
+        //----------------------------------------------------------------
+        std::string get_current_processing_history(int data_id)
+        {
+            return get_processing_history(data_id, checkpoint_id_);
+        }
+        //----------------------------------------------------------------
+        // End Get data_id current checkpoint history
         //----------------------------------------------------------------
 };
 };

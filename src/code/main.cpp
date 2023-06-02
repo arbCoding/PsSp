@@ -178,6 +178,8 @@ int main(int arg_count, char* arg_array[])
           // loading new ones, and then trying to access the -1 element
           if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(sac_deque.size())) { active_sac = sac_deque.size() - 1; }
           pssp::window_sac_header(program_status, current_settings.window_settings.header, sac_deque[active_sac]);
+          // Show processing history window is appropriate
+          pssp::window_processing_history(current_settings.window_settings.processing_history, project, sac_deque[active_sac].data_id);
           // Show the Sac Plot window if appropriate
           pssp::window_plot_sac(current_settings.window_settings.plot_1c, sac_deque, active_sac);
           // Show Checkpoint naming window if appropriate
