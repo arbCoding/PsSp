@@ -88,10 +88,14 @@ struct AllWindowSettings
     WindowSettings bandpass{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar 
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandpass Options##"};
     WindowSettings bandreject{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar
-    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options"};
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options##"};
     // File Dialog positions
     WindowSettings file_dialog{337, 150, 750, 450};
-    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject)
+    // Name checkpoints
+    WindowSettings name_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Name##"};
+    // Notes for current checkpoint
+    WindowSettings notes_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Notes##"};
+    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint)
 };
 // Whether a certain menu is allow or not
 struct MenuAllowed

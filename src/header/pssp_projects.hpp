@@ -14,6 +14,7 @@
 #include <sstream>
 #include <thread>
 #include <ios>
+#include <unordered_map>
 
 //-----------------------------------------------------------------------------
 // Description
@@ -52,6 +53,9 @@ class Project
 {
     private:
         // Name of the project, only gets set once
+        //=================================================================
+        // UNUSED FOR NOW
+        //=================================================================
         std::string_view name_{};
         // Path to the database file
         std::filesystem::path path_{};
@@ -254,7 +258,9 @@ class Project
             oss << "created DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 3 (when the checkpoint was made)
             oss << "author INTEGER, "; // 4 (0 = automatic, 1 = user)
             oss << "cull INTEGER, "; // 5 (0 = can cull on limit hit, 1 = keep)
-            oss << "removed DATETIME)"; // 7 (NULL = in data, a timestamp = when it was removed)
+            oss << "removed DATETIME, "; // 7 (NULL = in data, a timestamp = when it was removed)
+            oss << "name TEXT, "; // 8 (NULL = No-name, otherwise user provided name)
+            oss << "notes TEXT);"; // 9 (NULL = No notes, otherwise user provided notes)
             std::string sq3_string{oss.str()};
             sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
         }
@@ -485,6 +491,10 @@ class Project
         sqlite3* sq3_connection_file{};
         int sq3_result{};
         char* sq3_error_message{};
+        // Checkpoint notes
+        std::string checkpoint_notes{};
+        std::string checkpoint_name{};
+        std::string checkpoint_timestamp{};
         // Empty constructor
         Project() {};
         //----------------------------------------------------------------
@@ -594,14 +604,18 @@ class Project
             oss << "INSERT INTO checkpoints (";
             oss << "parent_id, "; // 1
             oss << "author, "; // 2
-            oss << "cull)"; // 3
-            oss << " VALUES (?, ?, ?);";
+            oss << "cull, "; // 3
+            oss << "name, "; // 4
+            oss << "notes)"; // 5
+            oss << " VALUES (?, ?, ?, ?, ?);";
             std::string sq3_string{oss.str()};
             sqlite3_stmt* sq3_statement{};
             sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
             sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
             if (author) { sq3_result = sqlite3_bind_int(sq3_statement, 2, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 2, 0); }
             if (cull) { sq3_result = sqlite3_bind_int(sq3_statement, 3, 1); } else { sq3_result = sqlite3_bind_int(sq3_statement, 3, 0); }
+            if (checkpoint_name.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 4); } else { sq3_result = sqlite3_bind_text(sq3_statement, 4, checkpoint_name.c_str(), -1, SQLITE_STATIC); }
+            if (checkpoint_notes.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 5); } else { sq3_result = sqlite3_bind_text(sq3_statement, 5, checkpoint_notes.c_str(), -1, SQLITE_STATIC); }
             // Execute the statement
             sq3_result = sqlite3_step(sq3_statement);
             // Get the ID of the newly inserted data
@@ -609,6 +623,9 @@ class Project
             checkpoint_id_ = static_cast<int>(sqlite3_last_insert_rowid(sq3_connection_file));
             // Finalize the statement
             sqlite3_finalize(sq3_statement);
+            // Clear the checkpoint name and notes for the new checkpoint
+            checkpoint_name.clear();
+            checkpoint_notes.clear();
         }
         //----------------------------------------------------------------
         // End Write checkpoint
@@ -857,10 +874,9 @@ class Project
             boost::algorithm::trim(sac.kinst);
             if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kinst.c_str(), -1, SQLITE_STATIC); }
             sq3_result = sqlite3_bind_int(sq3_statement, 96, checkpoint_id_);
-            // I should bind to null if their size is 0...
-            sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC);
-            // This auto does null if empty
-            sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC);
+            // Data vectors
+            if (sac.data1.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC); }
+            if (sac.data2.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC); }
             // Execute the statement
             sq3_result = sqlite3_step(sq3_statement);
             // Finalize the statement
@@ -1219,6 +1235,32 @@ class Project
         }
         //----------------------------------------------------------------
         // End Checkpoint deleter
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Given a checkpoint_id, return unordered map of name, notes, timestamp
+        //----------------------------------------------------------------
+        std::unordered_map<std::string, std::string> get_checkpoint_metadata(int checkpoint_id)
+        {
+            std::unordered_map<std::string, std::string> checkpoint_metadata{};
+            std::ostringstream oss{};
+            oss << "SELECT name, notes, created FROM checkpoints WHERE checkpoint_id = ?";
+            std::string sq3_string{oss.str()};
+            sqlite3_stmt* sq3_statement{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id);
+            sq3_result = sqlite3_step(sq3_statement);
+            if (sq3_result == SQLITE_ROW)
+            {
+                if (sqlite3_column_type(sq3_statement, 0) != SQLITE_NULL) { checkpoint_metadata["name"] = reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 0)); }
+                if (sqlite3_column_type(sq3_statement, 1) != SQLITE_NULL) { checkpoint_metadata["notes"] = reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 1)); }
+                if (sqlite3_column_type(sq3_statement, 2) != SQLITE_NULL) { checkpoint_metadata["created"] = reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 2)); }
+            }
+            sqlite3_finalize(sq3_statement);
+            return checkpoint_metadata;
+        }
+        //----------------------------------------------------------------
+        // End Given a checkpoint_id, return unordered map of name, notes, timestamp
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------

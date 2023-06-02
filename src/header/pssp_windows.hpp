@@ -10,6 +10,8 @@
 #include "pssp_projects.hpp"
 // Dear ImGui
 #include <imgui.h>
+// Dear ImGui C++ textinput wrappers
+#include <misc/cpp/imgui_stdlib.h>
 // FileDialog add-on for Dear ImGui
 #include <ImGuiFileDialog.h>
 // ImPlot add-on for Dear ImGui
@@ -59,6 +61,10 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings);
 // Window lists data currently in memory
 void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
 ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared);
+// Window to name a checkpoint
+void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque);
+// Window to make notes for a checkpoint
+void window_notes_checkpoint(WindowSettings& window_settings, Project& project);
 //-----------------------------------------------------------------------------
 // End UI Windows
 //-----------------------------------------------------------------------------

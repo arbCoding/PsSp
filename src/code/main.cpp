@@ -180,6 +180,10 @@ int main(int arg_count, char* arg_array[])
           pssp::window_sac_header(program_status, current_settings.window_settings.header, sac_deque[active_sac]);
           // Show the Sac Plot window if appropriate
           pssp::window_plot_sac(current_settings.window_settings.plot_1c, sac_deque, active_sac);
+          // Show Checkpoint naming window if appropriate
+          pssp::window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status, project, sac_deque);
+          // Show Checkpoint note window if appropriate
+          pssp::window_notes_checkpoint(current_settings.window_settings.notes_checkpoint, project);
           // Show the Sac Spectrum window if appropriate
           // We need to see if the FFT needs to be calculated (don't want to do it
           // every frame)
