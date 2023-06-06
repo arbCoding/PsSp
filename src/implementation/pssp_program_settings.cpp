@@ -1,11 +1,11 @@
-#include "pssp_projects.hpp"
+#include "pssp_program_settings.hpp"
 
 //-----------------------------------------------------------------------------
 // Begin pssp namespace
 //-----------------------------------------------------------------------------
 namespace pssp
 {
-void Project::create_new_project(std::filesystem::path new_base_dir)
+void ProgramSettings::create_new_project(std::filesystem::path new_base_dir)
 {
     // Always the same named file, in the direc tory
     std::ofstream file{new_base_dir / md_file, std::ios::binary};
@@ -19,7 +19,7 @@ void Project::create_new_project(std::filesystem::path new_base_dir)
     // We still need to create the appropriate subdirectories
 }
 
-void Project::load_project(std::filesystem::path md_full_path)
+void ProgramSettings::load_project(std::filesystem::path md_full_path)
 {
     std::ifstream file{md_full_path, std::ios::binary};
     // We want to know how big the file is, so we go to the end

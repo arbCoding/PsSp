@@ -1,4 +1,8 @@
 #include "pssp_misc.hpp"
+#include <filesystem>
+#include <mutex>
+#include <shared_mutex>
+#include <sstream>
 
 //-----------------------------------------------------------------------------
 // Misc functions
@@ -16,11 +20,17 @@ void pssp::update_fps(fps_info& fps, ImGuiIO& io)
     ++fps.frame_count;
 }
 
-void pssp::cleanup_sac(std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
+void pssp::cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
 {
     if (clear)
     {
+        (void) project;
         --selected;
+        {
+            // I still need to add in timestamping the removal in the database
+            std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
+            project.add_data_processing(project.sq3_connection_file, sac_deque[selected].data_id, "REMOVED");
+        }
         sac_deque.erase(sac_deque.begin() + selected + 1);
         if (selected < 0 && sac_deque.size() > 0)
         {
@@ -42,10 +52,11 @@ void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
     SAC::fft_real_imaginary(spectrum.sac);
 }
 
-void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
+void pssp::remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
         if (sac.sac.depmen != SAC::unset_float)
@@ -77,7 +88,7 @@ void pssp::remove_mean(FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void pssp::batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -85,13 +96,14 @@ void pssp::batch_remove_mean(ProgramStatus& program_status, std::deque<sac_1c>& 
     program_status.fileio.total = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
     }
 }
 
-void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
+void pssp::remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
 {
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE TREND");
     double mean_amplitude{0};
     // Static_cast just to be sure no funny business
     double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
@@ -129,7 +141,7 @@ void pssp::remove_trend(FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void pssp::batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -137,21 +149,28 @@ void pssp::batch_remove_trend(ProgramStatus& program_status, std::deque<sac_1c>&
     program_status.fileio.total = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
     }
 }
 
-void pssp::apply_lowpass(FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
+void pssp::apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "LOWPASS; ORDER ";
+        oss << lowpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << lowpass_options.freq_low;
+        oss << ";";
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
+void pssp::batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -161,21 +180,28 @@ void pssp::batch_apply_lowpass(ProgramStatus& program_status, std::deque<sac_1c>
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_lowpass(program_status.fileio, sac_deque[i], lowpass_options);
+        apply_lowpass(project, program_status.fileio, sac_deque[i], lowpass_options);
     }
 }
 
-void pssp::apply_highpass(FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
+void pssp::apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "HIGHPASS; ORDER ";
+        oss << highpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << highpass_options.freq_low;
+        oss << ";";
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
+void pssp::batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -185,21 +211,30 @@ void pssp::batch_apply_highpass(ProgramStatus& program_status, std::deque<sac_1c
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_highpass(program_status.fileio, sac_deque[i], highpass_options);
+        apply_highpass(project, program_status.fileio, sac_deque[i], highpass_options);
     }
 }
 
-void pssp::apply_bandpass(FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
+void pssp::apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::ostringstream oss{};
+        oss << "BANDPASS; ORDER ";
+        oss << bandpass_options.order;
+        oss << "; FREQ LOW ";
+        oss << bandpass_options.freq_low;
+        oss << "; FREQ HIGH ";
+        oss << bandpass_options.freq_high;
+        oss << ";";
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
 
-void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
+void pssp::batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -209,17 +244,18 @@ void pssp::batch_apply_bandpass(ProgramStatus& program_status, std::deque<sac_1c
     }
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_bandpass(program_status.fileio, sac_deque[i], bandpass_options);
+        apply_bandpass(project, program_status.fileio, sac_deque[i], bandpass_options);
     }
 }
 
-void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::string file_name)
+void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
 {
-    pssp::sac_1c sac{};
+    sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
+        sac.data_id = project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -228,16 +264,17 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
     sac_deque.push_back(sac);
 }
 
-void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory)
+void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project)
 {
     // Iterate over files in directory
-    std::vector<std::string> file_names{};
+    std::vector<std::filesystem::path> file_names{};
     for (const auto& entry : std::filesystem::directory_iterator(directory))
     {
         // Check extension
         if (entry.path().extension() == ".sac" || entry.path().extension() == ".SAC")
         {
-            file_names.push_back(entry.path().string());
+            // Using canconical so that we have the entire path for the Project database
+            file_names.push_back(std::filesystem::canonical(entry.path()));
         }
     }
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
@@ -247,7 +284,7 @@ void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& 
     // Queue them up!
     for (std::string file_name : file_names)
     {
-        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name);
+        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name, std::ref(project));
     }
 }
 //-----------------------------------------------------------------------------
@@ -383,6 +420,114 @@ void pssp::finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 }
 //-----------------------------------------------------------------------------
 // End General GUI functions
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Checkpoint data (inside thread_pool)
+//-----------------------------------------------------------------------------
+void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
+{
+    {
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        project.add_data_checkpoint(sac.sac, sac.data_id, true);
+        std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_current_checkpoint_metadata()};
+        std::ostringstream oss{};
+        oss << "CHECKPOINT; NAME " << checkpoint_metadata["name"] << "; CREATED: " << checkpoint_metadata["created"] << ";";
+        std::string checkpoint_string{oss.str()};
+        project.add_data_processing(project.sq3_connection_file, sac.data_id, checkpoint_string.c_str());
+    }
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
+    ++fileio.count;
+}
+//-----------------------------------------------------------------------------
+// End checkpoint data (inside thread_pool)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Unload data from memory
+//-----------------------------------------------------------------------------
+void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+{
+    // Remove the SQLite3 connections and the file paths
+    project.unload_project();
+    // Clear data from the sac_deque
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
+        program_status.fileio.count = 0;
+        program_status.fileio.total = 1;
+    }
+    sac_deque.clear();
+    ++program_status.fileio.count;
+}
+//-----------------------------------------------------------------------------
+// End Unload data from memory
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Get SacStream from project, add to sac_deque
+//-----------------------------------------------------------------------------
+void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
+{
+    sac_1c sac{};
+    {
+        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        // This is sometimes failing after unload and reload
+        // It seems that the data_id is repeated...
+        sac.sac = project.load_sacstream(data_id);
+        sac.file_name = project.get_source(data_id);
+        sac.data_id = data_id;
+    }
+    std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
+    fileio.is_reading = true;
+    ++fileio.count;
+    sac_deque.push_back(sac);
+}
+
+//-----------------------------------------------------------------------------
+// End Get SacStream from project, add to sac_deque
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Load a project from a project file
+//-----------------------------------------------------------------------------
+void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
+{ 
+    // First make sure we unload the present project
+    //unload_data(project, program_status, sac_deque);
+    // Connection to the project file
+    project.connect_2_existing(project_file);
+    if (checkpoint_id == -1){ checkpoint_id = project.get_latest_checkpoint_id(); }
+    // Set the checkpoint id to the latest checkpoint
+    project.set_checkpoint_id(checkpoint_id);
+    // Get the data-ids to load
+    std::vector<int> data_ids{project.get_data_ids_for_current_checkpoint()};
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.is_idle = false;
+        program_status.fileio.total = static_cast<int>(data_ids.size());
+        program_status.fileio.count = 0;
+    }
+    // Queue it up!
+    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    {
+        program_status.thread_pool.enqueue(fill_deque_project, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque), data_ids[i]);
+    }
+}
+//-----------------------------------------------------------------------------
+// End load a project from a project file
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Delete a checkpoint
+//-----------------------------------------------------------------------------
+void pssp::delete_checkpoint(Project& project, int checkpoint_id)
+{
+    project.delete_checkpoint(checkpoint_id);
+}
+//-----------------------------------------------------------------------------
+// End Delete a checkpoint
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------

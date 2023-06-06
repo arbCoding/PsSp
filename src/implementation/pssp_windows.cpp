@@ -1,4 +1,7 @@
 #include "pssp_windows.hpp"
+#include "imgui.h"
+#include "pssp_misc.hpp"
+#include <filesystem>
 
 //-----------------------------------------------------------------------------
 // Status Bar
@@ -219,7 +222,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
 // Main menu bar
 //-----------------------------------------------------------------------------
 void pssp::main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac)
+AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac, Project& project)
 {
     sac_1c sac{};
     std::string home_path{};
@@ -261,32 +264,115 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         
         ImGui::EndMenu();
     }
-    // Edit menu
-    if (ImGui::BeginMenu("Edit##", menu_allowed.edit_menu))
+    // Project Menu
+    if (ImGui::BeginMenu("Project##", menu_allowed.project_menu))
     {
-        if (ImGui::MenuItem("Undo##", nullptr, nullptr, menu_allowed.undo))
+        if (ImGui::MenuItem("New Project##", nullptr, nullptr, menu_allowed.new_project))
         {
-            // To be implemented at some point
+            ImGuiFileDialog::Instance()->OpenDialog("MakeProjDlgKey", "Create Project File", ".proj", home_path, ImGuiFileDialogFlags_Modal);
         }
-        
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Not implemented"); }
-        
-        if (ImGui::MenuItem("Redo##", nullptr, nullptr, menu_allowed.redo))
+        { ImGui::SetTooltip("Create a brand new project"); }
+        if (ImGui::MenuItem("Load Project##", nullptr, nullptr, menu_allowed.load_project))
         {
-            // TO be implemented at some point
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseProjDlgKey", "Choose Project", ".proj", home_path, ImGuiFileDialogFlags_Modal);
         }
-        
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Not implemented"); }
-        
+        { ImGui::SetTooltip("Load an existing project"); }
+        if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
+        {
+            unload_data(project, program_status, sac_deque);
+            project.clear_name = true;
+            project.clear_notes = true;
+            project.copy_name = false;
+            project.copy_notes = false;
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        { ImGui::SetTooltip("Unload current project"); }
+        if (ImGui::MenuItem("Create Unnamed Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
+        {
+            {
+                std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+                program_status.is_idle = false;
+                program_status.fileio.total = static_cast<int>(sac_deque.size());
+                program_status.fileio.count = 0;
+            }
+            // Add a checkpoint to the list (made by user)
+            project.checkpoint_name = "";
+            project.write_checkpoint(true, false);
+            // Checkpoint each piece of data
+            for (std::size_t i{0}; i < sac_deque.size(); ++i)
+            {
+                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
+            }
+        }
+        if (ImGui::MenuItem("Create Named Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
+        {
+            allwindow_settings.name_checkpoint.show = true;
+        }
+        if (ImGui::MenuItem("Checkpoint Notes", nullptr, nullptr, menu_allowed.new_checkpoint))
+        {
+            allwindow_settings.notes_checkpoint.show = true;
+        }
+        if (ImGui::BeginMenu("Load Checkpoint##", menu_allowed.load_checkpoint))
+        {
+            std::vector<int> checkpoint_ids{project.get_checkpoint_ids()};
+            for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
+            {
+                std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_checkpoint_metadata(checkpoint_ids[i])};
+                std::ostringstream oss{};
+                oss << "ID: ";
+                oss << checkpoint_ids[i];
+                oss << " Name: ";
+                oss << checkpoint_metadata["name"];
+                oss << "##";
+                std::string checkpoint_name{oss.str()};
+                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                {
+                    std::filesystem::path project_file{project.get_path()};
+                    // Need to get checkpoint name and notes
+                    // Unload
+                    unload_data(project, program_status, sac_deque);
+                    // Set checkpoint metadata values
+                    project.checkpoint_name = checkpoint_metadata["name"];
+                    project.checkpoint_notes = checkpoint_metadata["notes"];
+                    project.checkpoint_timestamp = checkpoint_metadata["created"];
+                    project.clear_name = false;
+                    project.clear_notes = false;
+                    project.copy_name = true;
+                    project.copy_notes = true;
+                    // Load
+                    program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file, checkpoint_ids[i]);
+                }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+                { ImGui::SetTooltip("%s", checkpoint_metadata["created"].c_str()); }
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Delete Checkpoint##", menu_allowed.delete_checkpoint))
+        {
+            std::vector<int> checkpoint_ids{project.get_checkpoint_ids()};
+            for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
+            {
+                std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_checkpoint_metadata(checkpoint_ids[i])};
+                std::ostringstream oss{};
+                oss << "ID: ";
+                oss << checkpoint_ids[i];
+                oss << " Name: ";
+                oss << checkpoint_metadata["name"];
+                oss << "##";
+                std::string checkpoint_name{oss.str()};
+                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                {
+                    program_status.thread_pool.enqueue(delete_checkpoint, std::ref(project), checkpoint_ids[i]);
+                }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+                { ImGui::SetTooltip("%s", checkpoint_metadata["created"].c_str()); }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
-    // Project Menu
-    // Eventually projects will be supported
-    // That will involve keeping track of files, actions, etc.
-    // Place-holder for now as a promise and reminder of my intentions
-    if (ImGui::BeginMenu("Project##", menu_allowed.project_menu)) { ImGui::EndMenu(); }
     // Options Menu
     // Changing fonts, their sizes, etc.
     if (ImGui::BeginMenu("Options##", menu_allowed.options_menu)) { ImGui::EndMenu(); }
@@ -339,19 +425,22 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Frames Per Second display"); }
         
-        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, menu_allowed.sac_header))
+        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
         { allwindow_settings.header.show = true; }
+
+        if (ImGui::MenuItem("History##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
+        { allwindow_settings.processing_history.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Displays SAC header values"); }
+        { ImGui::SetTooltip("Displays processing header"); }
         
-        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, menu_allowed.plot_1c))
+        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, (menu_allowed.plot_1c && program_status.is_idle)))
         { allwindow_settings.plot_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("1-component SAC plot"); }
         
-        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, menu_allowed.plot_spectrum_1c))
+        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, (menu_allowed.plot_spectrum_1c && program_status.is_idle)))
         { allwindow_settings.spectrum_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -377,7 +466,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.count = 0;
             // Can only select 1 file anyway!
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), ImGuiFileDialog::Instance()->GetFilePathName());
+            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName()), std::ref(project));
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -387,7 +476,36 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         {
             std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), std::ref(sac_deque), directory);
+            program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), std::ref(sac_deque), directory, std::ref(project));
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    // Make project file
+    if (ImGuiFileDialog::Instance()->Display("MakeProjDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::filesystem::path full_file = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::filesystem::path parent_path = std::filesystem::canonical(full_file.parent_path());
+            std::string project_name = full_file.stem().string();
+            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            project.new_project(project_name, parent_path);
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+    if (ImGuiFileDialog::Instance()->Display("ChooseProjDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::filesystem::path project_file{std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName())};
+            project.connect_2_existing(project_file);
+            std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_checkpoint_metadata(project.get_latest_checkpoint_id())};
+            // Set checkpoint metadata values
+            project.checkpoint_name = checkpoint_metadata["name"];
+            project.checkpoint_notes = checkpoint_metadata["notes"];
+            project.checkpoint_timestamp = checkpoint_metadata["created"];
+            // Queue it up in the background!
+            program_status.thread_pool.enqueue(load_data, std::ref(project), std::ref(program_status), std::ref(sac_deque), project_file, -1);
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -410,7 +528,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.is_processing = true;
             program_status.fileio.count = 0;
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_mean, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from active data."); }
@@ -421,7 +539,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             program_status.fileio.is_processing = true;
             program_status.fileio.count = 0;
             program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_trend, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove linear trend from active data."); }
@@ -474,7 +592,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status), std::ref(sac_deque));
+            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(project), std::ref(program_status), std::ref(sac_deque));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from all data."); }
@@ -482,7 +600,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status), std::ref(sac_deque));
+            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(project), std::ref(program_status), std::ref(sac_deque));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove trend value from all data."); }
@@ -850,4 +968,141 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
 }
 //-----------------------------------------------------------------------------
 // End SAC-loaded window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Checkpoint name window
+//-----------------------------------------------------------------------------
+void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque)
+{
+    if (window_settings.show)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            window_settings.is_set = true;
+        }
+
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        ImGui::Text("Checkpoint Notes:");
+        ImGui::Separator();
+        static std::string checkpoint_name_buffer{project.checkpoint_name};
+        if (project.clear_name)
+        {
+            checkpoint_name_buffer = "";
+            project.clear_name = false;
+        }
+        else if (project.copy_name)
+        {
+            checkpoint_name_buffer = project.checkpoint_name;
+            project.copy_name = false;
+        }
+        ImGui::InputText("##", &checkpoint_name_buffer);
+        if (ImGui::Button("Ok##"))
+        {
+            project.checkpoint_name = checkpoint_name_buffer;
+            {
+                std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+                program_status.is_idle = false;
+                program_status.fileio.total = static_cast<int>(sac_deque.size());
+                program_status.fileio.count = 0;
+            }
+            // Add a checkpoint to the list (made by user)
+            project.write_checkpoint(true, false);
+            // Checkpoint each piece of data
+            for (std::size_t i{0}; i < sac_deque.size(); ++i)
+            {
+                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
+            }
+             // Close the window after queueing up the work
+            window_settings.show = false;
+        }
+        
+        ImGui::SameLine();
+        ImGui::SetItemDefaultFocus();
+        if (ImGui::Button("Cancel##")) { window_settings.show = false; }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Checkpoint name window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Checkpoint notes window
+//-----------------------------------------------------------------------------
+void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& project)
+{
+    if (window_settings.show)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            window_settings.is_set = true;
+        }
+
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        ImGui::Text("Checkpoint Notes:");
+        ImGui::Separator();
+        static std::string checkpoint_notes_buffer{project.checkpoint_notes};
+        if (project.clear_notes)
+        {
+            checkpoint_notes_buffer = "";
+            project.clear_notes = false;
+        }
+        else if (project.copy_notes)
+        {
+            checkpoint_notes_buffer = project.checkpoint_notes;
+            project.copy_notes = false;
+        }
+        // Set the initial value of checkpoint_notes_buffer
+        ImGui::InputTextMultiline("##", &checkpoint_notes_buffer);
+        if (ImGui::Button("Ok##"))
+        {
+            project.checkpoint_notes = checkpoint_notes_buffer;
+            window_settings.show = false;
+        }
+        
+        ImGui::SameLine();
+        ImGui::SetItemDefaultFocus();
+        if (ImGui::Button("Cancel##")) { window_settings.show = false; }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Checkpoint notes window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Processing history window
+//-----------------------------------------------------------------------------
+void pssp::window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
+{
+    if (window_settings.show)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
+            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            window_settings.is_set = true;
+        }
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        {
+            static int current_data_id{-1};
+            static std::string processing_history{};
+            // We only update this is we need to update it!
+            if (current_data_id != data_id)
+            {
+                current_data_id = data_id;
+                processing_history = project.get_current_processing_history(current_data_id);
+            }
+            ImGui::TextWrapped("%s", processing_history.c_str());
+        }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Processing history window
 //-----------------------------------------------------------------------------

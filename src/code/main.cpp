@@ -1,12 +1,19 @@
 //-----------------------------------------------------------------------------
 // Include statements
 //-----------------------------------------------------------------------------
-// This is where the project Class gets defined
-#include "pssp_projects.hpp"
+// This is used to serialize/deserialize program settings
+// Previously this was called pssp_projects.hpp
+// But that was inappropriate as the projects are much bigger
+// than what MessagePack can easily handle (settings will be handled like this though
+// so I'm keeping it around as is for now, will need to modify when projects are finished
+// being implemented!)
+#include "pssp_program_settings.hpp"
 // Where we will have all our window functions defined
 #include "pssp_windows.hpp"
 // Definitions of Misc Structs/Classes/Functions
 #include "pssp_misc.hpp"
+// Uses sqlite3 for projects
+#include "pssp_projects.hpp"
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // std::string_view
 #include <string_view>
@@ -21,6 +28,8 @@
 #include <sstream>
 // std::getenv()
 #include <cstdlib>
+// SQLite3 library
+#include <sqlite3.h>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -32,97 +41,6 @@
 // ./src/implementation/pssp_projects.cpp for details.
 //-----------------------------------------------------------------------------
 // End Current Focus
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// TODO
-//-----------------------------------------------------------------------------
-// Updated on 15 May 2023 (too lazy to renumber daily)
-// 1) Bandreject filter
-// 2) Data-request/download from IRIS (or other server)
-// 3) Mapping of data (implot has a nifty map example code)
-// 4) Sorting of data in sac_deque
-//  4a) By filename
-//  4b) By component
-//  4c) By station
-//  4d) By event station distance
-//  4e) By azimuth/back-azimuth
-//  4f) By eventid
-//  4g) ???? Basically any header variable
-// 5) Geometric calculations (gcarc, az, baz, dist)
-// 6) 3C geometric calculations (rotate components)
-// 7) Manual arrival time picking
-// 8) Automatic arrival time picking (STA/LTA time-series, A1C, STA/LTA spectrogram)
-// 9) Spectrogram
-// 10) Grouping data
-//  10a) Three-component
-//  10b) Array/sub-array
-//  10c) Event
-//  10d) Manually via the user, can provide their own name
-// 11) Help menu
-// 12) Center windows functionality
-// 13) Overwrite layout functionality
-// 14) Advanced plots (record section, particle motion)
-// 15) Deconvolution (instrument response, source wavelet)
-//  15a) Spectral division with water-level
-//  15b) Spectral division with static shift
-//  15c) Iterative time-domain
-// 16) Reload all data
-// 17) Unload all data
-// 18) Data-processing logs (probably easier than doing projects...)
-// 19) Generic basic waveforms (for exploring effects of processing flow)
-//  19a) Dirac Delta function
-//  19b) Dirac Delta-comb function
-//  19c) Boxcar function
-//  19d) Triangle function
-//  19e) Gaussian
-//  19f) Sombrero function
-// 20) Keyboard shortcuts for common operations
-// 21) Tab-key navigation between components in window
-// 22) User note's log (can write their own notes on what they're doing)
-// 23) Datetime functionality
-// 24) Migrate all SAC stuff from floats to doubles (while maintaining read/write compatibility)
-// 25) Don't use std::cout or std::cerr, use exceptions and then try-catch blocks to
-//    check for exceptions
-// 26) Plotting appropriately down-sampled seismograms
-//    The plot window has a width in pixels, there is no need to show with a >1 ratio of
-//    data-points to pixels (literally couldn't see the difference)
-//    The xlimits on the window tell us how much of our data is shown, if the data/pixel
-//    ratio >1, down-sample by taking every-other point, if density if <0.5 then upsample
-//    (unless the window is bigger than the available data)
-//    Can then tweak the ratio bounds for when the swap should happen to try to keep things
-//    smooth and clean looking
-//    Could possibly have 3 versions (one denser than shown, the shown, one less dense than shown)
-//    and depending on the change in zoom level we either pop the front or the back and insert
-//    a new one in it's place (to make the transition feel fluid instead of jagged)
-//    The reason to even bother with this is that plotting something with 150,000 data-points
-//    tanks my framerate from ~120 fps on my macbook pro to ~40 fps, even though at most, I can see
-//    2560 pixels wide (retina display), and the plot is only ~60% the width of my screen tops.
-//    So those frames are dropping for stuff I can't even see anyway!
-//    We'll need to make sure the plotted data is within the plot-frame plus a bit extra on each side
-//    if data exists there, we'll also need to shift it into the correct place
-// 27) Currently, the way to prevent crashing when processing is happening is to hide the
-//    "Sac List" window. The reason it to prevent the user selecting data that is not accessible yet.
-//    I would prefer to gray-out the window and make the options non-selectable during processing.
-// 28) FFTW is not thread-safe. It seems to have the possibility to be thread-safe if compiled with the
-//    correct flag. Because on MacOS I use the default provided by homebrew, I don't have that.
-//    Either I should look into an FFT library that is thread-safe or streamline compiling FFTW as thread-safe.
-//  28a) It may not be necessary, performing bandpass (FFT + gain calculation + IFFT) on 700 files on a single-thread
-//    using FFTW takes about as long as reading in those 700 files across 7 threads. I suspect this will be a bit
-//    more awkward on a more powerful machine?
-//    On my Linux machine, reading 700 files takes ~2-3 seconds, doing a bandpass on them all is about 10 seconds
-//    On my Mac laptop, reading 700 files takes ~12 seconds, doing a bandpass on them all is about 11 seconds
-//  28b) An FFTW plan pool may make it possible to use FFTW in a multi-threaded capacity without needing its
-//    thread-safe compilation pattern (which they advocate against using: https://www.fftw.org/fftw3_doc/Thread-safety.html)
-//    Idea is to have a pool of plans for different sized input vector.
-//    If a vector needs one of a size that doesn't exist, it gets created.
-//    If a vector needs one that does exist, if it is unused it takes it, otherwise it waits for it to be free.
-//    At the end, all plans get destroyed. It reduces the overhead of repeatidly creating/destroying plans
-//    and makes it thread-safe.
-//  28c) Possibly a wrapper class for FFTW, maybe that'll make it actually thread-safe...
-// 29) Program logging.
-//-----------------------------------------------------------------------------
-// End TODO
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -168,12 +86,12 @@ int main(int arg_count, char* arg_array[])
     //---------------------------------------------------------------------------
     // Default color for clearing the screen
     ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
-    pssp::Project current_project{};
+    pssp::ProgramSettings current_settings{};
     // IT WORKS! THAT TOOK WAY TOO LONG!
     // Testing making a new proto-project
-    current_project.create_new_project(std::filesystem::current_path());
+    current_settings.create_new_project(std::filesystem::current_path());
     // Testing loading a new proto-project
-    current_project.load_project(std::filesystem::current_path() / current_project.md_file);
+    current_settings.load_project(std::filesystem::current_path() / current_settings.md_file);
     pssp::fps_info fps_tracker{};
     std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
     pssp::AllFilterOptions af_settings{};
@@ -188,7 +106,8 @@ int main(int arg_count, char* arg_array[])
     //---------------------------------------------------------------------------
     // End Misc Draw loop variables
     //---------------------------------------------------------------------------
-
+    // Make a fresh project
+    pssp::Project project{};
     //---------------------------------------------------------------------------
     // Draw loop
     //---------------------------------------------------------------------------
@@ -197,28 +116,28 @@ int main(int arg_count, char* arg_array[])
     while (!glfwWindowShouldClose(window))
     {
         // Do we need to remove a sac_1c from the sac_deque?
-        cleanup_sac(sac_deque, active_sac, clear_sac);
+        cleanup_sac(project, sac_deque, active_sac, clear_sac);
         // Start the frame
         pssp::prep_newframe();
         pssp::status_bar(program_status);
-        pssp::main_menu_bar(window, current_project.window_settings, current_project.menu_allowed, af_settings, program_status, sac_deque, active_sac);
+        pssp::main_menu_bar(window, current_settings.window_settings, current_settings.menu_allowed, af_settings, program_status, sac_deque, active_sac, project);
         // Show the Welcome window if appropriate
-        pssp::window_welcome(current_project.window_settings.welcome, welcome_message);
+        pssp::window_welcome(current_settings.window_settings.welcome, welcome_message);
         pssp::update_fps(fps_tracker, io);
         // Show the FPS window if appropriate
-        pssp::window_fps(fps_tracker, current_project.window_settings.fps);
+        pssp::window_fps(fps_tracker, current_settings.window_settings.fps);
         // Doesn't matter if files are in the sac_deque or not
         {
             std::shared_lock<std::shared_mutex> lock_program(program_status.program_mutex);
             if (program_status.is_idle)
             {
-                current_project.menu_allowed.open_1c = true;
-                current_project.menu_allowed.open_dir = true;
+                current_settings.menu_allowed.open_1c = true;
+                current_settings.menu_allowed.open_dir = true;
             }
             else
             {
-                current_project.menu_allowed.open_1c = false;
-                current_project.menu_allowed.open_dir = false;
+                current_settings.menu_allowed.open_1c = false;
+                current_settings.menu_allowed.open_dir = false;
             }
         }
         // Only if there are files in the sac_deque
@@ -229,43 +148,51 @@ int main(int arg_count, char* arg_array[])
               std::shared_lock<std::shared_mutex> lock_program(program_status.program_mutex);
               if (program_status.is_idle)
               {
-                  current_project.menu_allowed.save_1c = true;
-                  current_project.menu_allowed.batch_menu = true;
-                  current_project.menu_allowed.processing_menu = true;
-                  current_project.menu_allowed.lowpass = true;
-                  current_project.menu_allowed.highpass = true;
-                  current_project.menu_allowed.bandpass = true;
-                  current_project.menu_allowed.rmean = true;
-                  current_project.menu_allowed.rtrend = true;
+                  current_settings.menu_allowed.save_1c = true;
+                  current_settings.menu_allowed.batch_menu = true;
+                  current_settings.menu_allowed.processing_menu = true;
+                  current_settings.menu_allowed.lowpass = true;
+                  current_settings.menu_allowed.highpass = true;
+                  current_settings.menu_allowed.bandpass = true;
+                  current_settings.menu_allowed.rmean = true;
+                  current_settings.menu_allowed.rtrend = true;
               }
               else
               {
-                  current_project.menu_allowed.save_1c = false;
-                  current_project.menu_allowed.batch_menu = false;
-                  current_project.menu_allowed.processing_menu = false;
-                  current_project.menu_allowed.lowpass = false;
-                  current_project.menu_allowed.highpass = false;
-                  current_project.menu_allowed.bandpass = false;
-                  current_project.menu_allowed.rmean = false;
-                  current_project.menu_allowed.rtrend = false;
+                  current_settings.menu_allowed.save_1c = false;
+                  current_settings.menu_allowed.batch_menu = false;
+                  current_settings.menu_allowed.processing_menu = false;
+                  current_settings.menu_allowed.lowpass = false;
+                  current_settings.menu_allowed.highpass = false;
+                  current_settings.menu_allowed.bandpass = false;
+                  current_settings.menu_allowed.rmean = false;
+                  current_settings.menu_allowed.rtrend = false;
               }
           }
           // Allow menu options that require sac files
-          current_project.menu_allowed.sac_deque = true;
-          current_project.menu_allowed.sac_header = true;
-          current_project.menu_allowed.plot_1c = true;
-          current_project.menu_allowed.plot_spectrum_1c = true;
+          current_settings.menu_allowed.sac_deque = true;
+          current_settings.menu_allowed.sac_header = true;
+          current_settings.menu_allowed.plot_1c = true;
+          current_settings.menu_allowed.plot_spectrum_1c = true;
           // This fixes the issue of deleting all sac_1cs in the deque
           // loading new ones, and then trying to access the -1 element
-          if (active_sac < 0) { active_sac = 0; }
-          pssp::window_sac_header(program_status, current_project.window_settings.header, sac_deque[active_sac]);
+          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(sac_deque.size())) { active_sac = sac_deque.size() - 1; }
+          pssp::window_sac_header(program_status, current_settings.window_settings.header, sac_deque[active_sac]);
+          // Show processing history window is appropriate
+          pssp::window_processing_history(current_settings.window_settings.processing_history, project, sac_deque[active_sac].data_id);
           // Show the Sac Plot window if appropriate
-          pssp::window_plot_sac(current_project.window_settings.plot_1c, sac_deque, active_sac);
+          pssp::window_plot_sac(current_settings.window_settings.plot_1c, sac_deque, active_sac);
+          // Show Checkpoint naming window if appropriate
+          pssp::window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status, project, sac_deque);
+          // Show Checkpoint note window if appropriate
+          pssp::window_notes_checkpoint(current_settings.window_settings.notes_checkpoint, project);
           // Show the Sac Spectrum window if appropriate
           // We need to see if the FFT needs to be calculated (don't want to do it
           // every frame)
-          if (current_project.window_settings.spectrum_1c.show)
+          if (current_settings.window_settings.spectrum_1c.show)
           {
+            // This logic needs to be modified so that we have a better mechanism to avoid
+            // calculating this when it isn't desired
               bool compare_names{true};
               {
                   std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
@@ -276,28 +203,28 @@ int main(int arg_count, char* arg_array[])
               if (!compare_names) { pssp::calc_spectrum(sac_deque[active_sac], spectrum); }
           }
           // Finally plot the spectrum
-          pssp::window_plot_spectrum(current_project.window_settings.spectrum_1c, spectrum);
+          pssp::window_plot_spectrum(current_settings.window_settings.spectrum_1c, spectrum);
           // Show the Sac List window if appropriate
-          pssp::window_sac_deque(current_project.window_settings, current_project.menu_allowed, program_status, sac_deque, spectrum, active_sac, clear_sac);
-          pssp::window_lowpass_options(program_status, current_project.window_settings.lowpass, af_settings.lowpass);
-          pssp::window_highpass_options(program_status, current_project.window_settings.highpass, af_settings.highpass);
-          pssp::window_bandpass_options(program_status, current_project.window_settings.bandpass, af_settings.bandpass);
+          pssp::window_sac_deque(current_settings.window_settings, current_settings.menu_allowed, program_status, sac_deque, spectrum, active_sac, clear_sac);
+          pssp::window_lowpass_options(program_status, current_settings.window_settings.lowpass, af_settings.lowpass);
+          pssp::window_highpass_options(program_status, current_settings.window_settings.highpass, af_settings.highpass);
+          pssp::window_bandpass_options(program_status, current_settings.window_settings.bandpass, af_settings.bandpass);
         }
         else
         {
             // Disallow menu options that require sac files
-            current_project.menu_allowed.save_1c = false;
-            current_project.menu_allowed.sac_deque = false;
-            current_project.menu_allowed.sac_header = false;
-            current_project.menu_allowed.plot_1c = false;
-            current_project.menu_allowed.plot_spectrum_1c = false;
-            current_project.menu_allowed.processing_menu = false;
-            current_project.menu_allowed.lowpass = false;
-            current_project.menu_allowed.highpass = false;
-            current_project.menu_allowed.bandpass = false;
-            current_project.menu_allowed.rmean = false;
-            current_project.menu_allowed.rtrend = false;
-            current_project.menu_allowed.batch_menu = false;
+            current_settings.menu_allowed.save_1c = false;
+            current_settings.menu_allowed.sac_deque = false;
+            current_settings.menu_allowed.sac_header = false;
+            current_settings.menu_allowed.plot_1c = false;
+            current_settings.menu_allowed.plot_spectrum_1c = false;
+            current_settings.menu_allowed.processing_menu = false;
+            current_settings.menu_allowed.lowpass = false;
+            current_settings.menu_allowed.highpass = false;
+            current_settings.menu_allowed.bandpass = false;
+            current_settings.menu_allowed.rmean = false;
+            current_settings.menu_allowed.rtrend = false;
+            current_settings.menu_allowed.batch_menu = false;
             spectrum.file_name = "";
         }
         // Finish the frame
@@ -313,13 +240,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.lowpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
                 af_settings.lowpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
             }
             af_settings.lowpass.apply_filter = false;
         }
@@ -330,13 +257,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.highpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
                 af_settings.highpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
             }
             af_settings.highpass.apply_filter = false;
         }
@@ -347,13 +274,13 @@ int main(int arg_count, char* arg_array[])
             program_status.fileio.is_processing = true;
             if (af_settings.bandpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
                 af_settings.bandpass.apply_batch = false;
             }
             else
             {
                 program_status.fileio.total = 1;
-                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
             }
             af_settings.bandpass.apply_filter = false;
         }
