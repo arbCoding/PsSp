@@ -402,14 +402,21 @@ class Project
         //----------------------------------------------------------------
         // This only gets called upon a piece of data being added to the project
         // This is stored on disk by default, no need to keep data in memory (it is already there!)
-        void create_data_processing_table(int data_id)
+        void create_data_processing_table(sqlite3* connection, int data_id)
         {
             std::ostringstream oss{};
             oss << "CREATE TABLE processing_" << data_id << " (";
             oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the data is associated with
             oss << "comment TEXT);"; // 2 (on processing it is the action and parameters, on checkpoint it is CHECKPOINT)
             std::string sq3_string{oss.str()};
-            sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+            sq3_result = sqlite3_exec(connection, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+
+        // Convenience function to mirror the tables between the file and memory
+        void create_data_processing_table(int data_id)
+        {
+            create_data_processing_table(sq3_connection_file, data_id);
+            create_data_processing_table(sq3_connection_memory, data_id);
         }
         //----------------------------------------------------------------
         // End data processing table creation
@@ -442,37 +449,57 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Project connection initializer
+        // Project connection initializers
         //----------------------------------------------------------------
-        void connect()
+        void connect_file()
         {
             // Create a new connection
             sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
             // Set the journal mode to WAL
             sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
         }
+
+        void connect_memory()
+        {
+            // Create a new connection
+            sq3_result = sqlite3_open_v2(":memory:", &sq3_connection_memory, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+            // Set the journal mode to WAL
+            sq3_result = sqlite3_exec(sq3_connection_memory, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
+        }
+
+        void connect()
+        {
+            connect_file();
+            connect_memory();
+        }
         //----------------------------------------------------------------
-        // End Project connection initializer
+        // End Project connection initializers
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
-        // Disconnect
+        // Disconnects
         //----------------------------------------------------------------
-        void disconnect()
+        void disconnect(sqlite3* connection)
         {
             // Close connections
             bool connection_closed{false};
             int connection_status{};
             while (!connection_closed)
             {
-                connection_status = sqlite3_close_v2(sq3_connection_file);
+                connection_status = sqlite3_close_v2(connection);
                 if (connection_status == SQLITE_OK) { connection_closed = true; }
                 else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
                 else { break; }
             }
         }
+
+        void disconnect()
+        {
+            disconnect(sq3_connection_file);
+            disconnect(sq3_connection_memory);
+        }
         //----------------------------------------------------------------
-        // End Disconnect
+        // End Disconnects
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
@@ -490,6 +517,8 @@ class Project
     public:
         // Connection to the database (file)
         sqlite3* sq3_connection_file{};
+        // Conection to the database (memory)
+        sqlite3* sq3_connection_memory{};
         int sq3_result{};
         char* sq3_error_message{};
         // Checkpoint notes
@@ -593,7 +622,7 @@ class Project
             create_data_checkpoint_table(data_id);
             add_data_checkpoint(sac, data_id);
             create_data_processing_table(data_id);
-            add_data_processing(data_id, "ADD");
+            add_data_processing(sq3_connection_file, data_id, "ADD");
             return data_id;
         }
         //----------------------------------------------------------------
@@ -647,7 +676,7 @@ class Project
         // This gets called when data gets added to a project
         // OR when a checkpoint gets made
         // This goes on file when data is added, or when a checkpoint happens
-        void add_data_checkpoint(SAC::SacStream& sac, int data_id)
+        void add_data_checkpoint(SAC::SacStream& sac, int data_id, bool processing = false)
         {
             std::ostringstream oss{};
             oss << "INSERT INTO checkpoint_" << data_id << " (";
@@ -891,6 +920,7 @@ class Project
             sq3_result = sqlite3_step(sq3_statement);
             // Finalize the statement
             sqlite3_finalize(sq3_statement);
+            if (processing) { move_processing_mem_2_disk(data_id); }
         }
         //----------------------------------------------------------------
         // End add data checkpoint
@@ -899,11 +929,12 @@ class Project
         //----------------------------------------------------------------
         // Add processing information
         //----------------------------------------------------------------
-        // This gets called when:
-        // Data gets added (ADD)
-        // Data gets modified (processing)
-        // A checkpoint gets made
-        void add_data_processing(int data_id, std::string processing_comment)
+        // When data is added, add a comment to the database on file
+        // When a processing step is taken, add a comment to the database on memory
+        // If the user performs a checkpoint, we'll append this to the table on file and clear memory
+        // If the user loads a checkpoint, we'll clear memory
+        // If the user unloads a project, we'll clear memory
+        void add_data_processing(sqlite3* connection, int data_id, std::string processing_comment)
         {
             std::ostringstream oss{};
             oss << "INSERT INTO processing_" << data_id << " (";
@@ -912,7 +943,7 @@ class Project
             oss << " VALUES (?, ?);";
             std::string sq3_string{oss.str()};
             sqlite3_stmt* sq3_statement{};
-            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+            sq3_result = sqlite3_prepare_v2(connection, sq3_string.c_str(), -1, &sq3_statement, nullptr);
             sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
             sq3_result = sqlite3_bind_text(sq3_statement, 2, processing_comment.c_str(), -1, SQLITE_STATIC);
             // Execute the statement
@@ -922,6 +953,44 @@ class Project
         }
         //----------------------------------------------------------------
         // End add processing information
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // Append processing from memory to disk
+        //----------------------------------------------------------------
+        void move_processing_mem_2_disk(int data_id)
+        {
+            std::ostringstream oss_select{};
+            // We only want comment because we're going to bind the current checkpoint_id_ to the checkpoint_id column
+            oss_select << "SELECT comment from processing_" << data_id << ";";
+            std::string sq3_string_memory{oss_select.str()};
+            sqlite3_stmt* sq3_statement_memory{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_memory, sq3_string_memory.c_str(), -1, &sq3_statement_memory, nullptr);
+            std::ostringstream oss_insert{};
+            oss_insert << "INSERT INTO processing_" << data_id << " VALUES (?, ?);";
+            std::string sq3_string_file{oss_insert.str()};
+            sqlite3_stmt* sq3_statement_file{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string_file.c_str(), -1, &sq3_statement_file, nullptr);
+            while (sqlite3_step(sq3_statement_memory) == SQLITE_ROW)
+            {
+                sq3_result = sqlite3_bind_int(sq3_statement_file, 1, checkpoint_id_);
+                sq3_result = sqlite3_bind_text(sq3_statement_file, 2, reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement_memory, 0)), -1, SQLITE_STATIC);
+                sqlite3_step(sq3_statement_file);
+                sqlite3_reset(sq3_statement_file);
+                sqlite3_clear_bindings(sq3_statement_file);
+            }
+            sq3_result = sqlite3_finalize(sq3_statement_memory);
+            sq3_result = sqlite3_finalize(sq3_statement_file);
+            // Now to clear the table in memory
+            // This should be a separate function to be called later
+            std::ostringstream oss_delete{};
+            oss_delete << "DELETE FROM processing_" << data_id << ";";
+            std::string sq3_string_delete{oss_delete.str()};
+            // Clear the contents of the processing table in memory
+            sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string_delete.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Append processing from memory to disk
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
@@ -1309,6 +1378,8 @@ class Project
         //----------------------------------------------------------------
         // Get data_id,checkpoint_id processing history
         //----------------------------------------------------------------
+        // This should tack on the processing from the in-memory
+        // database at the end (not yet implemented)
         std::string get_processing_history(int data_id, int checkpoint_id)
         {
             std::vector<int> lineage{get_checkpoint_lineage(checkpoint_id)};
@@ -1350,6 +1421,31 @@ class Project
         }
         //----------------------------------------------------------------
         // End Get data_id current checkpoint history
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
+        // ToDo
+        //----------------------------------------------------------------
+        // At present, when data is added to the project, it is automatically
+        // inserted into the project file. This is fine.
+        // However, processing beyond this addition should not be added
+        // except when a checkpoint is being made. Instead, processing
+        // should be kept in memory and then tacked on upon a checkpoint
+        // command being issued.
+        //
+        // Almost completed. It needs to tack on the in-memory processing
+        // steps to the history
+        // It needs to clear the in-memory processing steps on load/unload
+        // Need to add in error checking for sqlite3 shit (debugger reports
+        // errors, but it behaves correctly and the errors do not occur
+        // without the debugger...)
+        //
+        // The project system is so fucking close to being completed...
+        // After it is done, I need to refactor the code to split
+        // implementations from interfaces (no implementations in headers
+        // to speed up compilation/linking!)
+        //----------------------------------------------------------------
+        // End ToDo
         //----------------------------------------------------------------
 };
 };

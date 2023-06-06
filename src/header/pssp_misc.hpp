@@ -2,12 +2,12 @@
 #define PSSP_MISC_HPP
 
 // Silence OpenGL deprecation warnings on compile
-#include "pssp_program_settings.hpp"
 #define GL_SILENCE_DEPRECATION
 
 //-----------------------------------------------------------------------------
 // Include statments
 //-----------------------------------------------------------------------------
+#include "pssp_program_settings.hpp"
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
 // pssp::Project class

@@ -29,7 +29,7 @@ void pssp::cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& sel
         {
             // I still need to add in timestamping the removal in the database
             std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
-            project.add_data_processing(sac_deque[selected].data_id, "REMOVED");
+            project.add_data_processing(project.sq3_connection_file, sac_deque[selected].data_id, "REMOVED");
         }
         sac_deque.erase(sac_deque.begin() + selected + 1);
         if (selected < 0 && sac_deque.size() > 0)
@@ -56,7 +56,7 @@ void pssp::remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        project.add_data_processing(sac.data_id, "REMOVE MEAN");
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
         if (sac.sac.depmen != SAC::unset_float)
@@ -103,7 +103,7 @@ void pssp::batch_remove_mean(Project& project, ProgramStatus& program_status, st
 void pssp::remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
 {
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-    project.add_data_processing(sac.data_id, "REMOVE TREND");
+    project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE TREND");
     double mean_amplitude{0};
     // Static_cast just to be sure no funny business
     double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
@@ -163,7 +163,7 @@ void pssp::apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOp
         oss << "; FREQ LOW ";
         oss << lowpass_options.freq_low;
         oss << ";";
-        project.add_data_processing(sac.data_id, oss.str());
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -194,7 +194,7 @@ void pssp::apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterO
         oss << "; FREQ LOW ";
         oss << highpass_options.freq_low;
         oss << ";";
-        project.add_data_processing(sac.data_id, oss.str());
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -227,7 +227,7 @@ void pssp::apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterO
         oss << "; FREQ HIGH ";
         oss << bandpass_options.freq_high;
         oss << ";";
-        project.add_data_processing(sac.data_id, oss.str());
+        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
@@ -429,12 +429,12 @@ void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        project.add_data_checkpoint(sac.sac, sac.data_id);
+        project.add_data_checkpoint(sac.sac, sac.data_id, true);
         std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_current_checkpoint_metadata()};
         std::ostringstream oss{};
         oss << "CHECKPOINT; NAME " << checkpoint_metadata["name"] << "; CREATED: " << checkpoint_metadata["created"] << ";";
         std::string checkpoint_string{oss.str()};
-        project.add_data_processing(sac.data_id, checkpoint_string.c_str());
+        project.add_data_processing(project.sq3_connection_file, sac.data_id, checkpoint_string.c_str());
     }
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
@@ -455,9 +455,10 @@ void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deq
         std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
         program_status.fileio.count = 0;
-        program_status.fileio.total = 0;
+        program_status.fileio.total = 1;
     }
     sac_deque.clear();
+    ++program_status.fileio.count;
 }
 //-----------------------------------------------------------------------------
 // End Unload data from memory
@@ -492,7 +493,7 @@ void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1
 // Load a project from a project file
 //-----------------------------------------------------------------------------
 void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
-{
+{ 
     // First make sure we unload the present project
     //unload_data(project, program_status, sac_deque);
     // Connection to the project file
