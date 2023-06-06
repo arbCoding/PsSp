@@ -40,14 +40,6 @@
 // End Description
 //-----------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
-// ToDo
-//-----------------------------------------------------------------------------
-// TBD
-//-----------------------------------------------------------------------------
-// End ToDo
-//-----------------------------------------------------------------------------
-
 namespace pssp
 {
 class Project
@@ -956,6 +948,23 @@ class Project
         //----------------------------------------------------------------
 
         //----------------------------------------------------------------
+        // Clear processing in memory
+        //----------------------------------------------------------------
+        void clear_processing_memory(int data_id)
+        {
+            // Now to clear the table in memory
+            // This should be a separate function to be called later
+            std::ostringstream oss_delete{};
+            oss_delete << "DELETE FROM processing_" << data_id << ";";
+            std::string sq3_string_delete{oss_delete.str()};
+            // Clear the contents of the processing table in memory
+            sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string_delete.c_str(), nullptr, nullptr, &sq3_error_message);
+        }
+        //----------------------------------------------------------------
+        // End Clear processing in memory
+        //----------------------------------------------------------------
+
+        //----------------------------------------------------------------
         // Append processing from memory to disk
         //----------------------------------------------------------------
         void move_processing_mem_2_disk(int data_id)
@@ -988,6 +997,7 @@ class Project
             std::string sq3_string_delete{oss_delete.str()};
             // Clear the contents of the processing table in memory
             sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string_delete.c_str(), nullptr, nullptr, &sq3_error_message);
+            clear_processing_memory(data_id);
         }
         //----------------------------------------------------------------
         // End Append processing from memory to disk
@@ -1219,6 +1229,8 @@ class Project
             //------------------------------------------------------------
             // Cleanup the statement
             sqlite3_finalize(sq3_statement);
+            // Add a table in memory for this sacstream
+            create_data_processing_table(sq3_connection_memory, data_id);
             return sac;
         }
         //----------------------------------------------------------------
@@ -1406,6 +1418,18 @@ class Project
                 }
                 sqlite3_finalize(sq3_statement);
             }
+            // Get the processing steps that are currently in memory
+            std::ostringstream oss_mem{};
+            oss_mem << "SELECT comment from processing_" << data_id << ';';
+            std::string sq3_string{oss_mem.str()};
+            sqlite3_stmt* sq3_statement_memory{};
+            sq3_result = sqlite3_prepare_v2(sq3_connection_memory, sq3_string.c_str(), -1, &sq3_statement_memory, nullptr);
+            while (sqlite3_step(sq3_statement_memory) == SQLITE_ROW)
+            {
+                oss << "*Step " << step_num << ": " << reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement_memory, 0)) << '\n';
+                ++step_num;
+            }
+            sqlite3_finalize(sq3_statement_memory);
             return oss.str();
         }
         //----------------------------------------------------------------
@@ -1421,31 +1445,6 @@ class Project
         }
         //----------------------------------------------------------------
         // End Get data_id current checkpoint history
-        //----------------------------------------------------------------
-
-        //----------------------------------------------------------------
-        // ToDo
-        //----------------------------------------------------------------
-        // At present, when data is added to the project, it is automatically
-        // inserted into the project file. This is fine.
-        // However, processing beyond this addition should not be added
-        // except when a checkpoint is being made. Instead, processing
-        // should be kept in memory and then tacked on upon a checkpoint
-        // command being issued.
-        //
-        // Almost completed. It needs to tack on the in-memory processing
-        // steps to the history
-        // It needs to clear the in-memory processing steps on load/unload
-        // Need to add in error checking for sqlite3 shit (debugger reports
-        // errors, but it behaves correctly and the errors do not occur
-        // without the debugger...)
-        //
-        // The project system is so fucking close to being completed...
-        // After it is done, I need to refactor the code to split
-        // implementations from interfaces (no implementations in headers
-        // to speed up compilation/linking!)
-        //----------------------------------------------------------------
-        // End ToDo
         //----------------------------------------------------------------
 };
 };
