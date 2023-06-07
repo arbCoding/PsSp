@@ -14,7 +14,7 @@
 #include <sstream>
 #include <thread>
 #include <ios>
-#include <unordered_map>
+#include <unordered_map> 
 #include <algorithm>
 
 //-----------------------------------------------------------------------------
@@ -1418,7 +1418,7 @@ class Project
                 }
                 sqlite3_finalize(sq3_statement);
             }
-            // Get the processing steps that are currently in memory
+            // Get the processing steps that are currently in m  emory
             std::ostringstream oss_mem{};
             oss_mem << "SELECT comment from processing_" << data_id << ';';
             std::string sq3_string{oss_mem.str()};
