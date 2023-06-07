@@ -17,6 +17,7 @@
 // ImPlot add-on for Dear ImGui
 #include <implot.h>
 #include <deque>
+#include <filesystem>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------

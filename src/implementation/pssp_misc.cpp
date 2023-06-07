@@ -1,13 +1,16 @@
 #include "pssp_misc.hpp"
+#include "imgui.h"
 #include <filesystem>
 #include <mutex>
 #include <shared_mutex>
 #include <sstream>
 
+namespace pssp
+{
 //-----------------------------------------------------------------------------
 // Misc functions
 //-----------------------------------------------------------------------------
-void pssp::update_fps(fps_info& fps, ImGuiIO& io)
+void update_fps(fps_info& fps, ImGuiIO& io)
 {
     // Lock the fps_tracker
     std::lock_guard<std::mutex> guard(fps.mutex_);
@@ -20,7 +23,7 @@ void pssp::update_fps(fps_info& fps, ImGuiIO& io)
     ++fps.frame_count;
 }
 
-void pssp::cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
+void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
 {
     if (clear)
     {
@@ -40,7 +43,7 @@ void pssp::cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& sel
     }
 }
 
-void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
+void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
 {
     std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
     {
@@ -52,7 +55,7 @@ void pssp::calc_spectrum(sac_1c& sac, sac_1c& spectrum)
     SAC::fft_real_imaginary(spectrum.sac);
 }
 
-void pssp::remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
+void remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -88,7 +91,7 @@ void pssp::remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -100,7 +103,7 @@ void pssp::batch_remove_mean(Project& project, ProgramStatus& program_status, st
     }
 }
 
-void pssp::remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
+void remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
 {
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE TREND");
@@ -141,7 +144,7 @@ void pssp::remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
     ++fileio.count;
 }
 
-void pssp::batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.fileio.is_processing = true;
@@ -153,7 +156,7 @@ void pssp::batch_remove_trend(Project& project, ProgramStatus& program_status, s
     }
 }
 
-void pssp::apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
+void apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -170,7 +173,7 @@ void pssp::apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOp
     ++fileio.count;
 }
 
-void pssp::batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
+void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -184,7 +187,7 @@ void pssp::batch_apply_lowpass(Project& project, ProgramStatus& program_status, 
     }
 }
 
-void pssp::apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
+void apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -201,7 +204,7 @@ void pssp::apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterO
     ++fileio.count;
 }
 
-void pssp::batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
+void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -215,7 +218,7 @@ void pssp::batch_apply_highpass(Project& project, ProgramStatus& program_status,
     }
 }
 
-void pssp::apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
+void apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -234,7 +237,7 @@ void pssp::apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterO
     ++fileio.count;
 }
 
-void pssp::batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
+void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
 {
     {
         std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
@@ -248,7 +251,7 @@ void pssp::batch_apply_bandpass(Project& project, ProgramStatus& program_status,
     }
 }
 
-void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
+void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
 {
     sac_1c sac{};
     {
@@ -264,7 +267,7 @@ void pssp::read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std:
     sac_deque.push_back(sac);
 }
 
-void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project)
+void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project)
 {
     // Iterate over files in directory
     std::vector<std::filesystem::path> file_names{};
@@ -291,7 +294,7 @@ void pssp::scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& 
 // Graphical Backend functions
 //-----------------------------------------------------------------------------
 // Setup the graphicaly libraries, figure out version info depending on OS
-const char* pssp::setup_gl()
+const char* setup_gl()
 {
     // Unfortunately it seems that we need to use preprocessor macros to handle this
     // Decide GL+GLSL versions
@@ -319,7 +322,7 @@ const char* pssp::setup_gl()
     return glsl_version;
 }
 
-ImGuiIO& pssp::start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path)
+ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path)
 {
     if (window == nullptr)
     {
@@ -350,15 +353,20 @@ ImGuiIO& pssp::start_graphics(GLFWwindow* window, const char* glsl_version, std:
     //----------------------------------------------------------------------
     // End Resize fonts
     //----------------------------------------------------------------------
-    // Dark mode FTW
+    // Dark style
+    // This is the winner as far as default color schemes
     ImGui::StyleColorsDark();
+    // Classic light style
+    //ImGui::StyleColorsClassic();
+    // Light style
+    //ImGui::StyleColorsLight();
     // Setup ImGui to use the GLFW and OpenGL backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     return io;
 }
 
-void pssp::end_graphics(GLFWwindow* window)
+void end_graphics(GLFWwindow* window)
 {
     // Kill the GLFW and OpenGL backends
     ImGui_ImplOpenGL3_Shutdown();
@@ -379,12 +387,12 @@ void pssp::end_graphics(GLFWwindow* window)
 //-----------------------------------------------------------------------------
 // General GUI functions
 //-----------------------------------------------------------------------------
-void pssp::glfw_error_callback(int error, const char *description)
+void glfw_error_callback(int error, const char *description)
 {
     std::cerr << "GLFW Error " << error << ": " << description << '\n'; 
 }
 
-void pssp::prep_newframe()
+void prep_newframe()
 {
     // Check for user input (mouse, keyboard, etc)
     glfwPollEvents();
@@ -395,7 +403,7 @@ void pssp::prep_newframe()
     ImGui::NewFrame();
 }
 
-void pssp::finish_newframe(GLFWwindow* window, ImVec4 clear_color)
+void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 {
     // Draw the update
     ImGui::Render();
@@ -425,7 +433,7 @@ void pssp::finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //-----------------------------------------------------------------------------
 // Checkpoint data (inside thread_pool)
 //-----------------------------------------------------------------------------
-void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
+void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
 {
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -446,7 +454,7 @@ void pssp::checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
 //-----------------------------------------------------------------------------
 // Unload data from memory
 //-----------------------------------------------------------------------------
-void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
+void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     // Remove the SQLite3 connections and the file paths
     project.unload_project();
@@ -467,7 +475,7 @@ void pssp::unload_data(Project& project, ProgramStatus& program_status, std::deq
 //-----------------------------------------------------------------------------
 // Get SacStream from project, add to sac_deque
 //-----------------------------------------------------------------------------
-void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
+void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
 {
     sac_1c sac{};
     {
@@ -492,7 +500,7 @@ void pssp::fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1
 //-----------------------------------------------------------------------------
 // Load a project from a project file
 //-----------------------------------------------------------------------------
-void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
+void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
 { 
     // First make sure we unload the present project
     //unload_data(project, program_status, sac_deque);
@@ -522,7 +530,7 @@ void pssp::load_data(Project& project, ProgramStatus& program_status, std::deque
 //-----------------------------------------------------------------------------
 // Delete a checkpoint
 //-----------------------------------------------------------------------------
-void pssp::delete_checkpoint(Project& project, int checkpoint_id)
+void delete_checkpoint(Project& project, int checkpoint_id)
 {
     project.delete_checkpoint(checkpoint_id);
 }
@@ -533,3 +541,4 @@ void pssp::delete_checkpoint(Project& project, int checkpoint_id)
 //-----------------------------------------------------------------------------
 // End Misc functions
 //-----------------------------------------------------------------------------
+}

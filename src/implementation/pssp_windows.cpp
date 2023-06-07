@@ -1,12 +1,11 @@
 #include "pssp_windows.hpp"
-#include "imgui.h"
-#include "pssp_misc.hpp"
-#include <filesystem>
 
+namespace pssp
+{
 //-----------------------------------------------------------------------------
 // Status Bar
 //-----------------------------------------------------------------------------
-void pssp::status_bar(ProgramStatus& program_status)
+void status_bar(ProgramStatus& program_status)
 {
     // Size and position
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
@@ -76,7 +75,7 @@ void pssp::status_bar(ProgramStatus& program_status)
 //-----------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& lowpass_settings)
+void window_lowpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
     if (window_settings.show)
     {
@@ -123,7 +122,7 @@ void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings&
 //-----------------------------------------------------------------------------
 // Highpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& highpass_settings)
+void window_highpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& highpass_settings)
 {
     if (window_settings.show)
     {
@@ -169,7 +168,7 @@ void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings
 //-----------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& bandpass_settings)
+void window_bandpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& bandpass_settings)
 {
     if (window_settings.show)
     {
@@ -221,7 +220,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
 //-----------------------------------------------------------------------------
 // Main menu bar
 //-----------------------------------------------------------------------------
-void pssp::main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
 AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac, Project& project)
 {
     sac_1c sac{};
@@ -655,7 +654,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
 //-----------------------------------------------------------------------------
 // 1-component SAC plot window
 //-----------------------------------------------------------------------------
-void pssp::window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected)
+void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected)
 {
     if (window_settings.show)
     {
@@ -711,7 +710,7 @@ void pssp::window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& 
 //-----------------------------------------------------------------------------
 // 1-component SAC spectrum window
 //-----------------------------------------------------------------------------
-void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
+void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 {
     if (window_settings.show)
     {
@@ -757,7 +756,7 @@ void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectru
 //-----------------------------------------------------------------------------
 // 1-component SAC header window
 //-----------------------------------------------------------------------------
-void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& window_settings, sac_1c& sac)
+void window_sac_header(ProgramStatus& program_status, WindowSettings& window_settings, sac_1c& sac)
 {
     if (window_settings.show)
     {
@@ -824,7 +823,7 @@ void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& wind
 //-----------------------------------------------------------------------------
 // Welcome window
 //-----------------------------------------------------------------------------
-void pssp::window_welcome(WindowSettings& window_settings, std::string_view& welcome_message)
+void window_welcome(WindowSettings& window_settings, std::string_view& welcome_message)
 {
     if (window_settings.show)
     {
@@ -847,7 +846,7 @@ void pssp::window_welcome(WindowSettings& window_settings, std::string_view& wel
 // FPS window
 //-----------------------------------------------------------------------------
 // Creates a small window to show the FPS of the program, pretty much setup
-void pssp::window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
+void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 {
     if (window_settings.show)
     {
@@ -882,7 +881,7 @@ void pssp::window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void pssp::window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
+void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
 ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
@@ -973,7 +972,7 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
 //-----------------------------------------------------------------------------
 // Checkpoint name window
 //-----------------------------------------------------------------------------
-void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque)
+void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque)
 {
     if (window_settings.show)
     {
@@ -1032,7 +1031,7 @@ void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus
 //-----------------------------------------------------------------------------
 // Checkpoint notes window
 //-----------------------------------------------------------------------------
-void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& project)
+void window_notes_checkpoint(WindowSettings& window_settings, Project& project)
 {
     if (window_settings.show)
     {
@@ -1078,7 +1077,7 @@ void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& pro
 //-----------------------------------------------------------------------------
 // Processing history window
 //-----------------------------------------------------------------------------
-void pssp::window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
+void window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
 {
     if (window_settings.show)
     {
@@ -1106,3 +1105,4 @@ void pssp::window_processing_history(WindowSettings& window_settings, Project& p
 //-----------------------------------------------------------------------------
 // End Processing history window
 //-----------------------------------------------------------------------------
+}
