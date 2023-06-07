@@ -52,6 +52,22 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// SQLite3 error-logging
+//-----------------------------------------------------------------------------
+// Suppress the error/warning logs from cout and instead direct them to a file
+void sqliteLogCallback(void* data, int errCode, const char* message)
+{
+    // Cast the data pointer to an ofstream object
+    std::ofstream& logFile{*reinterpret_cast<std::ofstream*>(data)};
+
+    // Write the SQLite warning message to the log file
+    logFile << "SQLite Warning (" << errCode << "): " << message << std::endl;
+}
+//-----------------------------------------------------------------------------
+// End SQLite3 error-logging
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
 int main(int arg_count, char* arg_array[])
@@ -65,6 +81,10 @@ int main(int arg_count, char* arg_array[])
     program_path = std::filesystem::canonical(program_path);
     // We're assuming that the font is in the same directory as the program
     program_path = program_path.parent_path();
+    // Open the log file
+    std::ofstream sq3_log_file{program_path / "sqlite.log"};
+    // Configure SQLite to redirect warning messages to the log file
+    sqlite3_config(SQLITE_CONFIG_LOG, sqliteLogCallback, &sq3_log_file);
     //---------------------------------------------------------------------------
     // Initialization
     //---------------------------------------------------------------------------
@@ -296,6 +316,8 @@ int main(int arg_count, char* arg_array[])
     // End draw loop
     //---------------------------------------------------------------------------
     pssp::end_graphics(window);
+    // Close the log file
+    sq3_log_file.close();
     // End program
     return 0;
 }
