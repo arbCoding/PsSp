@@ -18,7 +18,7 @@ SHELL := /bin/bash
 # Linux or mac
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = true
+debug = false
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -43,12 +43,15 @@ debug_imgui = $(common_debug)
 # This is the most optimized without doing fine-grain optimizations, while
 # not using fast-math, so if you're worried about any numerical inaccuracy made by the
 # use of fast-math, then swap over to this level of optimization
-#release_param = -O3 -DNDEBUG
+# I think -O3 is the best choice for now. -Ofast has caused some data-corruption twice in a few tests
+# both in terms of locking the GUI, but also in terms of completely losing the time-series data
+# after applying a filter.
+release_param = -O3 -DNDEBUG
 # This is fast and dangerous (not really, but doesn't strictly comply with the language standards)
 # It is blazingly fact though!
 # It enables fast-math, which has typical rounding errors of machine epsilon (usually about
 # 1e-15 for doubles, which is smaller than what I care about anyway)
-release_param = -Ofast -DNDEBUG
+#release_param = -Ofast -DNDEBUG
 # This is supposed to make the smallest binary possible, it barely does anything to our size
 # probably because we're super small anyway
 #release_param = -Oz -DNDEBUG
