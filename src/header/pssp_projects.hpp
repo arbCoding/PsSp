@@ -1,7 +1,10 @@
 #ifndef PSSP_PROJECTS_HPP
 #define PSSP_PROJECTS_HPP
 
-#include "boost/token_functions.hpp"
+//-----------------------------------------------------------------------------
+// Include statements
+//-----------------------------------------------------------------------------
+#include "pssp_datetime.hpp"
 #include "sac_io.hpp"
 #include "sac_stream.hpp"
 // SQLite3 official library
@@ -16,6 +19,9 @@
 #include <ios>
 #include <unordered_map> 
 #include <algorithm>
+//-----------------------------------------------------------------------------
+// End Include statements
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // Description
@@ -51,19 +57,6 @@ class Project
         std::filesystem::path path_{};
         // Checkpoint id
         int checkpoint_id_{0};
-        // Left pad integers to a given width (with zeros)
-        // Should migrate elsewhere later
-        std::string left_pad_integers(int n, int width);
-        // Days per month, should move to a time header
-        int days_per_month(int year, int month);
-        // Go from year, month, day to day of year (time header)
-        int ymd_2_doy(int year, int month, int day);
-        // Day of year to year, month, day
-        std::string doy_2_ymd(int year, int doy);
-        // Datetime string from sac header
-        std::string sac_reference_time(SAC::SacStream& sac);
-        // Datetime string to sac header
-        void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& sac);
         // SQLite3 BLOB (Binary Large OBject) to std::vector<double>
         std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index);
         // Create provenance table
@@ -182,6 +175,6 @@ class Project
         // Get the history for data_id and the current checkpoint_id
         std::string get_current_processing_history(int data_id);
 };
-};
+}
 
 #endif

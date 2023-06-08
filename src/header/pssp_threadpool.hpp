@@ -86,19 +86,19 @@ public:
 ThreadPool(std::size_t n_threads = std::thread::hardware_concurrency() - 1);
 // Destructor
 ~ThreadPool();
-// Enqueue function
-// What an awesome template. Can template it to take different functions
-// and to take an arbitrary number of different arguments
-// So long as the function and arguments are consistent with each-other
-// it's all good (though you may need to use std::ref() to pass-by-reference
-// on non-integral types)
 //========================================================================
 // SPECIAL CASE
+//========================================================================
 // Normally I can split between interface and implementation
 // But this template requires it to be entirely in the header file
 //------------------------------------------------------------------------
 // Enqueue function
 //------------------------------------------------------------------------
+// What an awesome template. Can template it to take different functions
+// and to take an arbitrary number of different arguments
+// So long as the function and arguments are consistent with each-other
+// it's all good (though you may need to use std::ref() to pass-by-reference
+// on non-integral types)
 template <typename Function, typename... Args>
 void enqueue(Function&& func, Args&&... args)
 {
@@ -111,6 +111,8 @@ void enqueue(Function&& func, Args&&... args)
 //------------------------------------------------------------------------
 // End Enqueue function
 //------------------------------------------------------------------------
+//========================================================================
+// END SPECIAL CASE
 //========================================================================
 // Getters
 // Declared as constant because they don't modify state, just check it

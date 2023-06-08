@@ -1,6 +1,9 @@
 #ifndef SAC_SPECTRAL_HPP
 #define SAC_SPECTRAL_HPP
 
+//-----------------------------------------------------------------------------
+// Include statements
+//-----------------------------------------------------------------------------
 // SAC::SacStream
 #include <sac_stream.hpp>
 
@@ -9,6 +12,9 @@
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // Needed by FFTW library
 #include <cmath>
+//-----------------------------------------------------------------------------
+// End Include statements
+//-----------------------------------------------------------------------------
 
 // These are separate from sac_stream.hpp/sac_stream.cpp because they rely on
 // FFTW, I prefer for dependencies to be optional (as much as possible)

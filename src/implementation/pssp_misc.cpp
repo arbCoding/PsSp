@@ -290,9 +290,9 @@ void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_de
         program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name, std::ref(project));
     }
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Graphical Backend functions
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Setup the graphicaly libraries, figure out version info depending on OS
 const char* setup_gl()
 {
@@ -339,9 +339,9 @@ ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::files
     // Get the ImGui IO stuff (fonts and what-not)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    //----------------------------------------------------------------------
+    //---------------------------------------------------------------
     // Resize fonts
-    //----------------------------------------------------------------------
+    //---------------------------------------------------------------
     // Will need to provide the font with the Application package
     // Will also need to keep it linked to the programs location, not the directory the program was called from...
     //ImFont* font = io.Fonts->AddFontFromFileTTF("./fonts/Hack/HackNerdFontMono-Regular.ttf", 18);
@@ -350,9 +350,9 @@ ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::files
     constexpr int font_size{18};
     ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), font_size);
     io.FontDefault = font;
-    //----------------------------------------------------------------------
+    //---------------------------------------------------------------
     // End Resize fonts
-    //----------------------------------------------------------------------
+    //---------------------------------------------------------------
     // Dark style
     // This is the winner as far as default color schemes
     ImGui::StyleColorsDark();
@@ -380,13 +380,13 @@ void end_graphics(GLFWwindow* window)
     glfwDestroyWindow(window);
     glfwTerminate();
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End Graphical Backend functions
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // General GUI functions
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void glfw_error_callback(int error, const char *description)
 {
     std::cerr << "GLFW Error " << error << ": " << description << '\n'; 
@@ -426,13 +426,13 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
     // Swap to the newly drawn buffer
     glfwSwapBuffers(window);
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End General GUI functions
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Checkpoint data (inside thread_pool)
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
 {
     {
@@ -447,13 +447,13 @@ void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
     std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
     ++fileio.count;
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End checkpoint data (inside thread_pool)
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Unload data from memory
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     // Remove the SQLite3 connections and the file paths
@@ -468,13 +468,13 @@ void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac
     sac_deque.clear();
     ++program_status.fileio.count;
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End Unload data from memory
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Get SacStream from project, add to sac_deque
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
 {
     sac_1c sac{};
@@ -493,13 +493,13 @@ void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sa
     sac_deque.push_back(sac);
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End Get SacStream from project, add to sac_deque
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Load a project from a project file
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id)
 { 
     // First make sure we unload the present project
@@ -523,20 +523,20 @@ void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1
         program_status.thread_pool.enqueue(fill_deque_project, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque), data_ids[i]);
     }
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End load a project from a project file
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Delete a checkpoint
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 void delete_checkpoint(Project& project, int checkpoint_id)
 {
     project.delete_checkpoint(checkpoint_id);
 }
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // End Delete a checkpoint
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // End Misc functions

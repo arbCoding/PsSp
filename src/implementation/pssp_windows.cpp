@@ -11,9 +11,9 @@ void status_bar(ProgramStatus& program_status)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
     ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().FramePadding.y * 2.0f) + 10));
     ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeightWithSpacing() - (ImGui::GetStyle().FramePadding.y * 2.0f) - 10));
-    //----------------------------------------------------------------------
+    //-------------------------------------------------------------------------
     // Status of program (message and progress)
-    //----------------------------------------------------------------------
+    //-------------------------------------------------------------------------
     // If we're not reading or shutting down, we're idle
     std::string status_message{""};
     {
@@ -39,9 +39,9 @@ void status_bar(ProgramStatus& program_status)
             else if (program_status.fileio.is_processing) { status_message = "Processing..."; }
         }
     }
-    //----------------------------------------------------------------------
+    //-------------------------------------------------------------------------
     // End Status of program (message and progress)
-    //----------------------------------------------------------------------
+    //-------------------------------------------------------------------------
     std::ostringstream oss{};
     oss << "Threads (Busy/Total): " << program_status.thread_pool.n_busy_threads()
     << '/' << program_status.thread_pool.n_threads_total();
