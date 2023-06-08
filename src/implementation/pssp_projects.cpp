@@ -360,7 +360,32 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
 //------------------------------------------------------------------------
 // Unload project
 //------------------------------------------------------------------------
+// Cannot delete shm and wal files here, kills MacOS version
+// Deleting them works perfectly fine on Linux.
 void Project::unload_project()
+{
+    is_project = false;
+    disconnect();
+    // Clear the paths
+    name_ = "";
+    path_ = "";
+}
+//------------------------------------------------------------------------
+// End Unload project
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Destructor
+//------------------------------------------------------------------------
+// Why not just call unload_project()? It works fine on Linux!
+//
+// But on MacOS, the sqlite3 library has issues with how it works with the VFS
+// layer, which results in sqlite3 just dying and refusing to work anymore
+// This fixes the issue (mostly). SQLite3 still complains on deletion of
+// the shm and wal file, which is stupid because I make sure we're disconnect
+// from the database before we delete them, but for some reason MacOS
+// just doesn't like it.
+Project::~Project() 
 {
     is_project = false;
     disconnect();
@@ -373,17 +398,6 @@ void Project::unload_project()
     // Clear the paths
     name_ = "";
     path_ = "";
-}
-//------------------------------------------------------------------------
-// End Unload project
-//------------------------------------------------------------------------
-
-//------------------------------------------------------------------------
-// Destructor
-//------------------------------------------------------------------------
-Project::~Project() 
-{
-    unload_project();
 }
 //------------------------------------------------------------------------
 // End Destructor
