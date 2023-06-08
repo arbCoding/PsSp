@@ -37,8 +37,7 @@
 //-----------------------------------------------------------------------------
 // Current Focus
 //-----------------------------------------------------------------------------
-// User projects, see ./src/header/pssp_projects.hpp and 
-// ./src/implementation/pssp_projects.cpp for details.
+// Data display and migrating away from direct access to the sac_deque.
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------

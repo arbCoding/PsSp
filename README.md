@@ -53,24 +53,32 @@ the quality of research that is accomplished while minimizing the amount of time
 
 This is extremely early in development.
 
-### Current Focus: Projects
+### Current Focus: Data manipulation/display interface
 
-User projects are currently being implemented. This will allow users to have distinct projects that: 
-1) Protect their original data sources
-2) Have a degree of crash-safety (via auto-save) 
-3) Keep user defined program settings (window locations, sizes, etc.)
-4) Keep logs of processing steps and parameters used in the workflow
-5) Allow users to maintain project notes
-6) Facilitate integrating new data into an existing project
-7) Maintain necessary data provenance for publicatons
-8) Provide project check-pointing features to ease the challenges of iterative exploratory analysis
-9) Allow spinning off sub-projects for tangential exploration
+The next major update is to provide an interface to interact with the data. As opposed to right now, where we do everything via displaying the values of
+the sac_deque.
+
+I think we can have the sac_deque window, but instead of should be an unordered_map of data_id's and file_names. It shows the file_names, upon
+selecting, we get the data_id and can load that one data_id into a SacStream object, which will need to be tied to an update flag (so that we
+can flag that it has been updated to whoever is accessing it). That is the object which gets plotted, or has the spectrum calculated and plotted.
+
+It is also not directly tied to the sac_deque, such that when processing or I/O operations are occuring, we can still display it and everything related
+to it (just cannot alter it if other things are happening). That means we won't need to close off as many windows during processing or I/O. We'll need
+a flag to pass back to the deque if the user has altered its information (updated a header value, for instance) so that the change can be propagated
+back to the sac_deque safely.
+
+Then we need a window for displaying all headers values that allows the user to update them (with formatting restrictions to prevent nonsense).
+
+Additionally, we can have an unordered_map for data_id's to header values, allowing us to show that same information, across all SacStreams in a
+tabular format. To allow the user to scan and manipulate their data. (This is later).
+
+Need a mechanism for grouping data (by station, by component, by event, by array, by whatever). An abstract grouping that can be as deep as the data allows. Think of it like grouping objects in illustrator, or in QGIS.
 
 ---
 
 ## ToDo
 
-See the Todo list at the top of the [main.cpp](/src/code/main.cpp) file for more info on what is currently going-on/planned for the future.
+See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on what is currently going-on/planned for the future.
 
 ---
 
