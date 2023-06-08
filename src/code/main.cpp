@@ -104,6 +104,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.window_settings.bandreject.state = hide;
             current_settings.window_settings.file_dialog.state = hide;
             current_settings.window_settings.name_checkpoint.state = hide;
+            current_settings.window_settings.notes_checkpoint.state = hide;
             current_settings.window_settings.processing_history.state = hide;
             // Most menus are also hidden
             current_settings.menu_allowed.file_menu = false;
@@ -156,6 +157,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.window_settings.bandreject.state = hide;
             current_settings.window_settings.file_dialog.state = hide;
             current_settings.window_settings.name_checkpoint.state = hide;
+            current_settings.window_settings.notes_checkpoint.state = hide;
             current_settings.window_settings.processing_history.state = show;
             // Some menus are also hidden
             current_settings.menu_allowed.file_menu = false;
@@ -208,6 +210,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.window_settings.bandreject.state = hide;
             current_settings.window_settings.file_dialog.state = hide;
             current_settings.window_settings.name_checkpoint.state = hide;
+            current_settings.window_settings.notes_checkpoint.state = hide;
             current_settings.window_settings.processing_history.state = hide;
             // Most menus are also hidden
             current_settings.menu_allowed.file_menu = true;
@@ -305,7 +308,6 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
                 current_settings.menu_allowed.batch_menu = false;
             }
             current_settings.window_settings.file_dialog.state = show;
-            current_settings.window_settings.name_checkpoint.state = show;
             // All menus are also shown
             current_settings.menu_allowed.file_menu = true;
             if (current_project.is_project)
@@ -320,6 +322,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
                 current_settings.menu_allowed.new_checkpoint = true;
                 current_settings.menu_allowed.load_checkpoint = true;
                 current_settings.menu_allowed.delete_checkpoint = true;
+                current_settings.window_settings.name_checkpoint.state = show;
+                current_settings.window_settings.notes_checkpoint.state = show;
             }
             else 
             {
@@ -333,6 +337,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
                 current_settings.menu_allowed.new_checkpoint = false;
                 current_settings.menu_allowed.load_checkpoint = false;
                 current_settings.menu_allowed.delete_checkpoint = false;
+                current_settings.window_settings.name_checkpoint.state = hide;
+                current_settings.window_settings.notes_checkpoint.state = hide;
             }
             current_settings.menu_allowed.exit = true;
             current_settings.menu_allowed.project_menu = true;
