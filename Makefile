@@ -38,7 +38,14 @@ endif
 # Specific to Dear ImGui
 debug_imgui = $(common_debug)
 # Release params only if debug is false
-release_param = -O2 -DNDEBUG
+# This is middle of the road, safe optimizations, quick build
+#release_param = -O2 -DNDEBUG
+# This is fast and dangerous (not really, but doesn't strictly comply with the language standards)
+# It is blazingly fact though!
+release_param = -Ofast -DNDEBUG
+# This is supposed to make the smallest binary possible, it barely does anything to our size
+# probably because we're super small anyway
+#release_param = -Oz -DNDEBUG
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
