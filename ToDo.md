@@ -28,9 +28,6 @@ Updated on 15 May 2023 (too lazy to renumber daily)
     15a) Spectral division with water-level
     15b) Spectral division with static shift
     15c) Iterative time-domain
-16) Reload all data
-17) Unload all data
-18) Data-processing logs (probably easier than doing projects...)
 19) Generic basic waveforms (for exploring effects of processing flow)
     19a) Dirac Delta function
     19b) Dirac Delta-comb function
@@ -40,8 +37,7 @@ Updated on 15 May 2023 (too lazy to renumber daily)
     19f) Sombrero function
 20) Keyboard shortcuts for common operations
 21) Tab-key navigation between components in window
-22) User note's log (can write their own notes on what they're doing)
-23) Datetime functionality
+22) User note's log (project wide, checkpoint notes are already implemented).
 24) Migrate all SAC stuff from floats to doubles (while maintaining read/write compatibility)
 25) Don't use std::cout or std::cerr, use exceptions and then try-catch blocks to
 check for exceptions
@@ -82,3 +78,30 @@ At the end, all plans get destroyed. It reduces the overhead of repeatidly creat
 and makes it thread-safe.
     28c) Possibly a wrapper class for FFTW, maybe that'll make it actually thread-safe...
 29) Program logging.
+??) Functionality for trimming seismograms
+??) Functionality for zero-padding seismograms
+??) Functionality for down-sampling seismograms
+??) Functionality for up-sampling seismograms
+??) Functionality for generating random noise
+??) Functionality for stacking seismograms
+??a) Standard-stack
+??b) Slant-stack
+??c) H-k stack
+??) Arrival time prediction from 1-d earth model (spherical)
+??a) That requires ray-tracing through 1-d earth model
+??b) That requires definition of naming of phases
+??bb) There are various definitions, but I want to be able to be completely explicit about a phases path
+        Both source-side and receiver-side because there is ambiguity in the naming schemes
+        As well as specifying depths of certain interactions (I want reflects off the Moho on the receiver-side, or from a theoretical reflection from an interface at a depth of 20-km beneath the receiver, but I don't care about making
+        that modification to the 1-D model also effect the source-side, I also don't care if there is no pre-defined reflection
+        from that depth, imagine it happend [treat reflection point as a source, can the specified wave get to the receiver?])
+        *While non-standard, I think that would be most valuable for the end-user (even though it'll be a pain to implement)
+??bb*) To do this, I think ray-tracing needs to work from the end-points in to the "mid" point of the ray-path.
+        From the end-point to the next internal point, is it even possible? If no, then fail. If yes, then what conditions must be met. Then within those conditions, is it possible for this internal point to connect appropriately to the next, more-internal, point. Each end does this until either one fails-out, or they match-up and we're done with this check.
+        Of course, if there are multiple possible paths, we need to make sure to include them in our analysis (we take the path with least travel-time, but if paths have the same travel-time, we keep them together [like a hash function]).
+        We could even, in theory, define the set of points that falls within +/- tolerance of the minimum travel-time found, which would in the future lead to being able to deal with finite-frequency (finite bandwidth, instead of infinitesimal bandwidth) effects.
+??) I think that leads naturally to seismic body-wave travel-time inversion (hypocentral, or tomographic, or both).
+??) I think that ray-tracing also lends itself to things like back-projection and seismic imaging (CCP stacking of PRFs for instance)
+??) Instrument response needs to be dealt with. That means we need to be able to handle PZ-files, or RESP files, to generate
+the instruments transfer function, which can then be deconvolved from the time-series.
+??*) That means we need to be able to handle doing a  discrete laplace transform [z-transform](https://en.wikipedia.org/wiki/Z-transform)
