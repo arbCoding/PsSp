@@ -256,6 +256,7 @@ void read_sac_1c(std::deque<sac_1c>& sac_deque, ProgramStatus& program_status, c
         sac.data_id = project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     ++program_status.tasks_completed;
     sac_deque.push_back(sac);
 }
