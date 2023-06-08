@@ -38,6 +38,7 @@ namespace pssp
 // Struct definitions
 //-----------------------------------------------------------------------------
 // These are per window settings
+enum window_state { show, frozen, update, hide };
 struct WindowSettings
 {
     // X position in pixels (left to right)
@@ -56,6 +57,8 @@ struct WindowSettings
     ImGuiWindowFlags img_flags{};
     // Window title, '##' is used to prevent Dear ImGui crashes
     std::string title{"##"};
+    // State enum for the window (default stable = don't update information)
+    window_state state{hide};
     // To allow msgpack to handle the components.
     MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title)
 };

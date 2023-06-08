@@ -110,6 +110,7 @@ class Project
         bool clear_notes{false};
         bool copy_name{true};
         bool copy_notes{true};
+        bool is_project{false};
         // Empty constructor
         Project() {};
         // Parameterized constructor

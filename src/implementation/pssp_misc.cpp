@@ -55,8 +55,9 @@ void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
     SAC::fft_real_imaginary(spectrum.sac);
 }
 
-void remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
+void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac)
 {
+    program_status.state.store(processing);
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE MEAN");
@@ -87,24 +88,24 @@ void remove_mean(Project& project, FileIO& fileio, sac_1c& sac)
             sac.sac.depmen = 0.0f;
         }
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 
 void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.fileio.is_processing = true;
-    program_status.fileio.count = 0;
-    program_status.fileio.total = static_cast<int>(sac_deque.size());
+    program_status.state.store(processing);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status), std::ref(sac_deque[i]));
     }
 }
 
-void remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
+void remove_trend(Project& project, ProgramStatus& program_status, sac_1c& sac)
 {
+    program_status.state.store(processing);
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     project.add_data_processing(project.sq3_connection_memory, sac.data_id, "REMOVE TREND");
     double mean_amplitude{0};
@@ -140,24 +141,24 @@ void remove_trend(Project& project, FileIO& fileio, sac_1c& sac)
     {
         sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 
 void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.fileio.is_processing = true;
-    program_status.fileio.count = 0;
-    program_status.fileio.total = static_cast<int>(sac_deque.size());
+    program_status.state.store(processing);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status), std::ref(sac_deque[i]));
     }
 }
 
-void apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options)
+void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options)
 {
+    program_status.state.store(processing);
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         std::ostringstream oss{};
@@ -169,26 +170,24 @@ void apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions&
         project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 
 void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options)
 {
-    {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-        program_status.fileio.count = 0;
-        program_status.fileio.is_processing = true;
-        program_status.fileio.total = static_cast<int>(sac_deque.size());
-    }
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.state.store(processing);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_lowpass(project, program_status.fileio, sac_deque[i], lowpass_options);
+        apply_lowpass(project, program_status, sac_deque[i], lowpass_options);
     }
 }
 
-void apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options)
+void apply_highpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& highpass_options)
 {
+    program_status.state.store(processing);
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         std::ostringstream oss{};
@@ -200,26 +199,24 @@ void apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions
         project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 
 void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options)
 {
-    {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-        program_status.fileio.count = 0;
-        program_status.fileio.is_processing = true;
-        program_status.fileio.total = static_cast<int>(sac_deque.size());
-    }
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.state.store(processing);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_highpass(project, program_status.fileio, sac_deque[i], highpass_options);
+        apply_highpass(project, program_status, sac_deque[i], highpass_options);
     }
 }
 
-void apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options)
+void apply_bandpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& bandpass_options)
 {
+    program_status.state.store(processing);
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         std::ostringstream oss{};
@@ -233,26 +230,24 @@ void apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions
         project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
         SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 
 void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options)
 {
-    {
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-        program_status.fileio.count = 0;
-        program_status.fileio.is_processing = true;
-        program_status.fileio.total = static_cast<int>(sac_deque.size());
-    }
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.state.store(processing);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_bandpass(project, program_status.fileio, sac_deque[i], bandpass_options);
+        apply_bandpass(project, program_status, sac_deque[i], bandpass_options);
     }
 }
 
-void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project)
+void read_sac_1c(std::deque<sac_1c>& sac_deque, ProgramStatus& program_status, const std::filesystem::path file_name, Project& project)
 {
+    program_status.state.store(in);
     sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -261,9 +256,7 @@ void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::files
         sac.data_id = project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    fileio.is_reading = true;
-    ++fileio.count;
+    ++program_status.tasks_completed;
     sac_deque.push_back(sac);
 }
 
@@ -281,13 +274,13 @@ void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_de
         }
     }
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.is_idle = false;
-    program_status.fileio.total = static_cast<int>(file_names.size());
-    program_status.fileio.count = 0;
+    program_status.state.store(in);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = static_cast<int>(file_names.size());
     // Queue them up!
     for (std::string file_name : file_names)
     {
-        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), file_name, std::ref(project));
+        program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status), file_name, std::ref(project));
     }
 }
 //------------------------------------------------------------------------
@@ -433,8 +426,9 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Checkpoint data (inside thread_pool)
 //------------------------------------------------------------------------
-void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
+void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac)
 {
+    program_status.state.store(out);
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
         project.add_data_checkpoint(sac.sac, sac.data_id, true);
@@ -444,8 +438,7 @@ void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac)
         std::string checkpoint_string{oss.str()};
         project.add_data_processing(project.sq3_connection_file, sac.data_id, checkpoint_string.c_str());
     }
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    ++fileio.count;
+    ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
 // End checkpoint data (inside thread_pool)
@@ -459,14 +452,11 @@ void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac
     // Remove the SQLite3 connections and the file paths
     project.unload_project();
     // Clear data from the sac_deque
-    {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-        program_status.fileio.count = 0;
-        program_status.fileio.total = 1;
-    }
+    program_status.state.store(in);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = 1;
     sac_deque.clear();
-    ++program_status.fileio.count;
+    ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
 // End Unload data from memory
@@ -475,8 +465,9 @@ void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac
 //------------------------------------------------------------------------
 // Get SacStream from project, add to sac_deque
 //------------------------------------------------------------------------
-void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id)
+void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id)
 {
+    program_status.state.store(in);
     sac_1c sac{};
     {
         std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -487,9 +478,8 @@ void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sa
         sac.data_id = data_id;
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
-    std::lock_guard<std::shared_mutex> lock_io(fileio.mutex_);
-    fileio.is_reading = true;
-    ++fileio.count;
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    ++program_status.tasks_completed;
     sac_deque.push_back(sac);
 }
 
@@ -513,14 +503,15 @@ void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1
     std::vector<int> data_ids{project.get_data_ids_for_current_checkpoint()};
     {
         std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.is_idle = false;
-        program_status.fileio.total = static_cast<int>(data_ids.size());
-        program_status.fileio.count = 0;
+        program_status.state.store(in);
+        program_status.tasks_completed = 0;
+        program_status.total_tasks = static_cast<int>(data_ids.size());
     }
     // Queue it up!
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     for (std::size_t i{0}; i < data_ids.size(); ++i)
     {
-        program_status.thread_pool.enqueue(fill_deque_project, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque), data_ids[i]);
+        program_status.thread_pool.enqueue(fill_deque_project, std::ref(project), std::ref(program_status), std::ref(sac_deque), data_ids[i]);
     }
 }
 //------------------------------------------------------------------------

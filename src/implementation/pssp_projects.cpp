@@ -322,6 +322,7 @@ Project::Project(std::string name, std::filesystem::path base_path) : name_{name
 {
     connect();
     fresh_tables();
+    is_project = true;
 }
 //------------------------------------------------------------------------
 // End Parameterized Constructor
@@ -335,6 +336,7 @@ void Project::connect_2_existing(std::filesystem::path full_path)
     name_ = full_path.stem().string();
     path_ = full_path;
     connect();
+    is_project = true;
 }
 //------------------------------------------------------------------------
 // End Connect to existing project
@@ -349,6 +351,7 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
     path_ = base_path / (name + ".proj");
     connect();
     fresh_tables();
+    is_project = true;
 }
 //------------------------------------------------------------------------
 // End Setter to modify the project object
@@ -359,6 +362,7 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
 //------------------------------------------------------------------------
 void Project::unload_project()
 {
+    is_project = false;
     disconnect();
     // Remove extraneous files (shm = shared memory, wal = write ahead log)
     std::filesystem::path shm_file{path_};

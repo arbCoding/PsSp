@@ -65,6 +65,7 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
+/*
 struct FileIO
 {
     std::atomic<int> count{0};
@@ -75,16 +76,25 @@ struct FileIO
     std::atomic<bool> is_processing{false};
     std::shared_mutex mutex_{};
 };
-//
+*/
+// Enum for program state
+enum program_state{ in, out, processing, idle };
+
 struct ProgramStatus
 {
-    std::atomic<float> progress{1.1f};
     std::shared_mutex program_mutex{};
-    FileIO fileio{};
-    // Flag to specify if we're idle or doing something else
-    std::atomic<bool> is_idle{true};
+    //FileIO fileio{};
+    std::atomic<program_state> state{idle};
+    // How many tasks have been completed
+    std::atomic<int> tasks_completed{0};
+    // How many tasks do we need to do in order to complete
+    std::atomic<int> total_tasks{0};
+    // Program progress, handy to keep around
+    // Values > 1.0 hide the progress bar!
+    std::atomic<float> progress{1.1f};
     // Our thread pool
     ThreadPool thread_pool{};
+    std::string status_message{};
 };
 //
 struct fps_info
@@ -173,11 +183,11 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 // Calculates real/imaginary spectrum of sac_1c object
 void calc_spectrum(sac_1c& sac, sac_1c& spectrum);
 // Remove mean from sac_1c object
-void remove_mean(Project& project, FileIO& fileio, sac_1c& sac);
+void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac);
 // Remove mean from all sac_1c objects in a deque
 void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
 // Remove trend from a sac_1c object
-void remove_trend(Project& project, FileIO& fileio, sac_1c& sac);
+void remove_trend(Project& project, ProgramStatus& program_status, sac_1c& sac);
 // Remove trend from all sac_1c objects in a deque
 void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
 // Turns out FFTW is not thread-safe and doesn't provide that on Mac
@@ -185,19 +195,19 @@ void batch_remove_trend(Project& project, ProgramStatus& program_status, std::de
 // So we're going to change how we do this, one function for solo
 // One function for many
 // Lowpass one sac_1c
-void apply_lowpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& lowpass_options);
+void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
 void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options);
 // Highpass one sac_1c
-void apply_highpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& highpass_options);
+void apply_highpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
 void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options);
 // Bandpass one sac_1c
-void apply_bandpass(Project& project, FileIO& fileio, sac_1c& sac, FilterOptions& bandpass_options);
+void apply_bandpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
 void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
 // Read in a single sac_file
-void read_sac_1c(std::deque<sac_1c>& sac_deque, FileIO& fileio, const std::filesystem::path file_name, Project& project);
+void read_sac_1c(std::deque<sac_1c>& sac_deque, ProgramStatus& program_status, const std::filesystem::path file_name, Project& project);
 // Read all SAC files in a directory
 void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project);
 // Setup the graphical backends
@@ -214,10 +224,10 @@ void prep_newframe();
 // Ran at end of new frame draw cycle
 void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 // Add all each datapoint ot a checkpoint
-void checkpoint_data(FileIO& fileio, Project& project, sac_1c& sac);
+void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac);
 // Unload the project
 void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
-void fill_deque_project(Project& project, FileIO& fileio, std::deque<sac_1c>& sac_deque, int data_id);
+void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id);
 // Load an existing project
 void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
 // Delete a checkpoint
