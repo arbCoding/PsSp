@@ -80,7 +80,7 @@ struct AllWindowSettings
     // Plot real/imag spectrum of SAC file
     WindowSettings spectrum_1c{288, 368, 1150, 340, false, false, ImGuiWindowFlags{}, "Spectrum##"};
     // List of sac_1c's, allows user to select specific one in memory
-    WindowSettings sac_files{287, 709, 347, 135, false, false, ImGuiWindowFlags{}, "SAC Files##"};
+    WindowSettings sac_files{287, 495, 375, 312, false, false, ImGuiWindowFlags{}, "SAC Files##"};
     // Small window providing access to lowpass filter options
     WindowSettings lowpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Lowpass Options##"};
@@ -98,7 +98,7 @@ struct AllWindowSettings
     WindowSettings name_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Name##"};
     // Notes for current checkpoint
     WindowSettings notes_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Notes##"};
-    WindowSettings processing_history{1, 25, 285, 730, false, false, ImGuiWindowFlags{}, "History##"};
+    WindowSettings processing_history{665, 573, 773, 234, false, false, ImGuiWindowFlags{}, "History##"};
     MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint, processing_history)
 };
 // Whether a certain menu is allow or not

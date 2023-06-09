@@ -1,4 +1,5 @@
 #include "pssp_windows.hpp"
+#include "pssp_misc.hpp"
 #include "pssp_program_settings.hpp"
 
 namespace pssp
@@ -846,7 +847,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
+void window_sac_deque(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
 std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
@@ -891,7 +892,7 @@ std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
                     std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
                     sac_deque[selected].sac = SAC::SacStream(sac_deque[selected].file_name);
                     }
-                    calc_spectrum(sac_deque[selected], spectrum);
+                    calc_spectrum(program_status.fftw_planpool, sac_deque[selected], spectrum);
                 }
                 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("Reload the original SAC file"); }
@@ -949,7 +950,6 @@ void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& prog
         }
 
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        ImGui::Text("Checkpoint Notes:");
         ImGui::Separator();
         static std::string checkpoint_name_buffer{project.checkpoint_name};
         if (project.clear_name)

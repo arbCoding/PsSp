@@ -385,8 +385,11 @@ void Project::unload_project()
 // the shm and wal file, which is stupid because I make sure we're disconnect
 // from the database before we delete them, but for some reason MacOS
 // just doesn't like it.
+// I'm just going to get rid of the removal for now, not really needed
 Project::~Project() 
 {
+    unload_project();
+    /*
     is_project = false;
     disconnect();
     // Remove extraneous files (shm = shared memory, wal = write ahead log)
@@ -398,6 +401,7 @@ Project::~Project()
     // Clear the paths
     name_ = "";
     path_ = "";
+    */
 }
 //------------------------------------------------------------------------
 // End Destructor

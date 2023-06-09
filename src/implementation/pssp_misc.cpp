@@ -1,9 +1,6 @@
 #include "pssp_misc.hpp"
-#include "imgui.h"
-#include <filesystem>
-#include <mutex>
+#include "pssp_spectral.hpp"
 #include <shared_mutex>
-#include <sstream>
 
 namespace pssp
 {
@@ -43,16 +40,18 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
     }
 }
 
-void calc_spectrum(sac_1c& sac, sac_1c& spectrum)
+void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c& sac, sac_1c& spectrum)
 {
-    std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
+    spectrum.file_name = sac.file_name;
+    spectrum.sac = sac.sac;
+    std::vector<std::complex<double>> complex_spectrum = pssp::fft_time_series(fftw_planpool, sac.sac.data1, true);
+    spectrum.sac.data1.resize(complex_spectrum.size());
+    spectrum.sac.data2.resize(complex_spectrum.size());
+    for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
     {
-        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
-        spectrum.sac = sac.sac;
-        spectrum.file_name = sac.file_name;
+        spectrum.sac.data1[i] = complex_spectrum[i].real();
+        spectrum.sac.data2[i] = complex_spectrum[i].imag();
     }
-    // Calculate the FFT
-    SAC::fft_real_imaginary(spectrum.sac);
 }
 
 void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac)
@@ -159,17 +158,14 @@ void batch_remove_trend(Project& project, ProgramStatus& program_status, std::de
 void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options)
 {
     program_status.state.store(processing);
-    {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        std::ostringstream oss{};
-        oss << "LOWPASS; ORDER ";
-        oss << lowpass_options.order;
-        oss << "; FREQ LOW ";
-        oss << lowpass_options.freq_low;
-        oss << ";";
-        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
-        SAC::lowpass(sac.sac, lowpass_options.order, lowpass_options.freq_low);
-    }
+    std::ostringstream oss{};
+    oss << "LOWPASS; ORDER ";
+    oss << lowpass_options.order;
+    oss << "; FREQ LOW ";
+    oss << lowpass_options.freq_low;
+    oss << ";";
+    project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
+    lowpass(program_status.fftw_planpool, sac, lowpass_options.order, lowpass_options.freq_low);
     ++program_status.tasks_completed;
 }
 
@@ -181,24 +177,21 @@ void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::d
     program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_lowpass(project, program_status, sac_deque[i], lowpass_options);
+        program_status.thread_pool.enqueue(apply_lowpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[i]), std::ref(lowpass_options));
     }
 }
 
 void apply_highpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& highpass_options)
 {
     program_status.state.store(processing);
-    {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        std::ostringstream oss{};
-        oss << "HIGHPASS; ORDER ";
-        oss << highpass_options.order;
-        oss << "; FREQ LOW ";
-        oss << highpass_options.freq_low;
-        oss << ";";
-        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
-        SAC::highpass(sac.sac, highpass_options.order, highpass_options.freq_low);
-    }
+    std::ostringstream oss{};
+    oss << "HIGHPASS; ORDER ";
+    oss << highpass_options.order;
+    oss << "; FREQ LOW ";
+    oss << highpass_options.freq_low;
+    oss << ";";
+    project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
+    highpass(program_status.fftw_planpool, sac, highpass_options.order, highpass_options.freq_low);
     ++program_status.tasks_completed;
 }
 
@@ -210,26 +203,23 @@ void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::
     program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_highpass(project, program_status, sac_deque[i], highpass_options);
+        program_status.thread_pool.enqueue(apply_highpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[i]), std::ref(highpass_options));
     }
 }
 
 void apply_bandpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& bandpass_options)
 {
     program_status.state.store(processing);
-    {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        std::ostringstream oss{};
-        oss << "BANDPASS; ORDER ";
-        oss << bandpass_options.order;
-        oss << "; FREQ LOW ";
-        oss << bandpass_options.freq_low;
-        oss << "; FREQ HIGH ";
-        oss << bandpass_options.freq_high;
-        oss << ";";
-        project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
-        SAC::bandpass(sac.sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
-    }
+    std::ostringstream oss{};
+    oss << "BANDPASS; ORDER ";
+    oss << bandpass_options.order;
+    oss << "; FREQ LOW ";
+    oss << bandpass_options.freq_low;
+    oss << "; FREQ HIGH ";
+    oss << bandpass_options.freq_high;
+    oss << ";";
+    project.add_data_processing(project.sq3_connection_memory, sac.data_id, oss.str());
+    bandpass(program_status.fftw_planpool, sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     ++program_status.tasks_completed;
 }
 
@@ -241,7 +231,7 @@ void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::
     program_status.total_tasks = static_cast<int>(sac_deque.size());
     for (std::size_t i{0}; i < sac_deque.size(); ++i)
     {
-        apply_bandpass(project, program_status, sac_deque[i], bandpass_options);
+        program_status.thread_pool.enqueue(apply_bandpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[i]), std::ref(bandpass_options));
     }
 }
 
@@ -529,6 +519,112 @@ void delete_checkpoint(Project& project, int checkpoint_id)
 //------------------------------------------------------------------------
 // End Delete a checkpoint
 //------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Shitty Butterworth lowpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
+{
+    // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = pssp::fft_time_series(plan_pool, sac.sac.data1);
+    double frequency{};
+    const double sampling_freq{1.0 / sac.sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    double denominator{};
+    double gain{};
+    for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
+    {
+        frequency = i * freq_step;
+        denominator = std::pow(frequency / cutoff, 2.0 * order);
+        denominator = std::sqrt(1.0 + denominator);
+        gain = 1.0 / denominator;
+        complex_spectrum[i] *= gain;
+    }
+    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    // Do the ifft
+    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+}
+//-----------------------------------------------------------------------------
+// End Shitty Butterworth lowpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Shitty Butterworth highpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
+{
+    // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = pssp::fft_time_series(plan_pool, sac.sac.data1);
+    double frequency{};
+    const double sampling_freq{1.0 / sac.sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    double denominator{};
+    double gain{};
+    for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
+    {
+        frequency = i * freq_step;
+        denominator = std::pow(cutoff / frequency, 2.0 * order);
+        denominator = std::sqrt(1.0 + denominator);
+        gain = 1.0 / denominator;
+        complex_spectrum[i] *= gain;
+    }
+    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    // Do the ifft
+    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+}
+//-----------------------------------------------------------------------------
+// End Shitty Butterworth highpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Shitty Butterworth bandpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, double highpass)
+{
+    // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = pssp::fft_time_series(plan_pool, sac.sac.data1);
+    double frequency{};
+    const double sampling_freq{1.0 / sac.sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    double denominator_lp{};
+    double denominator_hp{};
+    double denominator{};
+    double gain{};
+    for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
+    {
+        frequency = i * freq_step;
+        denominator_lp = std::pow(frequency / highpass, 2.0 * order);
+        denominator_lp = std::sqrt(1.0 + denominator_lp);
+        denominator_hp = std::pow(lowpass / frequency, 2.0 * order);
+        denominator_hp = std::sqrt(1.0 + denominator_hp);
+        denominator = denominator_lp * denominator_hp;
+        gain = 1.0 / denominator;
+        complex_spectrum[i] *= gain;
+    }
+    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    // Do the ifft
+    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+}
+//-----------------------------------------------------------------------------
+// End Shitty Butterworth bandpass filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Shitty Butterworth bandreject filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowreject, double highreject)
+{
+    (void) plan_pool;
+    (void) sac;
+    (void) order;
+    (void) lowreject;
+    (void) highreject;
+    // To be implemented eventually
+    return;
+}
+//-----------------------------------------------------------------------------
+// End Shitty Butterworth bandreject filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // End Misc functions

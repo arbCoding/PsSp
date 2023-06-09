@@ -8,12 +8,14 @@
 // Include statments
 //-----------------------------------------------------------------------------
 #include "pssp_program_settings.hpp"
+// pssp::FFTWPlanPool class
+#include "pssp_fftw_planpool.hpp"
+// Spectral proccesing functionality
+#include "pssp_spectral.hpp"
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
 // pssp::Project class
 #include "pssp_projects.hpp"
-// SAC namespace filters
-#include <sac_spectral.hpp>
 // Dear ImGui and Graphical Backends
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -27,6 +29,8 @@
 #include <shared_mutex>
 #include <deque>
 #include <filesystem>
+#include <mutex>
+#include <sstream>
 //-----------------------------------------------------------------------------
 // End Include statments
 //-----------------------------------------------------------------------------
@@ -94,6 +98,8 @@ struct ProgramStatus
     std::atomic<float> progress{1.1f};
     // Our thread pool
     ThreadPool thread_pool{};
+    // Our FFTW Plan pool
+    FFTWPlanPool fftw_planpool{};
     std::string status_message{};
 };
 //
@@ -181,7 +187,7 @@ void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
 void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
-void calc_spectrum(sac_1c& sac, sac_1c& spectrum);
+void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c& sac, sac_1c& spectrum);
 // Remove mean from sac_1c object
 void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac);
 // Remove mean from all sac_1c objects in a deque
@@ -190,10 +196,6 @@ void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deq
 void remove_trend(Project& project, ProgramStatus& program_status, sac_1c& sac);
 // Remove trend from all sac_1c objects in a deque
 void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
-// Turns out FFTW is not thread-safe and doesn't provide that on Mac
-// I could compile it manually, but I don't want to
-// So we're going to change how we do this, one function for solo
-// One function for many
 // Lowpass one sac_1c
 void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
@@ -232,6 +234,14 @@ void fill_deque_project(Project& project, ProgramStatus& program_status, std::de
 void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
 // Delete a checkpoint
 void delete_checkpoint(Project& project, int checkpoint_id);
+// Shitty lowpass for testing
+void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
+// Shitty highpass for testing
+void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
+// Shitty bandpass for testing
+void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, double highpass);
+// Shitty bandreject for testing
+void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowreject, double highreject);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

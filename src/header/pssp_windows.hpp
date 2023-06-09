@@ -60,7 +60,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
 // Window that displays the frame-rate in Frames Per Second
 void window_fps(fps_info& fps_tracker, WindowSettings& window_settings);
 // Window lists data currently in memory
-void window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
+void window_sac_deque(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
 std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared);
 // Window to name a checkpoint
 void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque);

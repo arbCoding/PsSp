@@ -18,7 +18,7 @@ SHELL := /bin/bash
 # Linux or mac
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = false
+debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -234,12 +234,6 @@ all: PsSp
 # Not necessary for MacOS, but necessary if you want a free floating application
 # on MacOS
 macos: PsSp.app
-
-# These need sac_format.o and FFTW
-sac_spectral_tests: sac_stream_fftw_test sac_stream_lowpass_test
-
-# All tests
-tests: sac_spectral_tests imgui_test
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -247,23 +241,6 @@ tests: sac_spectral_tests imgui_test
 #------------------------------------------------------------------------------
 # Compilation patterns
 #------------------------------------------------------------------------------
-# By splitting into .o files I can make it so that only newly written code gets compiled
-# Therefore cutting down on compilation times
-# Also helps to simply the logic a little bit
-$(obj_prefix)sac_spectral.o: $(imp_prefix)sac_spectral.cpp
-	@echo "Building $@"
-	@echo "Build start:  $$(date)"
-	@test -d $(obj_prefix) || mkdir -p $(obj_prefix)
-	$(cxx) -c -o $@ $< -I$(sf_header) $(fftw_include)
-	@echo -e "Build finish: $$(date)\n"
-
-spectral_sac := sac_stream_fftw_test sac_stream_lowpass_test
-$(spectral_sac): %:$(test_prefix)%.cpp $(obj_prefix)sac_spectral.o $(sf_obj)
-	@echo "Building $(test_bin_prefix)$@"
-	@echo "Build start:  $$(date)"
-	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(obj_prefix)sac_spectral.o $(fftw_params)
-	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------
 # ImGuiFileDialog

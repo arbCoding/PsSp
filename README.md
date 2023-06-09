@@ -105,7 +105,7 @@ or manually. For those other packages I provide installation guidance for MacOS 
    * This is a graphical backend for the GUI.
 * [FFTW3](https://www.fftw.org/)
    * This is necessary for spectral functionality (FFT, IFFT).
-   * At present, this is not thread-safe and therefore all spectral functions (filtering) is performed on a single-thread.
+   * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
 * [MessagePack](https://msgpack.org/)
    * Provides data-serialization, used to program settings.
 * [Boost](https://www.boost.org/)

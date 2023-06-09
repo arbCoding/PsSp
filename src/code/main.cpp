@@ -14,6 +14,8 @@
 #include "pssp_misc.hpp"
 // Uses sqlite3 for projects
 #include "pssp_projects.hpp"
+// SQLite3 library
+#include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // std::string_view
 #include <string_view>
@@ -28,8 +30,7 @@
 #include <sstream>
 // std::getenv()
 #include <cstdlib>
-// SQLite3 library
-#include <sqlite3.h>
+#include <complex>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -38,6 +39,9 @@
 // Current Focus
 //-----------------------------------------------------------------------------
 // Data display and migrating away from direct access to the sac_deque.
+// FFTW3 can be thread-safe
+// I must makes my plans in one thread (that isn't threadsafe)
+// But using the plans is threadsafe (can use the same plan in parallel)
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------
@@ -247,8 +251,10 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.batch_menu = false;
             break;
         case idle:
-            program_status.status_message = "Idle";
             // We're idle
+            program_status.status_message = "Idle";
+            // Empty the FFTW plan_pool, no need to keep it pre-filled.
+            if (program_status.fftw_planpool.n_plans() != 0) { program_status.fftw_planpool.empty_pool(); }
             // Any window can be shown
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
@@ -416,11 +422,12 @@ int main(int arg_count, char* arg_array[])
     // Which sac-file is active
     int active_sac{};
     bool clear_sac{false};
+    // Make a fresh project
+    pssp::Project project{};
     //---------------------------------------------------------------------------
     // End Misc Draw loop variables
     //---------------------------------------------------------------------------
-    // Make a fresh project
-    pssp::Project project{};
+
     //---------------------------------------------------------------------------
     // Draw loop
     //---------------------------------------------------------------------------
@@ -471,12 +478,12 @@ int main(int arg_count, char* arg_array[])
                   compare_names = (spectrum.file_name == sac_deque[active_sac].file_name);
               }
               // If they're not the same, then calculate the FFT
-              if (!compare_names) { calc_spectrum(sac_deque[active_sac], spectrum); }
+              if (!compare_names) { calc_spectrum(program_status.fftw_planpool, sac_deque[active_sac], spectrum); }
           }
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, spectrum);
           // Show the Sac List window if appropriate
-          window_sac_deque(current_settings.window_settings, current_settings.menu_allowed, sac_deque, spectrum, active_sac, clear_sac);
+          window_sac_deque(program_status, current_settings.window_settings, current_settings.menu_allowed, sac_deque, spectrum, active_sac, clear_sac);
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);
           window_highpass_options(current_settings.window_settings.highpass, af_settings.highpass);
           window_bandpass_options(current_settings.window_settings.bandpass, af_settings.bandpass);
