@@ -39,9 +39,6 @@
 // Current Focus
 //-----------------------------------------------------------------------------
 // Data display and migrating away from direct access to the sac_deque.
-// FFTW3 can be thread-safe
-// I must makes my plans in one thread (that isn't threadsafe)
-// But using the plans is threadsafe (can use the same plan in parallel)
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------

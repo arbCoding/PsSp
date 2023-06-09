@@ -78,9 +78,9 @@ base_prefix = $(CURDIR)/src/
 # Built programs will go here
 bin_prefix = $(CURDIR)/bin/
 # Test programs will go here
-test_bin_prefix = $(bin_prefix)tests/
+pg_bin_prefix = $(bin_prefix)playground/
 # Where the source code files for tests are stored
-test_prefix = $(base_prefix)tests/
+pg_prefix = $(base_prefix)playground/
 # Where the source code files for PsSp are stored
 code_prefix = $(base_prefix)code/
 # Where header (interface) files are stored
@@ -292,19 +292,6 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# imgui_test
-#------------------------------------------------------------------------------
-imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
-	@echo "Building $@"
-	@echo "Build start:  $$(date)"
-	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
-	@echo -e "Build finish: $$(date)\n"
-#------------------------------------------------------------------------------
-# end imgui_test
-#------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------
 # PsSp
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(imgui_dir)misc/cpp/imgui_stdlib.cpp $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
@@ -337,6 +324,19 @@ PsSp.app: PsSp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End PsSp.app (MacOs only)
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# Playground, where I put stuff for experiment
+#------------------------------------------------------------------------------
+playground: $(pg_prefix)nary_tree_example.cpp
+	@echo "Building $@"
+	@echo "Build start: $$(date)"
+	@test -d $(pg_bin_prefix) || mkdir -p $(pg_bin_prefix)
+	$(cxx) -o $(pg_bin_prefix)$@ $<
+	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End Playground, where I put stuff for experiment
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
