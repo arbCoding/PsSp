@@ -1,48 +1,18 @@
 #include "pssp_windows.hpp"
-#include "imgui.h"
 #include "pssp_misc.hpp"
-#include <filesystem>
+#include "pssp_program_settings.hpp"
 
+namespace pssp
+{
 //-----------------------------------------------------------------------------
 // Status Bar
 //-----------------------------------------------------------------------------
-void pssp::status_bar(ProgramStatus& program_status)
+void status_bar(ProgramStatus& program_status)
 {
     // Size and position
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
     ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetTextLineHeightWithSpacing() + (ImGui::GetStyle().FramePadding.y * 2.0f) + 10));
     ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeightWithSpacing() - (ImGui::GetStyle().FramePadding.y * 2.0f) - 10));
-    //----------------------------------------------------------------------
-    // Status of program (message and progress)
-    //----------------------------------------------------------------------
-    // If we're not reading or shutting down, we're idle
-    std::string status_message{""};
-    {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.is_idle = (!program_status.fileio.is_reading && !program_status.fileio.is_processing);
-        if (program_status.is_idle)
-        {
-            status_message = "Idle";
-            program_status.progress = 1.1f;
-        }
-        else
-        {
-            program_status.progress = static_cast<float>(program_status.fileio.count) / static_cast<float>(program_status.fileio.total);
-            if (program_status.progress >= 1.0f)
-            {
-                std::lock_guard<std::shared_mutex> lock_io(program_status.fileio.mutex_);
-                program_status.is_idle = true;
-                program_status.fileio.is_reading = false;
-                program_status.fileio.is_processing = false;
-                program_status.fileio.total = 0;
-            }
-            else if (program_status.fileio.is_reading) { status_message = "Reading SAC files..."; }
-            else if (program_status.fileio.is_processing) { status_message = "Processing..."; }
-        }
-    }
-    //----------------------------------------------------------------------
-    // End Status of program (message and progress)
-    //----------------------------------------------------------------------
     std::ostringstream oss{};
     oss << "Threads (Busy/Total): " << program_status.thread_pool.n_busy_threads()
     << '/' << program_status.thread_pool.n_threads_total();
@@ -52,7 +22,7 @@ void pssp::status_bar(ProgramStatus& program_status)
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
                 ImGuiWindowFlags_NoNav);
     // Add status message, this on the left of the bar
-    ImGui::Text("%s", status_message.c_str());
+    ImGui::Text("%s", program_status.status_message.c_str());
     // Add information about running threads, this is in the middle of the bar
     ImGui::SameLine((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(oss.str().c_str()).x) / 2.0f);
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
@@ -76,9 +46,9 @@ void pssp::status_bar(ProgramStatus& program_status)
 //-----------------------------------------------------------------------------
 // Lowpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& lowpass_settings)
+void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -88,7 +58,7 @@ void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings&
         }
 
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        if (!program_status.is_idle) { ImGui::BeginDisabled(); }
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
         
         ImGui::SetNextItemWidth(130);
         
@@ -112,7 +82,7 @@ void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings&
             lowpass_settings.apply_batch = false;
             window_settings.show = false;
         }
-        if (!program_status.is_idle) { ImGui::EndDisabled(); }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         ImGui::End();
     }
 }
@@ -123,9 +93,9 @@ void pssp::window_lowpass_options(ProgramStatus& program_status, WindowSettings&
 //-----------------------------------------------------------------------------
 // Highpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& highpass_settings)
+void window_highpass_options(WindowSettings& window_settings, FilterOptions& highpass_settings)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -135,7 +105,7 @@ void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings
         }
 
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        if (!program_status.is_idle) { ImGui::BeginDisabled(); }
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
         
         ImGui::SetNextItemWidth(130);
         
@@ -158,7 +128,7 @@ void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings
             highpass_settings.apply_batch = false;
             window_settings.show = false;
         }
-        if (!program_status.is_idle) { ImGui::EndDisabled(); }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         ImGui::End();
     }
 }
@@ -169,9 +139,9 @@ void pssp::window_highpass_options(ProgramStatus& program_status, WindowSettings
 //-----------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //-----------------------------------------------------------------------------
-void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings& window_settings, FilterOptions& bandpass_settings)
+void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -181,7 +151,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
         }
 
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        if (!program_status.is_idle) { ImGui::BeginDisabled(); }
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
         
         ImGui::SetNextItemWidth(130);
         
@@ -210,7 +180,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
             bandpass_settings.apply_batch = false;
             window_settings.show = false;
         }
-        if (!program_status.is_idle) { ImGui::EndDisabled(); }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         ImGui::End();
     }
 }
@@ -221,7 +191,7 @@ void pssp::window_bandpass_options(ProgramStatus& program_status, WindowSettings
 //-----------------------------------------------------------------------------
 // Main menu bar
 //-----------------------------------------------------------------------------
-void pssp::main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
 AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int& active_sac, Project& project)
 {
     sac_1c sac{};
@@ -291,19 +261,14 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         { ImGui::SetTooltip("Unload current project"); }
         if (ImGui::MenuItem("Create Unnamed Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
         {
-            {
-                std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-                program_status.is_idle = false;
-                program_status.fileio.total = static_cast<int>(sac_deque.size());
-                program_status.fileio.count = 0;
-            }
+            program_status.total_tasks = 1;
             // Add a checkpoint to the list (made by user)
             project.checkpoint_name = "";
             project.write_checkpoint(true, false);
             // Checkpoint each piece of data
             for (std::size_t i{0}; i < sac_deque.size(); ++i)
             {
-                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
+                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
             }
         }
         if (ImGui::MenuItem("Create Named Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
@@ -409,6 +374,11 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             allwindow_settings.lowpass.is_set = false;
             allwindow_settings.highpass.is_set = false;
             allwindow_settings.bandpass.is_set = false;
+            allwindow_settings.bandreject.is_set = false;
+            allwindow_settings.file_dialog.is_set = false;
+            allwindow_settings.name_checkpoint.is_set = false;
+            allwindow_settings.notes_checkpoint.is_set = false;
+            allwindow_settings.processing_history.is_set = false;
         }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -425,28 +395,28 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Frames Per Second display"); }
         
-        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
+        if (ImGui::MenuItem("Sac Header##", nullptr, nullptr, menu_allowed.sac_header))
         { allwindow_settings.header.show = true; }
 
-        if (ImGui::MenuItem("History##", nullptr, nullptr, (menu_allowed.sac_header && program_status.is_idle)))
+        if (ImGui::MenuItem("History##", nullptr, nullptr, menu_allowed.sac_header))
         { allwindow_settings.processing_history.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Displays processing header"); }
         
-        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, (menu_allowed.plot_1c && program_status.is_idle)))
+        if (ImGui::MenuItem("Sac Plot 1C##", nullptr, nullptr, menu_allowed.plot_1c))
         { allwindow_settings.plot_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("1-component SAC plot"); }
         
-        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, (menu_allowed.plot_spectrum_1c && program_status.is_idle)))
+        if (ImGui::MenuItem("Spectrum Plot 1C##", nullptr, nullptr, menu_allowed.plot_spectrum_1c))
         { allwindow_settings.spectrum_1c.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("1-component SAC spectrogram (real/imaginary) plot"); }
         
-        if (ImGui::MenuItem("Sac List##", nullptr, nullptr, (menu_allowed.sac_deque && program_status.is_idle)))
+        if (ImGui::MenuItem("Sac List##", nullptr, nullptr, menu_allowed.sac_deque))
         { allwindow_settings.sac_files.show = true; }
         
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -462,11 +432,10 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         // Read the SAC-File safely
         if (ImGuiFileDialog::Instance()->IsOk())
         {
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.fileio.count = 0;
+            program_status.tasks_completed = 0;
             // Can only select 1 file anyway!
-            program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status.fileio), std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName()), std::ref(project));
+            program_status.total_tasks = 1;
+            program_status.thread_pool.enqueue(read_sac_1c, std::ref(sac_deque), std::ref(program_status), std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName()), std::ref(project));
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -524,22 +493,18 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
     {
         if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
         {
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.fileio.is_processing = true;
-            program_status.fileio.count = 0;
-            program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.tasks_completed = 0;
+            program_status.total_tasks = 1;
+            program_status.thread_pool.enqueue(remove_mean, std::ref(project), std::ref(program_status), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from active data."); }
         
         if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
         {
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.fileio.is_processing = true;
-            program_status.fileio.count = 0;
-            program_status.fileio.total = 1;
-            program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status.fileio), std::ref(sac_deque[active_sac]));
+            program_status.tasks_completed = 0;
+            program_status.total_tasks = 1;
+            program_status.thread_pool.enqueue(remove_trend, std::ref(project), std::ref(program_status), std::ref(sac_deque[active_sac]));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove linear trend from active data."); }
@@ -615,7 +580,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             af_settings.lowpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Butterworth Lowpass filter all data. Not implemented"); }
+        { ImGui::SetTooltip("Butterworth Lowpass filter all data."); }
         
         if (ImGui::MenuItem("Highpass##", nullptr, nullptr, menu_allowed.highpass))
         {
@@ -625,7 +590,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             af_settings.highpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Butterworth Highpass filter all data. Not implemented"); }
+        { ImGui::SetTooltip("Butterworth Highpass filter all data."); }
        
         if (ImGui::MenuItem("Bandpass##", nullptr, nullptr, menu_allowed.bandpass))
         {
@@ -635,14 +600,14 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
             af_settings.bandpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Butterworth Bandpass filter all data. Not implemented"); }
+        { ImGui::SetTooltip("Butterworth Bandpass filter all data."); }
         
         if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, menu_allowed.bandreject))
         {
             // To be implemented later
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
-        { ImGui::SetTooltip("Butterworth Bandreject filter all data. Not implemented"); }
+        { ImGui::SetTooltip("Butterworth Bandreject filter all data."); }
         
         ImGui::EndMenu();
     }
@@ -655,9 +620,9 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
 //-----------------------------------------------------------------------------
 // 1-component SAC plot window
 //-----------------------------------------------------------------------------
-void pssp::window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected)
+void window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& sac_deque, int& selected)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -711,9 +676,9 @@ void pssp::window_plot_sac(WindowSettings& window_settings, std::deque<sac_1c>& 
 //-----------------------------------------------------------------------------
 // 1-component SAC spectrum window
 //-----------------------------------------------------------------------------
-void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
+void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -757,9 +722,9 @@ void pssp::window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectru
 //-----------------------------------------------------------------------------
 // 1-component SAC header window
 //-----------------------------------------------------------------------------
-void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& window_settings, sac_1c& sac)
+void window_sac_header(WindowSettings& window_settings, sac_1c& sac)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -769,7 +734,7 @@ void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& wind
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
         {
-            if (!program_status.is_idle) { ImGui::BeginDisabled(); }
+            if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
             
             std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
             if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
@@ -812,7 +777,7 @@ void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& wind
                 ImGui::Text("Npts:       %i", sac.sac.npts);
                 ImGui::Text("IfType:     %i", sac.sac.iftype);
             }
-            if (!program_status.is_idle) { ImGui::EndDisabled(); }
+            if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         }
         ImGui::End();
     }
@@ -824,9 +789,9 @@ void pssp::window_sac_header(ProgramStatus& program_status, WindowSettings& wind
 //-----------------------------------------------------------------------------
 // Welcome window
 //-----------------------------------------------------------------------------
-void pssp::window_welcome(WindowSettings& window_settings, std::string_view& welcome_message)
+void window_welcome(WindowSettings& window_settings, std::string_view& welcome_message)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -847,9 +812,9 @@ void pssp::window_welcome(WindowSettings& window_settings, std::string_view& wel
 // FPS window
 //-----------------------------------------------------------------------------
 // Creates a small window to show the FPS of the program, pretty much setup
-void pssp::window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
+void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         std::lock_guard<std::mutex> guard(fps_tracker.mutex_);
         if (!window_settings.is_set)
@@ -882,13 +847,13 @@ void pssp::window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // SAC-loaded window
 //-----------------------------------------------------------------------------
-void pssp::window_sac_deque(AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
-ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
+void window_sac_deque(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed,
+std::deque<sac_1c>& sac_deque, sac_1c& spectrum, int& selected, bool& cleared)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
     std::string option{};
     //if (window_settings.show && program_status.is_idle)
-    if (window_settings.show && program_status.is_idle)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -898,7 +863,7 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
             window_settings.is_set = true;
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        if (!program_status.is_idle) { ImGui::BeginDisabled(); }
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
         for (int i = 0; const auto& sac : sac_deque)
         {
             const bool is_selected{selected == i};
@@ -927,7 +892,7 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
                     std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
                     sac_deque[selected].sac = SAC::SacStream(sac_deque[selected].file_name);
                     }
-                    calc_spectrum(sac_deque[selected], spectrum);
+                    calc_spectrum(program_status.fftw_planpool, sac_deque[selected], spectrum);
                 }
                 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("Reload the original SAC file"); }
@@ -962,7 +927,7 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
             }
             ++i;
         }
-        if (!program_status.is_idle) { ImGui::EndDisabled(); }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         ImGui::End();
     }
 }
@@ -973,9 +938,9 @@ ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, sac_1c& spectrum, 
 //-----------------------------------------------------------------------------
 // Checkpoint name window
 //-----------------------------------------------------------------------------
-void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque)
+void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -985,7 +950,6 @@ void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus
         }
 
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
-        ImGui::Text("Checkpoint Notes:");
         ImGui::Separator();
         static std::string checkpoint_name_buffer{project.checkpoint_name};
         if (project.clear_name)
@@ -1004,16 +968,15 @@ void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus
             project.checkpoint_name = checkpoint_name_buffer;
             {
                 std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-                program_status.is_idle = false;
-                program_status.fileio.total = static_cast<int>(sac_deque.size());
-                program_status.fileio.count = 0;
+                program_status.total_tasks = static_cast<int>(sac_deque.size());
+                program_status.tasks_completed = 0;
             }
             // Add a checkpoint to the list (made by user)
             project.write_checkpoint(true, false);
             // Checkpoint each piece of data
             for (std::size_t i{0}; i < sac_deque.size(); ++i)
             {
-                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status.fileio), std::ref(project), std::ref(sac_deque[i]));
+                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
             }
              // Close the window after queueing up the work
             window_settings.show = false;
@@ -1032,9 +995,9 @@ void pssp::window_name_checkpoint(WindowSettings& window_settings, ProgramStatus
 //-----------------------------------------------------------------------------
 // Checkpoint notes window
 //-----------------------------------------------------------------------------
-void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& project)
+void window_notes_checkpoint(WindowSettings& window_settings, Project& project)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -1078,9 +1041,9 @@ void pssp::window_notes_checkpoint(WindowSettings& window_settings, Project& pro
 //-----------------------------------------------------------------------------
 // Processing history window
 //-----------------------------------------------------------------------------
-void pssp::window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
+void window_processing_history(WindowSettings& window_settings, Project& project, int data_id)
 {
-    if (window_settings.show)
+    if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
@@ -1106,3 +1069,4 @@ void pssp::window_processing_history(WindowSettings& window_settings, Project& p
 //-----------------------------------------------------------------------------
 // End Processing history window
 //-----------------------------------------------------------------------------
+}

@@ -59,3 +59,7 @@ bin/*
 .vscode/launch.json
 # SQLite3 databases
 *.db
+# I tend to use .proj for the database
+*.proj
+# Any log files
+*.log

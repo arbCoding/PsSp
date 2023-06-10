@@ -38,7 +38,23 @@ endif
 # Specific to Dear ImGui
 debug_imgui = $(common_debug)
 # Release params only if debug is false
-release_param = -O2 -DNDEBUG
+# This is middle of the road, safe optimizations, quick build
+#release_param = -O2 -DNDEBUG
+# This is the most optimized without doing fine-grain optimizations, while
+# not using fast-math, so if you're worried about any numerical inaccuracy made by the
+# use of fast-math, then swap over to this level of optimization
+# I think -O3 is the best choice for now. -Ofast has caused some data-corruption twice in a few tests
+# both in terms of locking the GUI, but also in terms of completely losing the time-series data
+# after applying a filter.
+release_param = -O3 -DNDEBUG
+# This is fast and dangerous (not really, but doesn't strictly comply with the language standards)
+# It is blazingly fact though!
+# It enables fast-math, which has typical rounding errors of machine epsilon (usually about
+# 1e-15 for doubles, which is smaller than what I care about anyway)
+#release_param = -Ofast -DNDEBUG
+# This is supposed to make the smallest binary possible, it barely does anything to our size
+# probably because we're super small anyway
+#release_param = -Oz -DNDEBUG
 
 ifeq ($(debug), true)
 	params = $(param) $(debug_param)
@@ -61,12 +77,12 @@ cxx := $(compiler) $(params)
 base_prefix = $(CURDIR)/src/
 # Built programs will go here
 bin_prefix = $(CURDIR)/bin/
-# Test programs will go here
-test_bin_prefix = $(bin_prefix)tests/
-# Where the source code files for tests are stored
-test_prefix = $(base_prefix)tests/
 # Where the source code files for PsSp are stored
 code_prefix = $(base_prefix)code/
+# Where experimental code lives
+exp_prefix = $(code_prefix)experiment/
+# Where experimental programs will go
+exp_bin_prefix = $(bin_prefix)experiment/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -202,6 +218,14 @@ cxx := $(cxx) -I$(hdr_prefix)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Include my implementations
+#------------------------------------------------------------------------------
+my_imp_files := $(wildcard $(imp_prefix)*.cpp)
+#------------------------------------------------------------------------------
+# End Include my implementations
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Program definitions
 #------------------------------------------------------------------------------
 # All programs
@@ -211,11 +235,8 @@ all: PsSp
 # on MacOS
 macos: PsSp.app
 
-# These need sac_format.o and FFTW
-sac_spectral_tests: sac_stream_fftw_test sac_stream_lowpass_test
-
-# All tests
-tests: sac_spectral_tests imgui_test
+# Experimental programs
+exp: tree_exp
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -223,23 +244,6 @@ tests: sac_spectral_tests imgui_test
 #------------------------------------------------------------------------------
 # Compilation patterns
 #------------------------------------------------------------------------------
-# By splitting into .o files I can make it so that only newly written code gets compiled
-# Therefore cutting down on compilation times
-# Also helps to simply the logic a little bit
-$(obj_prefix)sac_spectral.o: $(imp_prefix)sac_spectral.cpp
-	@echo "Building $@"
-	@echo "Build start:  $$(date)"
-	@test -d $(obj_prefix) || mkdir -p $(obj_prefix)
-	$(cxx) -c -o $@ $< -I$(sf_header) $(fftw_include)
-	@echo -e "Build finish: $$(date)\n"
-
-spectral_sac := sac_stream_fftw_test sac_stream_lowpass_test
-$(spectral_sac): %:$(test_prefix)%.cpp $(obj_prefix)sac_spectral.o $(sf_obj)
-	@echo "Building $(test_bin_prefix)$@"
-	@echo "Build start:  $$(date)"
-	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(obj_prefix)sac_spectral.o $(fftw_params)
-	@echo -e "Build finish: $$(date)\n"
 
 #------------------------------------------------------------------------------
 # ImGuiFileDialog
@@ -291,26 +295,11 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# imgui_test
-#------------------------------------------------------------------------------
-imgui_test: $(test_prefix)imgui_test.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
-	@echo "Building $@"
-	@echo "Build start:  $$(date)"
-	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(imgui_cxx) -I$(sf_header) -o $(test_bin_prefix)$@ $< $(sf_obj) $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_params) $(implot_dir)implot.cpp $(implot_dir)implot_items.cpp
-	@echo -e "Build finish: $$(date)\n"
-#------------------------------------------------------------------------------
-# end imgui_test
-#------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------
 # PsSp
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(imgui_dir)misc/cpp/imgui_stdlib.cpp $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
-pssp_param_list += $(implot_dir)implot_items.cpp $(obj_prefix)sac_spectral.o $(fftw_params) $(boost_params) $(msgpack_params) 
-pssp_param_list += $(imp_prefix)pssp_program_settings.cpp $(imp_prefix)pssp_misc.cpp $(imp_prefix)pssp_windows.cpp $(imgui_params)
-pssp_param_list += -lsqlite3
-PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj) $(obj_prefix)sac_spectral.o
+pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params) 
+PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(bin_prefix) || mkdir -p $(bin_prefix)
@@ -338,6 +327,19 @@ PsSp.app: PsSp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End PsSp.app (MacOs only)
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# NTreeNode experimentation
+#------------------------------------------------------------------------------
+tree_exp: $(exp_prefix)tree_exp.cpp
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(exp_bin_prefix) || mkdir -p $(exp_bin_prefix)
+	$(cxx) -o $(exp_bin_prefix)$@ $< $(imp_prefix)pssp_data_trees.cpp
+	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End NTreeNode experimentation
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
