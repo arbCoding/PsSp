@@ -77,10 +77,6 @@ cxx := $(compiler) $(params)
 base_prefix = $(CURDIR)/src/
 # Built programs will go here
 bin_prefix = $(CURDIR)/bin/
-# Test programs will go here
-pg_bin_prefix = $(bin_prefix)playground/
-# Where the source code files for tests are stored
-pg_prefix = $(base_prefix)playground/
 # Where the source code files for PsSp are stored
 code_prefix = $(base_prefix)code/
 # Where header (interface) files are stored
@@ -324,19 +320,6 @@ PsSp.app: PsSp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End PsSp.app (MacOs only)
-#------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------
-# Playground, where I put stuff for experiment
-#------------------------------------------------------------------------------
-playground: $(pg_prefix)nary_tree_example.cpp
-	@echo "Building $@"
-	@echo "Build start: $$(date)"
-	@test -d $(pg_bin_prefix) || mkdir -p $(pg_bin_prefix)
-	$(cxx) -o $(pg_bin_prefix)$@ $<
-	@echo -e "Build finish: $$(date)\n"
-#------------------------------------------------------------------------------
-# End Playground, where I put stuff for experiment
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
