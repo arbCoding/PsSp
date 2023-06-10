@@ -1,5 +1,4 @@
 #include "pssp_data_trees.hpp"
-#include <exception>
 
 namespace pssp
 {

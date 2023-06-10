@@ -85,7 +85,7 @@
 //
 // Source for information on USArray: https://www.ds.iris.edu/mda/TA/
 //
-// What do I mean by not too large? Let's make an absurd calculation
+// What do I mean by not too large? Let's make an absurd order-of-magnitude calculation
 //
 // The USArray had a total of 1892 deployments (stations were redeployed in
 //  a staggered manner over time to allow for this many deployments with far
@@ -121,13 +121,13 @@
 //
 // It might be fine to load data into memory on the fly as needed, and then store
 //  it in the project database in a temporary table that gets deleted on program
-//  closure
+//  closure?
 //
 // Added benefit of possibly restoring state if program crashes?
 //
 // Alternatively, could do data chunking (load some amount of seismograms at once
 //  unload that many at once and replace with that many new?). I'll need to
-//  ponder that more later, for now the focus elsewhere.
+//  ponder that more later, for now my focus is elsewhere (N-ary trees).
 //=============================================================================
 //-----------------------------------------------------------------------------
 // End Description

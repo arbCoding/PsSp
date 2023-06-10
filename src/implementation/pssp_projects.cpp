@@ -1238,6 +1238,28 @@ std::string Project::get_current_processing_history(int data_id)
 // End Get data_id current checkpoint history
 //------------------------------------------------------------------------
 
+//------------------------------------------------------------------------
+// Build N-ary tree of data_ids
+//------------------------------------------------------------------------
+// In order to build the N-ary tree we need to access the database
+// For now, I'm going to make a hard-coded ordering of
+// Reference_Time->Array->Station->Component (Should only be 1-reference time)
+// In the future, I'll add more flexible versions
+// This will allow us to efficiently store data-organization
+// Without needing to implement internal sorting/reoganizing in the
+// NTreeNode, which I don't feel like doing at the moment
+//
+// This is a place holder, I'll get back to this problem later
+//  first I need to update the database schema to be more efficient...
+std::unique_ptr<NTreeNode> build_data_id_tree()
+{
+    // Each data_id is tied to a unique component,station,array,event
+    return nullptr;
+}
+//------------------------------------------------------------------------
+// End Build N-ary tree of data_ids
+//------------------------------------------------------------------------
+
 //-----------------------------------------------------------------------------
 // End Public stuff
 //-----------------------------------------------------------------------------

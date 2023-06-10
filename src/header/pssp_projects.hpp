@@ -5,6 +5,7 @@
 // Include statements
 //-----------------------------------------------------------------------------
 #include "pssp_datetime.hpp"
+#include "pssp_data_trees.hpp"
 #include "sac_io.hpp"
 #include "sac_stream.hpp"
 // SQLite3 official library
@@ -19,8 +20,53 @@
 #include <ios>
 #include <unordered_map> 
 #include <algorithm>
+#include <memory>
 //-----------------------------------------------------------------------------
 // End Include statements
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// ToDo
+//-----------------------------------------------------------------------------
+// So, upon working on organizing my data-trees, it turns out the current
+//  organization scheme is not great.
+//
+// At present, every seismogram has two tables, one for checkpoints and one
+//  for processing notes.
+//
+// But what if I want to query across all seismogram's to get all the unique
+//  component names, or event reference times, or array names?
+//
+// Well, I can use dynamic SQL querys for search across all those tables. Except,
+//  when the number of tables becomes large, that becomes super inefficient.
+//  There is also additional storage overhead of keeping distinct tables.
+//
+// The benefit is that the organization is more intuitive to me.
+//
+// But for larger projects, this will become an issue.
+//
+// So I've decided to restructure the table (hopefully never again).
+//
+// We have a table of unique_ids (provenance, no change)
+// A table listing unique checkpoints (checkpoints, no change)
+// A table with all the checkpointed data
+//  This is a change, instead of a separate table per seismogram, one table to rule them all
+// A table with all processing notes
+//  This is a change, instead of a separate table per seismogram, one table to rule them all
+//
+// This will allow for:
+//  simplified queries
+//  improved query performance
+//      (which includes faster I/O)
+//  data consistency
+//  flexibility in modifying the data schema
+//
+// This is a painful change to make, especially as the current implementation
+//  does work. So I'm going to push this to the main project as the present
+//  working version and create a new branch for scheming (at least I can
+//  take solace in an amusing branch name!)
+//-----------------------------------------------------------------------------
+// End ToDo
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -175,6 +221,17 @@ class Project
         std::string get_processing_history(int data_id, int checkpoint_id);
         // Get the history for data_id and the current checkpoint_id
         std::string get_current_processing_history(int data_id);
+        // In order to build the N-ary tree we need to access the database
+        // For now, I'm going to make a hard-coded ordering of
+        // Reference_Time->Array->Station->Component (Should only be 1-reference time)
+        // In the future, I'll add more flexible versions
+        // This will allow us to efficiently store data-organization
+        // Without needing to implement internal sorting/reoganizing in the
+        // NTreeNode, which I don't feel like doing at the moment
+        //
+        // This is a place holder, I'll get back to this problem later
+        //  first I need to update the database schema to be more efficient...
+        std::unique_ptr<NTreeNode> build_data_id_tree();
 };
 }
 
