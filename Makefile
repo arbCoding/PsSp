@@ -79,6 +79,10 @@ base_prefix = $(CURDIR)/src/
 bin_prefix = $(CURDIR)/bin/
 # Where the source code files for PsSp are stored
 code_prefix = $(base_prefix)code/
+# Where experimental code lives
+exp_prefix = $(code_prefix)experiment/
+# Where experimental programs will go
+exp_bin_prefix = $(bin_prefix)experiment/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -230,6 +234,9 @@ all: PsSp
 # Not necessary for MacOS, but necessary if you want a free floating application
 # on MacOS
 macos: PsSp.app
+
+# Experimental programs
+exp: tree_exp
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -320,6 +327,19 @@ PsSp.app: PsSp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End PsSp.app (MacOs only)
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# NTreeNode experimentation
+#------------------------------------------------------------------------------
+tree_exp: $(exp_prefix)tree_exp.cpp
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(exp_bin_prefix) || mkdir -p $(exp_bin_prefix)
+	$(cxx) -o $(exp_bin_prefix)$@ $< $(imp_prefix)pssp_data_trees.cpp
+	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End NTreeNode experimentation
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------

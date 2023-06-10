@@ -1,5 +1,5 @@
-#ifndef PSSP_PROGRAM_SETTINGS_HPP
-#define PSSP_PROGRAM_SETTINGS_HPP
+#ifndef PSSP_PROGRAM_SETTINGS_HPP_20230610
+#define PSSP_PROGRAM_SETTINGS_HPP_20230610
 
 //-----------------------------------------------------------------------------
 // Include statements

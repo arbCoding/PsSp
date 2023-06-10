@@ -236,8 +236,8 @@ Always user header-guards for your interfaces and keep all include statements in
 
 e.g. (interface.hpp)
 ```c++
-#ifndef PSSP_INTERFACE_HPP
-#define PSSP_INTERFACE_HPP
+#ifndef PSSP_INTERFACE_HPP_20230610
+#define PSSP_INTERFACE_HPP_20230610
 #include <iostream>
 #include <vector>
 #endif
@@ -251,16 +251,16 @@ e.g. (interface.cpp)
 ### Header-Guards
 ---
 
-Header-guard names are in full-caps, prefaced by the namespace (or program), and ended with HPP.
+Header-guard names are in full-caps, prefaced by the namespace (or program), and followed by the extension (HPP) and then the date the header guard was added/modified in YYYYMMDD format. Previously the date addition was not included, it has been tacked on to the format for extra internal safety.
 
 e.g. (Good)
 ```c++
-#ifndef PSSP_INTERFACE_HPP
-#define PSSP_INTERFACE_HPP
+#ifndef PSSP_INTERFACE_HPP_20230610
+#define PSSP_INTERFACE_HPP_20230610
 #endif
 
-#ifndef SAC_SOMEINTERFACE_HPP
-#define SAC_SOMEINTERFACE_HPP
+#ifndef SAC_SOMEINTERFACE_HPP_20230610
+#define SAC_SOMEINTERFACE_HPP_20230610
 #endif
 ```
 

@@ -1,5 +1,5 @@
-#ifndef PSSP_THREAD_POOL_HPP
-#define PSSP_THREAD_POOL_HPP
+#ifndef PSSP_THREAD_POOL_HPP_20230610
+#define PSSP_THREAD_POOL_HPP_20230610
 
 //-----------------------------------------------------------------------------
 // Include statements

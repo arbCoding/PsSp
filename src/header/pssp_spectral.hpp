@@ -1,5 +1,5 @@
-#ifndef PSSP_SPECTRAL_HPP
-#define PSSP_SPECTRAL_HPP
+#ifndef PSSP_SPECTRAL_HPP_20230610
+#define PSSP_SPECTRAL_HPP_20230610
 
 #include "pssp_fftw_planpool.hpp"
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library

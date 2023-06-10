@@ -1,5 +1,5 @@
-#ifndef PSSP_MISC_HPP
-#define PSSP_MISC_HPP
+#ifndef PSSP_MISC_HPP_20230610
+#define PSSP_MISC_HPP_20230610
 
 // Silence OpenGL deprecation warnings on compile
 #define GL_SILENCE_DEPRECATION

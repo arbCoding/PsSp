@@ -1,5 +1,5 @@
-#ifndef PSSP_DATETIME_HPP
-#define PSSP_DATETIME_HPP
+#ifndef PSSP_DATETIME_HPP_20230610
+#define PSSP_DATETIME_HPP_20230610
 
 #include "sac_stream.hpp"
 #include <string>
