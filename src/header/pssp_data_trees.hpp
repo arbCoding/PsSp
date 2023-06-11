@@ -15,6 +15,109 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// ToDo
+//-----------------------------------------------------------------------------
+// I suspect I was overcomplicating the issue of the data-structure
+//
+// We decide we want to create group-nodes base upon a header-value, say station
+// name
+//
+// We create a root group-node that exists only to be our root.
+//
+// This is the only time we'll need the std::vector<int>, afterward
+// we'll be using the already made node's, instead of making new ones
+// We take out first data_id (say from a std::vector<int>, we pop it)
+//
+// We determine its reference time, create a group-node with that name and
+//  attach it as the first child to that group-node and attach that as the first
+//  child to the root-node.
+//
+// Then we go to the next data_id, check its reference time.
+// We see if group-node is a child (not grandchild or beyond) of the root (breadth search
+// of a given level):
+//  If it is, we attach it as a child
+//  If it is not, we create a new group-node with that name and attach it
+//      as the first child to the group-node and attach that a child to the root-node.
+// We do that until we're out of data-ids.
+//
+// Next we want to create sub-groups for each reference time
+// Say we want to, from each group, create sub-groups based upon array-name
+//
+// So for each of these first level-children we detach them from the root-node
+// and from their sibling nodes (tread each group independently, which can be
+// done in parallel)
+//
+// We take the first node, determines it's array-name, create a new group-node with that name
+// and rinse and repeat.
+//
+// So the first tree needs to have an initial root-node
+// When we do the split, we detach the children from the root-node
+// each child joins a group-node, then each group-node becomes a child of the root-node
+//
+// That means I want an algorithm that given a tree, will give me all of the pointers
+// to the group-nodes at a specific depth in the n-ary tree. Each of these can then
+// be used as the root-node to the next stage of grouping (which can be passed to the
+// threadpool)
+//
+// While not the most-efficient algorithm, I prefer to make things general.
+//
+// And we may be able to use multi-threading (at least after the first pass),
+//  to make up for any inefficiency down the line.
+//
+// Later I'll need a way to serialize the structure of the tree, for saving
+// and loading (that way it doesn't need to be done all the time)
+//
+// To do that, I think we'll need for each node to have a unique node_id
+//  I can't use the unique data_id because group-nodes won't have a
+//  unique data_id...
+//
+// I could us the data_id field to handle this, since for any actual data
+//  the data_id > 0.
+// Then data_id = 0 could be special (main root-node only)
+// And data_id < 0 could be for group-nodes
+// I'll need to be careful to prevent conflicts when working in parallel.
+// So that means I'll need to tell any grouping algorithm what negative number to start from
+// (it can go up to that number minues the elements in the group, so we can figure out
+//  what the next group start number will need to be to safely prevent conflicts)
+//
+// That isn't a great idea. It would be better if we could use something like the
+// name of the group, as the linkage, but group names might not be unique across
+// the entirety of the tree (same station observes multiple earthquakes, for example)
+// Or many different BHZ components across an array (if we wanted to group by
+// component)
+//
+// Really what I want, is for each node, to know its geneology.
+// I don't care who it's siblings are, or who it's children are, just it's parents up.
+//
+// That would mean their parents, from the root (because this must be sufficiently
+// unique to construct the tree to begin with, its relative position within the group
+// is unimporant).
+//
+// So to that end I'll want 5 unique algorithms:
+// 1) Take a std::vector<int> of raw data_ids and make it into an n-ary tree
+//      (don't care about the order) with a default root group-node
+// 2) Given an n-ary tree and a parameter to group-by, detach the children from the root.
+//      Go through each child and attach it to an appropriate group node
+//      Attach the group-nodes to the root-node
+// 3) Given an n-ary tree, and a target depth, return the pointers
+//  for all group-nodes at that depth. Those can then be used as the root-node
+//  in 2) [allowing us to do this grouping iteratively]
+// 4) Given an n-ary tree, traverse it in-order and store the geneology of each node
+//  in the tree. I need to think about how to store this information...
+// 5) Given a geneology, recreate the tree. This depends on how the geneology
+//  is stored, so I cannot come up with many details at the moment.
+//
+// This is an over complication (again).
+// To store the n-ary tree structure, so that it can be re-created I need
+// to traverse the tree (breadth first, or depth first) and as I visit each node
+// in order, store its name, data_id, and its child's name and data_id (if it has any).
+// 
+// I need to think about this some more later.
+//-----------------------------------------------------------------------------
+// End ToDo
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Description
 //-----------------------------------------------------------------------------
 // Data can be grouped into a tree-like structure. Composed of group-nodes

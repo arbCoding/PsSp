@@ -28,22 +28,6 @@
 //-----------------------------------------------------------------------------
 // ToDo
 //-----------------------------------------------------------------------------
-// Haha, so I went through the hassle of totally rewriting the database scheme.
-// AWESOME! Right?
-//
-// Well, data writing speeds were the same.
-// But loading from the database took FOREVER!
-//
-// There was essentially no space reduction either.
-//
-// So it was an overall loss.
-// So I went back to the original version. Fixed a few bugs I found along the way
-// (unnamed checkpoints were no multi-threaded, fixed; checkpoint deleting was not
-//  multi-threaded, fixed).
-//
-// So instead, I'm going to use a helper function to query from the database
-// The idea is that I want to be able to have multiple threads query at once
-// (each thread queries for a different data_id).
 //-----------------------------------------------------------------------------
 // End ToDo
 //-----------------------------------------------------------------------------
@@ -204,17 +188,6 @@ class Project
         std::string get_processing_history(int data_id, int checkpoint_id);
         // Get the history for data_id and the current checkpoint_id
         std::string get_current_processing_history(int data_id);
-        // In order to build the N-ary tree we need to access the database
-        // For now, I'm going to make a hard-coded ordering of
-        // Reference_Time->Array->Station->Component (Should only be 1-reference time)
-        // In the future, I'll add more flexible versions
-        // This will allow us to efficiently store data-organization
-        // Without needing to implement internal sorting/reoganizing in the
-        // NTreeNode, which I don't feel like doing at the moment
-        //
-        // This is a place holder, I'll get back to this problem later
-        //  first I need to update the database schema to be more efficient...
-        std::unique_ptr<NTreeNode> build_data_id_tree();
 };
 }
 

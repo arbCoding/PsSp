@@ -7,6 +7,7 @@
 //-----------------------------------------------------------------------------
 // Include statments
 //-----------------------------------------------------------------------------
+#include "pssp_data_trees.hpp"
 #include "pssp_program_settings.hpp"
 // pssp::FFTWPlanPool class
 #include "pssp_fftw_planpool.hpp"
