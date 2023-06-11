@@ -1086,9 +1086,9 @@ std::filesystem::path Project::get_path()
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
-// Checkpoint deleter
+// Delete checkpoint from list
 //------------------------------------------------------------------------
-void Project::delete_checkpoint(int checkpoint_id)
+void Project::delete_checkpoint_from_list(int checkpoint_id)
 {
     // Timestamp that we got rid of the checkpoint
     std::string sq3_string{"UPDATE checkpoints SET removed = (SELECT CURRENT_TIMESTAMP) WHERE checkpoint_id = ?;"};
@@ -1097,28 +1097,38 @@ void Project::delete_checkpoint(int checkpoint_id)
     sq3_result = sqlite3_bind_int(sq3_statement_time, 1, checkpoint_id);
     sq3_result = sqlite3_step(sq3_statement_time);
     sqlite3_finalize(sq3_statement_time);
-    std::vector<int> data_ids{get_data_ids()};
-    // Clear the actual data values
-    for (int data_id : data_ids)
-    {
-        std::ostringstream oss{};
-        oss << "DELETE FROM checkpoint_" << data_id << " WHERE checkpoint_id = ?;";
-        sq3_string = oss.str();
-        sqlite3_stmt* sq3_statement_clear{};
-        sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement_clear, nullptr);
-        sq3_result = sqlite3_bind_int(sq3_statement_clear, 1, checkpoint_id);
-        sq3_result = sqlite3_step(sq3_statement_clear);
-        sqlite3_finalize(sq3_statement_clear);
-    }
-    // Clear the physical space using the vacuum command.
-    sq3_result = sqlite3_exec(sq3_connection_file, "VACUUM;", nullptr, nullptr, nullptr);
-    // Vacuum requires disconnect before it'll activate
-    disconnect();
-    // Reconnect once it is done
-    connect();
 }
 //------------------------------------------------------------------------
-// End Checkpoint deleter
+// End Delete checkpoint from list
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Delete checkpoint data for specific data_id
+//------------------------------------------------------------------------
+void Project::delete_data_id_checkpoint(int data_id, int checkpoint_id)
+{
+    std::ostringstream oss{};
+    oss << "DELETE FROM checkpoint_" << data_id << " WHERE checkpoint_id = ?;";
+    std::string sq3_string{oss.str()};
+    sqlite3_stmt* sq3_statement_clear{};
+    sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement_clear, nullptr);
+    sq3_result = sqlite3_bind_int(sq3_statement_clear, 1, checkpoint_id);
+    sq3_result = sqlite3_step(sq3_statement_clear);
+    sqlite3_finalize(sq3_statement_clear);
+}
+//------------------------------------------------------------------------
+// End Delete checkpoint data for specific data_id
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Issue VACUUM command to database
+//------------------------------------------------------------------------
+void Project::vacuum()
+{
+    sq3_result = sqlite3_exec(sq3_connection_file, "VACUUM;", nullptr, nullptr, nullptr);
+}
+//------------------------------------------------------------------------
+// End Issue VACUUM command to database
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------

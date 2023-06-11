@@ -509,17 +509,6 @@ void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1
 // End load a project from a project file
 //------------------------------------------------------------------------
 
-//------------------------------------------------------------------------
-// Delete a checkpoint
-//------------------------------------------------------------------------
-void delete_checkpoint(Project& project, int checkpoint_id)
-{
-    project.delete_checkpoint(checkpoint_id);
-}
-//------------------------------------------------------------------------
-// End Delete a checkpoint
-//------------------------------------------------------------------------
-
 //-----------------------------------------------------------------------------
 // Shitty Butterworth lowpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
@@ -624,6 +613,61 @@ void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowrejec
 }
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth bandreject filter for testing (not correct, but useful)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Write a checkpoint
+//-----------------------------------------------------------------------------
+void write_checkpoint(ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque, bool author, bool cull)
+{
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.state.store(out);
+        program_status.total_tasks = static_cast<int>(sac_deque.size());
+        program_status.tasks_completed = 0;
+    }
+    // Add a checkpoint to the list (made by user)
+    project.write_checkpoint(author, cull);
+    // Checkpoint each piece of data
+    for (std::size_t i{0}; i < sac_deque.size(); ++i)
+    {
+        program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
+    }
+}
+//-----------------------------------------------------------------------------
+// End Write a checkpoint
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+// Delete a checkpoint
+//-----------------------------------------------------------------------------
+void delete_data_id_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id, int data_id)
+{
+    project.delete_data_id_checkpoint(data_id, checkpoint_id);
+    ++program_status.tasks_completed;
+}
+
+void delete_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id)
+{
+    project.delete_checkpoint_from_list(checkpoint_id);
+    std::vector<int> data_ids{project.get_data_ids()};
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.state.store(out);
+        program_status.total_tasks = static_cast<int>(data_ids.size());
+        program_status.tasks_completed = 0;
+    }
+    // Clear the actual data values
+    for (int data_id : data_ids)
+    {
+        program_status.thread_pool.enqueue(delete_data_id_checkpoint, std::ref(program_status), std::ref(project), checkpoint_id, data_id);
+    }
+    // Tell SQLite3 to issue vacuum on closing database
+    project.vacuum();
+}
+//-----------------------------------------------------------------------------
+// End Delete a checkpoint
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------

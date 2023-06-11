@@ -232,8 +232,6 @@ void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac
 void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id);
 // Load an existing project
 void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
-// Delete a checkpoint
-void delete_checkpoint(Project& project, int checkpoint_id);
 // Shitty lowpass for testing
 void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
 // Shitty highpass for testing
@@ -242,6 +240,12 @@ void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
 void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, double highpass);
 // Shitty bandreject for testing
 void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowreject, double highreject);
+// Write a checkpoint (need to set project.checkpoint_name first!)
+void write_checkpoint(ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque, bool author, bool cull);
+// Delete checkpoint data for a data_id (allows to be parallel)
+void delete_data_id_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id, int data_id);
+// Delete a checkpoint
+void delete_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

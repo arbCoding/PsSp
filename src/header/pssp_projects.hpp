@@ -28,43 +28,22 @@
 //-----------------------------------------------------------------------------
 // ToDo
 //-----------------------------------------------------------------------------
-// So, upon working on organizing my data-trees, it turns out the current
-//  organization scheme is not great.
+// Haha, so I went through the hassle of totally rewriting the database scheme.
+// AWESOME! Right?
 //
-// At present, every seismogram has two tables, one for checkpoints and one
-//  for processing notes.
+// Well, data writing speeds were the same.
+// But loading from the database took FOREVER!
 //
-// But what if I want to query across all seismogram's to get all the unique
-//  component names, or event reference times, or array names?
+// There was essentially no space reduction either.
 //
-// Well, I can use dynamic SQL querys for search across all those tables. Except,
-//  when the number of tables becomes large, that becomes super inefficient.
-//  There is also additional storage overhead of keeping distinct tables.
+// So it was an overall loss.
+// So I went back to the original version. Fixed a few bugs I found along the way
+// (unnamed checkpoints were no multi-threaded, fixed; checkpoint deleting was not
+//  multi-threaded, fixed).
 //
-// The benefit is that the organization is more intuitive to me.
-//
-// But for larger projects, this will become an issue.
-//
-// So I've decided to restructure the table (hopefully never again).
-//
-// We have a table of unique_ids (provenance, no change)
-// A table listing unique checkpoints (checkpoints, no change)
-// A table with all the checkpointed data
-//  This is a change, instead of a separate table per seismogram, one table to rule them all
-// A table with all processing notes
-//  This is a change, instead of a separate table per seismogram, one table to rule them all
-//
-// This will allow for:
-//  simplified queries
-//  improved query performance
-//      (which includes faster I/O)
-//  data consistency
-//  flexibility in modifying the data schema
-//
-// This is a painful change to make, especially as the current implementation
-//  does work. So I'm going to push this to the main project as the present
-//  working version and create a new branch for scheming (at least I can
-//  take solace in an amusing branch name!)
+// So instead, I'm going to use a helper function to query from the database
+// The idea is that I want to be able to have multiple threads query at once
+// (each thread queries for a different data_id).
 //-----------------------------------------------------------------------------
 // End ToDo
 //-----------------------------------------------------------------------------
@@ -208,8 +187,12 @@ class Project
         void set_checkpoint_id(int checkpoint_id);
         // Path getter
         std::filesystem::path get_path();
-        // Checkpoint deleter
-        void delete_checkpoint(int checkpoint_id);
+        // Delete checkpoint from list
+        void delete_checkpoint_from_list(int checkpoint_id);
+        // Delete checkpoint_id data for data_id
+        void delete_data_id_checkpoint(int data_id, int checkpoint_id);
+        // Issue VACUUM command to database
+        void vacuum();
         // Get meta-data for checkpoint (name, comments, creation timestamp)
         std::unordered_map<std::string, std::string> get_checkpoint_metadata(int checkpoint_id);
         // Get meta-data for current checkpoint

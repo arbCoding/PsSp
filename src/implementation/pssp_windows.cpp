@@ -261,15 +261,9 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
         { ImGui::SetTooltip("Unload current project"); }
         if (ImGui::MenuItem("Create Unnamed Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
         {
-            program_status.total_tasks = 1;
             // Add a checkpoint to the list (made by user)
             project.checkpoint_name = "";
-            project.write_checkpoint(true, false);
-            // Checkpoint each piece of data
-            for (std::size_t i{0}; i < sac_deque.size(); ++i)
-            {
-                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
-            }
+            write_checkpoint(program_status, project, sac_deque, true, false);
         }
         if (ImGui::MenuItem("Create Named Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
         {
@@ -329,7 +323,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::deque<sac_1c>
                 std::string checkpoint_name{oss.str()};
                 if (ImGui::MenuItem(checkpoint_name.c_str()))
                 {
-                    program_status.thread_pool.enqueue(delete_checkpoint, std::ref(project), checkpoint_ids[i]);
+                    program_status.thread_pool.enqueue(delete_checkpoint, std::ref(program_status), std::ref(project), checkpoint_ids[i]);
                 }
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
                 { ImGui::SetTooltip("%s", checkpoint_metadata["created"].c_str()); }
@@ -966,18 +960,7 @@ void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& prog
         if (ImGui::Button("Ok##"))
         {
             project.checkpoint_name = checkpoint_name_buffer;
-            {
-                std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-                program_status.total_tasks = static_cast<int>(sac_deque.size());
-                program_status.tasks_completed = 0;
-            }
-            // Add a checkpoint to the list (made by user)
-            project.write_checkpoint(true, false);
-            // Checkpoint each piece of data
-            for (std::size_t i{0}; i < sac_deque.size(); ++i)
-            {
-                program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
-            }
+            write_checkpoint(program_status, project, sac_deque, true, false);
              // Close the window after queueing up the work
             window_settings.show = false;
         }
