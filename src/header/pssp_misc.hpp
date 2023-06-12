@@ -93,6 +93,10 @@ struct ProgramStatus
     std::string status_message{};
     // Our Data pool
     DataPool data_pool{};
+    // Our Project
+    Project project{};
+    // The data_id of the active sac file
+    int data_id{-1};
 };
 // Struct for Frames Per Second info
 struct fps_info
@@ -148,33 +152,33 @@ struct AllFilterOptions
 // Updates the FPS tracker
 void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
-void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
+//void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
-void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c& sac, sac_1c& spectrum);
+void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c* sac_ptr, sac_1c& spectrum);
 // Remove mean from sac_1c object
-void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac);
+void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque
-void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids);
 // Remove trend from a sac_1c object
-void remove_trend(Project& project, ProgramStatus& program_status, sac_1c& sac);
+void remove_trend(ProgramStatus& program_status, int data_id);
 // Remove trend from all sac_1c objects in a deque
-void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_ids);
 // Lowpass one sac_1c
-void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options);
+void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
-void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options);
+void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& lowpass_options);
 // Highpass one sac_1c
-void apply_highpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& highpass_options);
+void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
-void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options);
+void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& highpass_options);
 // Bandpass one sac_1c
-void apply_bandpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& bandpass_options);
+void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
-void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
-// Read in a single sac_file
-void read_sac_1c(std::deque<sac_1c>& sac_deque, ProgramStatus& program_status, const std::filesystem::path file_name, Project& project);
+void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& bandpass_options);
+// Read in a single sac file and add it to the DataPool
+void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name);
 // Read all SAC files in a directory
-void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project);
+void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path directory);
 // Setup the graphical backends
 const char* setup_gl();
 // Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO
@@ -191,10 +195,9 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 // Add all each datapoint ot a checkpoint
 void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac);
 // Unload the project
-void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
-void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id);
+void unload_data(ProgramStatus& program_status);
 // Load an existing project
-void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
+void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id);
 // Shitty lowpass for testing
 void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
 // Shitty highpass for testing

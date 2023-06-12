@@ -21,6 +21,8 @@
 #include <unordered_map> 
 #include <algorithm>
 #include <memory>
+#include <shared_mutex>
+#include <atomic>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -120,6 +122,11 @@ class Project
         bool copy_name{true};
         bool copy_notes{true};
         bool is_project{false};
+        // Vector of data_id's
+        std::vector<int> current_data_ids{};
+        // Boolean to flag an update
+        std::atomic<bool> updated{false};
+        std::shared_mutex mutex{};
         // Empty constructor
         Project() {};
         // Parameterized constructor

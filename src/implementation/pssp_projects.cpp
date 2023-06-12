@@ -1,4 +1,5 @@
 #include "pssp_projects.hpp"
+#include <shared_mutex>
 
 namespace pssp
 {
@@ -352,6 +353,7 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
     connect();
     fresh_tables();
     is_project = true;
+    updated = true;
 }
 //------------------------------------------------------------------------
 // End Setter to modify the project object
@@ -364,11 +366,15 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
 // Deleting them works perfectly fine on Linux.
 void Project::unload_project()
 {
+    std::lock_guard<std::shared_mutex> lock_project(mutex);
     is_project = false;
     disconnect();
     // Clear the paths
     name_ = "";
     path_ = "";
+    // Clear the data_ids
+    current_data_ids.clear();
+    updated = true;
 }
 //------------------------------------------------------------------------
 // End Unload project
@@ -417,6 +423,12 @@ int Project::add_sac(SAC::SacStream& sac, const std::string& source)
     add_data_checkpoint(sac, data_id);
     create_data_processing_table(data_id);
     add_data_processing(sq3_connection_file, data_id, "ADD");
+    {
+        std::lock_guard<std::shared_mutex> lock_project(mutex);
+        current_data_ids.push_back(data_id);
+        // Flag that we've been updated
+        updated = true;
+    }
     return data_id;
 }
 //------------------------------------------------------------------------

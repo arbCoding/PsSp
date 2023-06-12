@@ -121,16 +121,20 @@ public:
     DataPool(std::size_t max_data = 1000) : max_data_(max_data) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     sac_1c* get_pointer(Project& project, int data_id);
+    // How much data is in the pool
+    std::size_t n_data() const;
+    // Fully empty the pool
+    void empty_pool();
+    void remove_data(Project& project, int data_id);
+    void reload_data(Project& project, int data_id);
 private:
-    std::size_t max_data_{};
+    [[maybe_unused]] std::size_t max_data_{};
     std::mutex mutex_{};
     std::unordered_map<int, std::unique_ptr<sac_1c>> data_pool_{};
     // Add data to the pool
     void add_data(Project& project, int data_id);
     // Add and return a new raw pointer
     sac_1c* get_new_pointer(Project& project, int data_id);
-    // Fully empty the pool
-    void empty_pool();
 };
 //-----------------------------------------------------------------------------
 // End DataPool class
