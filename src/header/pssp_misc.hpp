@@ -7,6 +7,7 @@
 //-----------------------------------------------------------------------------
 // Include statments
 //-----------------------------------------------------------------------------
+#include "pssp_data_pool.hpp"
 #include "pssp_data_trees.hpp"
 #include "pssp_program_settings.hpp"
 // pssp::FFTWPlanPool class
@@ -70,18 +71,6 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
-/*
-struct FileIO
-{
-    std::atomic<int> count{0};
-    std::atomic<int> total{0};
-    // Used to flag if we're reading or not 
-    std::atomic<bool> is_reading{false};
-    // Used to flag if we're processing data or not
-    std::atomic<bool> is_processing{false};
-    std::shared_mutex mutex_{};
-};
-*/
 // Enum for program state
 enum program_state{ in, out, processing, idle };
 
@@ -102,8 +91,10 @@ struct ProgramStatus
     // Our FFTW Plan pool
     FFTWPlanPool fftw_planpool{};
     std::string status_message{};
+    // Our Data pool
+    DataPool data_pool{};
 };
-//
+// Struct for Frames Per Second info
 struct fps_info
 { 
     float prev_time{0.0f};
@@ -116,35 +107,6 @@ struct fps_info
     std::mutex mutex_{};
 };
 
-struct sac_1c
-{
-    std::string file_name{};
-    SAC::SacStream sac{};
-    std::shared_mutex mutex_{};
-    int data_id{};
-
-    sac_1c() : file_name(), sac(), mutex_(), data_id() {}
-    // Copy constructor
-    sac_1c(const sac_1c& other)
-    {
-        file_name = other.file_name;
-        sac = other.sac;
-        data_id = other.data_id;
-        // Don't copy the mutex
-    }
-    // Assignment operator
-    sac_1c& operator=(const sac_1c& other)
-    {
-        if (this != &other)
-        {
-            file_name = other.file_name;
-            sac = other.sac;
-            data_id = other.data_id;
-            // Don't assign the mutex
-        }
-        return *this;
-    }
-};
 // Struct for filters
 struct FilterOptions
 {
