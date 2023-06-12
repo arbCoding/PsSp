@@ -113,6 +113,52 @@
 // in order, store its name, data_id, and its child's name and data_id (if it has any).
 // 
 // I need to think about this some more later.
+//=============================================================================
+// Later (11 June 2023)
+//=============================================================================
+// Really what we need is a group_id array. Every level deeper we go, we add
+// an additional value to the group_id array. Valid group_id's start from 0
+// so we can pre-set a maximum depth-level.
+// Let's imagine a very deep project
+// for every event (say someone wants 10,000 earthquakes [stupid huge])
+// they have 10 arrays (ridiculous)
+// they have 500 stations per array (also insane)
+// Each station can essentially an basically MAX_INT / (500 * 10 * 10,000)
+// which is approximately 85 components (you can have MAX_INT unique seismograms in a project)
+//
+// This is huge overkill. But it massively simplifies the logic for me.
+// uint8_t is 0 -> 255 (256 values) (8-bits, 1-byte)
+// uint16_t is 0 -> 65,535 (65,536 values) (16-bits, 2-bytes)
+// so if we use 10 uint_16t for grouping, that is 20-bytes per seismogram
+// That means that for MAX_INT unique data_ids
+// storing our group_id's will cost 86 Gb (not to mention the actual seismograms)
+//
+// Moral of the story, a user will likely not use MAX_INT data_ids
+//
+// I think, that using uint16_t will work out well
+// (let's say the user had 9,000 total seismograms for the project, let's say 10 components a pop
+// that is 900 station groups minimum, if only 3 components then 3,000 station groups maximum is all in
+// a single array, so the uint8_t doesn't have sufficient dynamic range). Even then, that is 180 Kb at the seismogram level
+// It would be about 60 Kb at the station level (3000 stations)
+//
+// It would be about 200 b at the array level
+//
+// It would be 20 b per event. So really, the data usage of using uint_8t is tiny for this
+// (even using standard integers it'd be only double the size, barely anything).
+//
+// So I think an appropriate lineage structure is a std::vector<int>, of size depth
+//
+// So we'd have
+// {} root
+// {0} first group
+// {0, 0} first child of first group
+// {0, 1} second child of first group
+// {0, 1, 0} first child of second child of first group
+// {0, 1, 0, 1} and so on.
+// The leaf nodes will go to whatever depth, then just use the data_id from sqlite3
+// (if that isn't sufficiently large enough, then I think we've moved on well beyond
+// that which is expect for a desktop application!)
+//
 //-----------------------------------------------------------------------------
 // End ToDo
 //-----------------------------------------------------------------------------
@@ -239,13 +285,16 @@
 namespace pssp
 {
 //-----------------------------------------------------------------------------
-// NTreeStruct
+// NTreeNode struct
 //-----------------------------------------------------------------------------
 struct NTreeNode
 {
     // Name is always used (group-name, file-name, station-name, whatever)
     std::string name{};
-    // Default is -1, which means it is a group (data have data_ids > 0)
+    // If size is 0, then is a root-node
+    // Group_id vector
+    std::vector<int> group_ids{};
+    // Default is -1, which means no-data assignd
     int data_id{-1};
     // Pointer to sibling node
     // Sibling nodes exist at the same depth-level in the tree (same group)
@@ -254,23 +303,26 @@ struct NTreeNode
     // Child nodes are down an additional level (sub-group)
     std::unique_ptr<NTreeNode> child_node{};
     // Constructor
-    NTreeNode(const std::string& name_, const int data_id_) : name(name_), data_id(data_id_) {}
+    NTreeNode(const std::string& name_, const std::vector<int>& group_ids_, const int data_id_ = -1)
+    : name(name_), group_ids(group_ids_), data_id(data_id_) {}
     // Destructor that prints-out on destruction for debugging purposes
     // Excellent, now we can confirm destruction quite easily, the
     //  unique_ptrs are working their magic!
     //~NTreeNode() { std::cout << "Destroying node: " << name << '\n'; }
 };
 //-----------------------------------------------------------------------------
-// End NTreeStruct
+// End NTreeNode struct
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Functions that act on an NTreeStruct
+// Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
+// Create a root-node (super group-node)
+std::unique_ptr<NTreeNode> create_root_node();
 // Create a group-node
-std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name);
+std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name, const std::vector<int>& group_ids_);
 // Create a leaf-node
-std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const int leaf_data_id);
+std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const std::vector<int>& group_ids_, const int leaf_data_id);
 // Print the node information (name/value) as appropriate
 // This doesn't care about ownership, so we use raw pointers to make life easier
 void print_node(const NTreeNode* node);
@@ -287,7 +339,7 @@ void print_postorder(const std::unique_ptr<NTreeNode>& node);
 // Traverse the tree and print out the names/values in level-order
 void print_levelorder(const std::unique_ptr<NTreeNode>& node);
 //-----------------------------------------------------------------------------
-// End Functions that act on an NTreeStruct
+// End Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
 }
 
