@@ -118,7 +118,7 @@ public:
     // Since I'm using 700 seismograms that are 1 hour long at 40 Hz, let's first set the maximum
     // size to 1000 (so that it is all in memory). Get the basics down, then reduce to 500 and see
     // what happens (and implement the hot loading/unload of memory).
-    DataPool(std::size_t max_data = 1000) : max_data_(max_data) {}
+    DataPool(std::size_t max_data_ = 1000) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     sac_1c* get_pointer(Project& project, int data_id);
     // How much data is in the pool
@@ -127,12 +127,12 @@ public:
     void empty_pool();
     void remove_data(Project& project, int data_id);
     void reload_data(Project& project, int data_id);
-private:
-    [[maybe_unused]] std::size_t max_data_{};
-    std::mutex mutex_{};
-    std::unordered_map<int, std::unique_ptr<sac_1c>> data_pool_{};
+    std::size_t max_data{};
     // Add data to the pool
     void add_data(Project& project, int data_id);
+private:
+    std::mutex mutex_{};
+    std::unordered_map<int, std::unique_ptr<sac_1c>> data_pool_{};
     // Add and return a new raw pointer
     sac_1c* get_new_pointer(Project& project, int data_id);
 };

@@ -76,7 +76,7 @@ void sqliteLogCallback(void* data, int errCode, const char* message)
 void handle_program_state(ProgramStatus& program_status, ProgramSettings& current_settings, std::vector<int>& data_ids)
 {
     // If we're done with the task, we need to shift over to the idle state
-    if (program_status.tasks_completed == program_status.total_tasks)
+    if (program_status.tasks_completed >= program_status.total_tasks)
     {
         program_status.state.store(idle);
         program_status.progress = 1.1f;
@@ -456,12 +456,11 @@ int main(int arg_count, char* arg_array[])
         update_fps(fps_tracker, io);
         // Show the FPS window if appropriate
         window_fps(fps_tracker, current_settings.window_settings.fps);
-        // Only if there are files in the sac_deque
-        if (data_ids.size() > 0)
+        // If we're idle and there is data to show, we can show it
+        pssp::program_state current_state{program_status.state.load()};
+        if (current_state == pssp::idle && data_ids.size() > 0)
         {
-          // This fixes the issue of deleting all sac_1cs in the deque
-          // loading new ones, and then trying to access the -1 element
-          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = data_ids.size() - 1; }
+          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = 0; }
           if (program_status.data_id != data_ids[active_sac])
           {
             program_status.data_id = data_ids[active_sac];

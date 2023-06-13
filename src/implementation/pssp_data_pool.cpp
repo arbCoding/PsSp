@@ -29,6 +29,7 @@ void DataPool::add_data(Project& project, int data_id)
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     sac.file_name = project.get_source(data_id);
     sac.sac = project.load_sacstream(data_id);
+    sac.data_id = data_id;
     // Add the pointer to the pool
     data_pool_[data_id] = std::make_unique<sac_1c>(std::move(sac));
 }

@@ -304,7 +304,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
                     program_status.project.copy_name = true;
                     program_status.project.copy_notes = true;
                     // Load
-                    //program_status.thread_pool.enqueue(load_data, std::ref(program_status.project), std::ref(program_status), std::ref(sac_deque), project_file, checkpoint_ids[i]);
+                    program_status.thread_pool.enqueue(load_data, std::ref(program_status), project_file, checkpoint_ids[i]);
                 }
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
                 { ImGui::SetTooltip("%s", checkpoint_metadata["created"].c_str()); }
@@ -471,7 +471,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
             program_status.project.checkpoint_notes = checkpoint_metadata["notes"];
             program_status.project.checkpoint_timestamp = checkpoint_metadata["created"];
             // Queue it up in the background!
-            //program_status.thread_pool.enqueue(load_data, std::ref(program_status.project), std::ref(program_status), std::ref(sac_deque), project_file, -1);
+            program_status.thread_pool.enqueue(load_data, std::ref(program_status), project_file, -1);
         }
         ImGuiFileDialog::Instance()->Close();
     }

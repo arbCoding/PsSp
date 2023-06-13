@@ -510,12 +510,32 @@ void fill_deque_project(Project& project, ProgramStatus& program_status, std::de
 */
 
 //------------------------------------------------------------------------
+// Load a single bit of data to the data pool
+//------------------------------------------------------------------------
+void load_2_data_pool(ProgramStatus& program_status, const int data_id)
+{
+    program_status.data_pool.add_data(program_status.project, data_id);
+    ++program_status.tasks_completed;
+}
+//------------------------------------------------------------------------
+// End Load a single bit of data to the data pool
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 // Load a project from a project file
 //------------------------------------------------------------------------
+// In series it works fine, in parallel it borks at the end.
 void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id)
-{ 
+{
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.state.store(in);
+        program_status.tasks_completed = 0;
+        program_status.total_tasks = 3;
+    }
     // First make sure we unload the present project
     unload_data(program_status);
+    ++program_status.tasks_completed;
     // Connection to the project file
     program_status.project.connect_2_existing(project_file);
     if (checkpoint_id == -1){ checkpoint_id = program_status.project.get_latest_checkpoint_id(); }
@@ -524,6 +544,28 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
     // Get the data-ids to load
     program_status.project.current_data_ids = program_status.project.get_data_ids_for_current_checkpoint();
     program_status.project.updated = true;
+    std::size_t total_ids{program_status.project.current_data_ids.size()};
+    std::size_t to_load{};
+    ++program_status.tasks_completed;
+    if (program_status.data_pool.max_data < total_ids)
+    {
+        to_load = program_status.data_pool.max_data;
+    }
+    else
+    {
+        to_load = total_ids;
+    }
+    {
+        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+        program_status.total_tasks = to_load;
+        program_status.tasks_completed = 0;
+        program_status.state.store(in);
+    }
+    // If we have space to load more data
+    for (std::size_t i{0}; i < to_load; ++i)
+    {
+        program_status.thread_pool.enqueue(load_2_data_pool, std::ref(program_status), program_status.project.current_data_ids[i]);
+    }
 }
 //------------------------------------------------------------------------
 // End load a project from a project file

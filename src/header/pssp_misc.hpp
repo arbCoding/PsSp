@@ -196,6 +196,8 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac);
 // Unload the project
 void unload_data(ProgramStatus& program_status);
+// Load a single bit of data
+void load_2_data_pool(ProgramStatus& program_status, const int data_id);
 // Load an existing project
 void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id);
 // Shitty lowpass for testing
