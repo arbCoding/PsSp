@@ -86,9 +86,17 @@ fftw_plan FFTWPlanPool::make_fft_plan(const std::size_t size)
 {
     std::lock_guard<std::mutex> lock_pool(mutex_);
     // r2c is always FFTW_FORWARD (real-to-complex) (forward FFT)
+#if defined(__APPLE__)
     // FFTW_MEASURE takes more time than FFTW_ESTIMATE, but is more optimal on execution
     // Because the plan may be used multiple times, might as well use measure
     fftw_plan plan = fftw_plan_dft_r2c_1d(size, nullptr, nullptr, FFTW_MEASURE);
+#elif defined(__linux__)
+    // FFTW_MEASURE crashes on Linux (fine on MacOS)
+    fftw_plan plan = fftw_plan_dft_r2c_1d(size, nullptr, nullptr, FFTW_ESTIMATE);
+#else
+    // I have no idea what works best on Windows, I assume FFTW_ESTIMATE is safe
+    fftw_plan plan = fftw_plan_dft_r2c_1d(size, nullptr, nullptr, FFTW_ESTIMATE);
+#endif
     fft_plans_[size] = plan;
     return plan;
 }
@@ -103,7 +111,17 @@ fftw_plan FFTWPlanPool::make_ifft_plan(const std::size_t size)
 {
     std::lock_guard<std::mutex> lock_pool(mutex_);
     // c2r is always FFTW_BACKWARD (complex-to-real) (inverse FFT)
+#if defined(__APPLE__)
+    // FFTW_MEASURE takes more time than FFTW_ESTIMATE, but is more optimal on execution
+    // Because the plan may be used multiple times, might as well use measure
     fftw_plan plan = fftw_plan_dft_c2r_1d(size, nullptr, nullptr, FFTW_MEASURE);
+#elif defined(__linux__)
+    // FFTW_MEASURE crashes on Linux (fine on MacOS)
+    fftw_plan plan = fftw_plan_dft_c2r_1d(size, nullptr, nullptr, FFTW_ESTIMATE);
+#else
+    // I have no idea what works best on Windows, I assume FFTW_ESTIMATE is safe
+    fftw_plan plan = fftw_plan_dft_c2r_1d(size, nullptr, nullptr, FFTW_ESTIMATE);
+#endif
     ifft_plans_[size] = plan;
     return plan;
 }

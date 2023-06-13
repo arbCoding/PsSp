@@ -625,10 +625,11 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
 //-----------------------------------------------------------------------------
 void window_plot_sac(WindowSettings& window_settings, sac_1c* sac_ptr)
 {
-    sac_1c sac{};
-    if (!sac_ptr) { return; } else { sac = *sac_ptr; }
+    if (!sac_ptr) { return; }
     if (window_settings.show && window_settings.state != hide)
     {
+        sac_1c& sac = *sac_ptr;
+        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -642,7 +643,6 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c* sac_ptr)
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
             {
-                std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
                 ImPlot::PlotLine("", &sac.sac.data1[0], sac.sac.data1.size(), sac.sac.delta);
             }
             // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
@@ -685,6 +685,7 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 {
     if (window_settings.show && window_settings.state != hide)
     {
+        std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -696,7 +697,6 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
         if (ImPlot::BeginPlot("Real##"))
         {
             {
-                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
                 ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
                 const double sampling_freq{1.0 / spectrum.sac.delta};
                 const double freq_step{sampling_freq / spectrum.sac.npts};
@@ -708,7 +708,6 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
         if (ImPlot::BeginPlot("Imaginary##"))
         {
             {
-                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
                 ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
                 const double sampling_freq{1.0 / spectrum.sac.delta};
                 const double freq_step{sampling_freq / spectrum.sac.npts};
@@ -729,10 +728,11 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 //-----------------------------------------------------------------------------
 void window_sac_header(WindowSettings& window_settings, sac_1c* sac_ptr)
 {
-    sac_1c sac{};
-    if (!sac_ptr) { return; } else { sac = *sac_ptr; }
+    if (!sac_ptr) { return; }
     if (window_settings.show && window_settings.state != hide)
     {
+        sac_1c& sac = *sac_ptr;
+        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -743,7 +743,6 @@ void window_sac_header(WindowSettings& window_settings, sac_1c* sac_ptr)
         {
             if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
             
-            std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
             if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
@@ -898,7 +897,7 @@ void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_setti
                 {
                     selected = i;
                     program_status.data_pool.reload_data(program_status.project, selected);
-                    calc_spectrum(program_status.fftw_planpool, program_status.data_pool.get_pointer(program_status.project, selected), spectrum);
+                    calc_spectrum(program_status, selected, spectrum);
                 }
                 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("Reload the original SAC file"); }

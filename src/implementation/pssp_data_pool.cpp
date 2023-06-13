@@ -53,7 +53,7 @@ void DataPool::empty_pool()
         std::unique_ptr<sac_1c>& data_ptr = element.second;
         // Acquire the lock to ensure we're the only one using it!
         {
-            std::unique_lock<std::shared_mutex> lock_sac(data_ptr->mutex_);
+            std::lock_guard<std::shared_mutex> lock_sac(data_ptr->mutex_);
         }
         // Unlock and delete the object
         data_ptr.reset();

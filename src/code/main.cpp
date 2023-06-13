@@ -428,6 +428,7 @@ int main(int arg_count, char* arg_array[])
     // Which sac-file is active
     int active_sac{};
     bool clear_sac{false};
+    bool update_spectrum{false};
     // The data_ids will be used to replace the sac_deque
     // we can pass the data_ids to different functions and use that to
     // access the data from the data pool (part of program_status)
@@ -466,6 +467,7 @@ int main(int arg_count, char* arg_array[])
           if (program_status.data_id != data_ids[active_sac])
           {
             program_status.data_id = data_ids[active_sac];
+            update_spectrum = true;
             sac_ptr = program_status.data_pool.get_pointer(program_status.project, program_status.data_id);
           }
           window_sac_header(current_settings.window_settings.header, sac_ptr);
@@ -482,16 +484,8 @@ int main(int arg_count, char* arg_array[])
           // every frame)
           if (current_settings.window_settings.spectrum_1c.show && sac_ptr)
           {
-            // This logic needs to be modified so that we have a better mechanism to avoid
-            // calculating this when it isn't desired
-            bool compare_names{true};
-            {
-                std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
-                std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
-                compare_names = (spectrum.file_name == sac_ptr->file_name);
-            }
             // If they're not the same, then calculate the FFT
-            if (!compare_names) { calc_spectrum(program_status.fftw_planpool, sac_ptr, spectrum); }
+            if (update_spectrum) { calc_spectrum(program_status, program_status.data_id, spectrum); update_spectrum = false; }
           }
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, spectrum);

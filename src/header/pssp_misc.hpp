@@ -154,7 +154,7 @@ void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
 //void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
-void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c* sac_ptr, sac_1c& spectrum);
+void calc_spectrum(ProgramStatus& program_status,int data_id, sac_1c& spectrum);
 // Remove mean from sac_1c object
 void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque

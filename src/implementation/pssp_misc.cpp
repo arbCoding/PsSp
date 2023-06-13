@@ -42,16 +42,18 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 }
 */
 
-void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c* sac_ptr, sac_1c& spectrum)
+void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
 {
+    sac_1c* sac_ptr = program_status.data_pool.get_pointer(program_status.project, data_id);
     if (!sac_ptr) { return; }
-    const sac_1c& sac{*sac_ptr};
+    sac_1c& sac{*sac_ptr};
+    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
     std::vector<std::complex<double>> complex_spectrum{};
     {
         spectrum.file_name = sac.file_name;
         spectrum.sac = sac.sac;
-        complex_spectrum = fft_time_series(fftw_planpool, sac.sac.data1, true);
+        complex_spectrum = fft_time_series(program_status.fftw_planpool, sac.sac.data1, true);
     }
     spectrum.sac.data1.resize(complex_spectrum.size());
     spectrum.sac.data2.resize(complex_spectrum.size());
@@ -519,12 +521,7 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
     program_status.project.set_checkpoint_id(checkpoint_id);
     // Get the data-ids to load
     program_status.project.current_data_ids = program_status.project.get_data_ids_for_current_checkpoint();
-    {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.state.store(in);
-        program_status.tasks_completed = 0;
-        program_status.total_tasks = static_cast<int>(program_status.project.current_data_ids.size());
-    }
+    program_status.project.updated = true;
 }
 //------------------------------------------------------------------------
 // End load a project from a project file
