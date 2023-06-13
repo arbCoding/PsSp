@@ -90,6 +90,10 @@ class Project
         void create_data_processing_table(sqlite3* connection, int data_id);
         // Convenience function to mirror the tables between the file and memory
         void create_data_processing_table(int data_id);
+        // Create a table for temporary data table
+        // This is always on disk (for use when a project is too big
+        // to be held entirely in memory)
+        void create_temporary_data();
         // Add data provenance to data provenance table
         // This gets called ONLY when data gets added to a project
         // You get the data_id back upon insertion
@@ -195,6 +199,10 @@ class Project
         std::string get_processing_history(int data_id, int checkpoint_id);
         // Get the history for data_id and the current checkpoint_id
         std::string get_current_processing_history(int data_id);
+        // Clear the temporary data table
+        void clear_temporary_data();
+        // Store the information in the temporary table
+        void store_in_temporary_data(SAC::SacStream& sac, int data_id);
 };
 }
 

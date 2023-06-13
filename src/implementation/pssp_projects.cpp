@@ -218,6 +218,136 @@ void Project::create_data_processing_table(int data_id)
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
+// Temporary data table creation
+//------------------------------------------------------------------------
+// Create a table for temporary data table
+// This is always on disk (for use when a project is too big
+// to be held entirely in memory)
+void Project::create_temporary_data()
+{
+    std::ostringstream oss{};
+    oss << "CREATE TABLE temporary_data (";
+    oss << "data_id INTEGER, "; // 1
+    oss << "checkpoint_id INTEGER, "; // 2
+    // Now we need to include the ~100 header values...
+    //---------------------------------------------------------------
+    // SAC headers
+    //---------------------------------------------------------------
+    oss << "delta REAL, "; // 3 (sac.delta, sample rate)
+    oss << "b REAL, "; // 4 (sac.b, begin time in seconds)
+    oss << "e REAL, "; // 5 (sac.e, end time in seconds)
+    oss << "o REAL, "; // 6 (sac.o, origin time in seconds)
+    oss << "a REAL, "; // 7 (sac.a, first arrival pick time in seconds)
+    oss << "t0 REAL, "; // 8 (sac.t0, user time in seconds)
+    oss << "t1 REAL, "; // 9
+    oss << "t2 REAL, "; // 10
+    oss << "t3 REAL, "; // 11
+    oss << "t4 REAL, "; // 12
+    oss << "t5 REAL, "; // 13
+    oss << "t6 REAL, "; // 14
+    oss << "t7 REAL, "; // 15
+    oss << "t8 REAL, "; // 16
+    oss << "t9 REAL, "; // 17
+    oss << "f REAL, "; // 18 (sac.f, fini time in seconds [for finite source])
+    oss << "resp0 REAL, "; // 19 (sac.resp0, instrument response parameter)
+    oss << "resp1 REAL, "; // 20
+    oss << "resp2 REAL, "; // 21
+    oss << "resp3 REAL, "; // 22
+    oss << "resp4 REAL, "; // 23
+    oss << "resp5 REAL, "; // 24
+    oss << "resp6 REAL, "; // 25
+    oss << "resp7 REAL, "; // 26
+    oss << "resp8 REAL, "; // 27
+    oss << "resp9 REAL, "; // 28
+    oss << "stla REAL, "; // 29 (sac.stla, station latitude, degrees, north positive)
+    oss << "stlo REAL, "; // 30 (sac.stlo, station longitude, degrees, east positive)
+    oss << "stel REAL, "; // 31 (sac.stel, station elevation m a.s.l.)
+    oss << "stdp REAL, "; // 32 (sac.stdp, station depth below surface, meters)
+    oss << "evla REAL, "; // 33 (sac.evla, event latitude)
+    oss << "evlo REAL, "; // 34 (sac.evlo, event longitude)
+    oss << "evel REAL, "; // 35 (sac.evel, event elevation)
+    oss << "evdp REAL, "; // 36 (sac.evdp, event depth below surface, kilometers [previous meters])
+    oss << "mag REAL, "; // 37 (sac.mag, event magnitude)
+    oss << "user0 REAL, "; // 38 (sac.user0, user-defined storage)
+    oss << "user1 REAL, "; // 39
+    oss << "user2 REAL, "; // 40
+    oss << "user3 REAL, "; // 41
+    oss << "user4 REAL, "; // 42
+    oss << "user5 REAL, "; // 43
+    oss << "user6 REAL, "; // 44
+    oss << "user7 REAL, "; // 45
+    oss << "user8 REAL, "; // 46
+    oss << "user9 REAL, "; // 47
+    oss << "dist REAL, "; // 48 (sac.dist, station-event distance, kilometers)
+    oss << "az REAL, "; // 49 (sac.az, station-event azimuth, degrees)
+    oss << "baz REAL, "; // 50 (sac.baz, event-station azimuth, degrees)
+    oss << "gcarc REAL, "; // 51 (sac.gcarc, station_event great circle-arc distance, degrees)
+    oss << "depmin REAL, "; // 52 (sac.depmin, minimum amplitude)
+    oss << "depmen REAL, "; // 53 (sac.depmen, mean amplitude)
+    oss << "depmax REAL, "; // 54 (sac.depmax, maximum amplitude)
+    oss << "cmpaz REAL, "; // 55 (sac.cmpaz, component azimuth, degrees clockwise from North)
+    oss << "cmpinc REAL, "; // 56 (sac.cmpinc, component incident angle, degrees from upward vertical (incident 0 = -90 dip), (dip 0 = incident 90)
+    oss << "reference_time DATETIME, "; // 57 (take all sac.nzStuff headers and format into a string, then convert to standard format)
+    oss << "norid INTEGER, "; // 58 (sac.norid, origin id)
+    oss << "nevid INTEGER, "; // 59 (sac.nevid, event id)
+    oss << "npts INTEGER, "; // 60 (sac.npts, number of points in time-series)
+    oss << "nwfid INTEGER, "; // 61 (sac.nwfid, waveform id)
+    oss << "iftype INTEGER, "; // 62 (sac.iftype, type of file (should always be 1 = ITIME = Time-series!))
+    oss << "idep INTEGER, "; // 63 (sac.idep, amplitude type, see SAC::SacStream for details)
+    oss << "iztype INTEGER, "; // 64 (sac.iztype, reference time equivalent, see SAC::SacStream for details)
+    oss << "iinst INTEGER, "; // 65 (sac.iints, type of recording instrument)
+    oss << "istreg INTEGER, "; // 66 (sac.istreg, station geographic region)
+    oss << "ievreg INTEGER, "; // 67 (sac.ievreg, event geographic region)
+    oss << "ievtyp INTEGER, "; // 68 (sac.ievtyp, type of event)
+    oss << "iqual INTEGER, "; // 69 (sac.iqual, data quality)
+    oss << "isynth INTEGER, "; // 70 (sac.isynth, synthetic data flag)
+    oss << "imagtyp INTEGER, "; // 71 (sac.imagtyp, type of magnitude)
+    oss << "imagsrc INTEGER, "; // 72 (sac.imagsrc, source of magnitude information)
+    oss << "ibody INTEGER, "; // 73 (sac.ibody, body/spheroid definition)
+    // True/False = 1/0
+    oss << "leven INTEGER, "; // 74 (sac.leven, evenly-spaced flag)
+    oss << "lpspol INTEGER, "; // 75 (sac.lpspol, positive polarity (left-hand reul NEZ [North-East-Up]))
+    // Skip lovrok and lcalda because they're stupider headers than normal
+    oss << "kstnm TEXT, "; // 76 (sac.kstnm, station name)
+    oss << "kevnm TEXT, "; // 77 (sac.kevnm, event name)
+    oss << "khole TEXT, "; // 78 (sac.khole, hole identifier or location ID)
+    oss << "ko TEXT, "; // 79 (sac.ko, origin time text)
+    oss << "ka TEXT, "; // 80 (sac.ka, first arrival time text)
+    oss << "kt0 TEXT, "; // 81 (sac.kt0, user time text)
+    oss << "kt1 TEXT, "; // 82
+    oss << "kt2 TEXT, "; // 83
+    oss << "kt3 TEXT, "; // 84
+    oss << "kt4 TEXT, "; // 85
+    oss << "kt5 TEXT, "; // 86
+    oss << "kt6 TEXT, "; // 87
+    oss << "kt7 TEXT, "; // 88
+    oss << "kt8 TEXT, "; // 89
+    oss << "kt9 TEXT, "; // 90
+    oss << "kf TEXT, "; // 91 (sac.kf, fini text)
+    oss << "kuser0 TEXT, "; // 92 (sac.kuser0, user text storage)
+    oss << "kuser1 TEXT, "; // 93
+    oss << "kuser2 TEXT, "; // 94
+    oss << "kcmpnm TEXT, "; // 95 (sac.kcmpnm, compnent name)
+    oss << "knetwk TEXT, "; // 96 (sac.knetwk, network name)
+    // Skip kdatrd, stupid
+    oss << "kinst TEXT, "; // 97 (sac.kinst, generic recording instrument name)
+    //---------------------------------------------------------------
+    // End SAC headers
+    //---------------------------------------------------------------
+    oss << "data1 BLOB, "; // 98 (sac.data1, time-series) (null if not checkpoint)
+    oss << "data2 BLOB);"; // 99 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
+    std::string sq3_string{oss.str()};
+    sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
+    if (sq3_result != SQLITE_OK)
+    {
+        std::cout << sqlite3_errmsg(sq3_connection_file) << '\n';
+    }
+}
+//------------------------------------------------------------------------
+// End Temporary data table creation
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 // Add data provenance
 //------------------------------------------------------------------------
 int Project::add_data_provenance(const std::string& source)
@@ -288,6 +418,8 @@ void Project::disconnect(sqlite3* connection)
 
 void Project::disconnect()
 {
+    // Clear the temporary data!
+    clear_temporary_data();
     disconnect(sq3_connection_file);
     disconnect(sq3_connection_memory);
 }
@@ -303,6 +435,9 @@ void Project::fresh_tables()
     // Create the base provenance and checkpoint tables
     create_provenance_table();
     create_checkpoint_list_table();
+    // Create the temporary table for data that goes beyond
+    // the size of the data-pool
+    create_temporary_data();
 }
 //------------------------------------------------------------------------
 // End New project tables
@@ -1035,7 +1170,7 @@ SAC::SacStream Project::load_sacstream_from_checkpoint(int data_id, int checkpoi
     // Cleanup the statement
     sqlite3_finalize(sq3_statement);
     // Add a table in memory for this sacstream
-    create_data_processing_table(sq3_connection_memory, data_id);
+    //(sq3_connection_memory, data_id);
     return sac;
 }
 //------------------------------------------------------------------------
@@ -1258,6 +1393,279 @@ std::string Project::get_current_processing_history(int data_id)
 }
 //------------------------------------------------------------------------
 // End Get data_id current checkpoint history
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Clear the temporary data table
+//------------------------------------------------------------------------
+void Project::clear_temporary_data()
+{
+    // Now to clear the table in memory
+    // This should be a separate function to be called later
+    std::ostringstream oss_delete{};
+    oss_delete << "DELETE FROM temporary_data;";
+    std::string sq3_string_delete{oss_delete.str()};
+    // Clear the contents of the processing table in memory
+    sq3_result = sqlite3_exec(sq3_connection_memory, sq3_string_delete.c_str(), nullptr, nullptr, &sq3_error_message);
+    // Tell it to clear off the disk-space usage
+    vacuum();
+}
+//------------------------------------------------------------------------
+// End Clear the temporary data table
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Store the information in the temporary table
+//------------------------------------------------------------------------
+void Project::store_in_temporary_data(SAC::SacStream& sac, int data_id)
+{
+    std::ostringstream oss{};
+    oss << "INSERT INTO temporary_data (";
+    oss << "data_id, "; // 1
+    oss << "checkpoint_id, "; // 2
+    oss << "delta, "; // 3
+    oss << "b, "; // 4
+    oss << "e, "; // 5
+    oss << "o, "; // 6
+    oss << "a, "; // 7
+    oss << "t0, "; // 8
+    oss << "t1, "; // 9
+    oss << "t2, "; // 10
+    oss << "t3, "; // 11
+    oss << "t4, "; // 12
+    oss << "t5, "; // 13
+    oss << "t6, "; // 14
+    oss << "t7, "; // 15
+    oss << "t8, "; // 16
+    oss << "t9, "; // 17
+    oss << "f, "; // 18
+    oss << "resp0, "; // 19
+    oss << "resp1, "; // 20
+    oss << "resp2, "; // 21
+    oss << "resp3, "; // 22
+    oss << "resp4, "; // 23
+    oss << "resp5, "; // 24
+    oss << "resp6, "; // 25
+    oss << "resp7, "; // 26
+    oss << "resp8, "; // 27
+    oss << "resp9, "; // 28
+    oss << "stla, "; // 29
+    oss << "stlo, "; // 30
+    oss << "stel, "; // 31
+    oss << "stdp, "; // 32
+    oss << "evla, "; // 33
+    oss << "evlo, "; // 34
+    oss << "evel, "; // 35
+    oss << "evdp, "; // 36
+    oss << "mag, "; // 37
+    oss << "user0, "; // 38
+    oss << "user1, "; // 39
+    oss << "user2, "; // 40
+    oss << "user3, "; // 41
+    oss << "user4, "; // 42
+    oss << "user5, "; // 43
+    oss << "user6, "; // 44
+    oss << "user7, "; // 45
+    oss << "user8, "; // 46
+    oss << "user9, "; // 47
+    oss << "dist, "; // 48
+    oss << "az, "; // 49
+    oss << "baz, "; // 50
+    oss << "gcarc, "; // 51
+    oss << "depmin, "; // 52
+    oss << "depmen, "; // 53
+    oss << "depmax, "; // 54
+    oss << "cmpaz, "; // 55
+    oss << "cmpinc, "; // 56
+    oss << "reference_time, "; // 57
+    oss << "norid, "; // 58
+    oss << "nevid, "; // 59
+    oss << "npts, "; // 60
+    oss << "nwfid, "; // 61
+    oss << "iftype, "; // 62
+    oss << "idep, "; // 63
+    oss << "iztype, "; // 64
+    oss << "iinst, "; // 65
+    oss << "istreg, "; // 66
+    oss << "ievreg, "; // 67
+    oss << "ievtyp, "; // 68
+    oss << "iqual, "; // 69
+    oss << "isynth, "; // 70
+    oss << "imagtyp, "; // 71
+    oss << "imagsrc, "; // 72
+    oss << "ibody, "; // 73
+    oss << "leven, "; // 74
+    oss << "lpspol, "; // 75
+    oss << "kstnm, "; // 76
+    oss << "kevnm, "; // 77
+    oss << "khole, "; // 78
+    oss << "ko, "; // 79
+    oss << "ka, "; // 80
+    oss << "kt0, "; // 81
+    oss << "kt1, "; // 82
+    oss << "kt2, "; // 83
+    oss << "kt3, "; // 84
+    oss << "kt4, "; // 85
+    oss << "kt5, "; // 86
+    oss << "kt6, "; // 87
+    oss << "kt7, "; // 88
+    oss << "kt8, "; // 89
+    oss << "kt9, "; // 90
+    oss << "kf, "; // 91
+    oss << "kuser0, "; // 92
+    oss << "kuser1, "; // 93
+    oss << "kuser2, "; // 94
+    oss << "kcmpnm, "; // 95
+    oss << "knetwk, "; // 96
+    oss << "kinst, "; // 97
+    oss << "data1, "; // 98
+    oss << "data2)"; // 99
+    oss << " Values (";
+    for (int i{0}; i < 98; ++i)
+    {
+        oss << "?, ";
+    }
+    oss << "?);";
+    std::string sq3_string{oss.str()};
+    sqlite3_stmt* sq3_statement{};
+    sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
+    // If a header is unset, bind as null, otherwise bind with the actuall value
+    // For now do unset double for all non-int numbers
+    // then modify to unset_float for those that need it
+    sq3_result = sqlite3_bind_int(sq3_statement, 1, data_id);
+    sq3_result = sqlite3_bind_int(sq3_statement, 2, checkpoint_id_);
+    if (sac.delta == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 3); } else { sq3_result = sqlite3_bind_double(sq3_statement, 3, sac.delta); }
+    if (sac.b == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 4); } else{ sq3_result = sqlite3_bind_double(sq3_statement, 4, sac.b); }
+    if (sac.e == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 5); } else { sq3_result = sqlite3_bind_double(sq3_statement, 5, sac.e); }
+    if (sac.o == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 6); } else { sq3_result = sqlite3_bind_double(sq3_statement, 6, sac.o); }
+    if (sac.a == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 7); } else { sq3_result = sqlite3_bind_double(sq3_statement, 7, sac.a); }
+    if (sac.t0 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 8); } else { sq3_result = sqlite3_bind_double(sq3_statement, 8, sac.t0); }
+    if (sac.t1 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 9); } else { sq3_result = sqlite3_bind_double(sq3_statement, 9, sac.t1); }
+    if (sac.t2 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 10); } else { sq3_result = sqlite3_bind_double(sq3_statement, 10, sac.t2); }
+    if (sac.t3 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 11); } else { sq3_result = sqlite3_bind_double(sq3_statement, 11, sac.t3); }
+    if (sac.t4 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 12); } else { sq3_result = sqlite3_bind_double(sq3_statement, 12, sac.t4); }
+    if (sac.t5 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 13); } else { sq3_result = sqlite3_bind_double(sq3_statement, 13, sac.t5); }
+    if (sac.t6 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 14); } else { sq3_result = sqlite3_bind_double(sq3_statement, 14, sac.t6); }
+    if (sac.t7 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 15); } else { sq3_result = sqlite3_bind_double(sq3_statement, 15, sac.t7); }
+    if (sac.t8 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 16); } else { sq3_result = sqlite3_bind_double(sq3_statement, 16, sac.t8); }
+    if (sac.t9 == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 17); } else { sq3_result = sqlite3_bind_double(sq3_statement, 17, sac.t9); }
+    if (sac.f == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 18); } else { sq3_result = sqlite3_bind_double(sq3_statement, 18, sac.f); }
+    if (sac.resp0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 19); } else { sq3_result = sqlite3_bind_double(sq3_statement, 19, sac.resp0); }
+    if (sac.resp1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 20); } else { sq3_result = sqlite3_bind_double(sq3_statement, 20, sac.resp1); }
+    if (sac.resp2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 21); } else { sq3_result = sqlite3_bind_double(sq3_statement, 21, sac.resp2); }
+    if (sac.resp3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 22); } else { sq3_result = sqlite3_bind_double(sq3_statement, 22, sac.resp3); }
+    if (sac.resp4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 23); } else { sq3_result = sqlite3_bind_double(sq3_statement, 23, sac.resp4); }
+    if (sac.resp5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 24); } else { sq3_result = sqlite3_bind_double(sq3_statement, 24, sac.resp5); }
+    if (sac.resp6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 25); } else { sq3_result = sqlite3_bind_double(sq3_statement, 25, sac.resp6); }
+    if (sac.resp7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 26); } else { sq3_result = sqlite3_bind_double(sq3_statement, 26, sac.resp7); }
+    if (sac.resp8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 27); } else { sq3_result = sqlite3_bind_double(sq3_statement, 27, sac.resp8); }
+    if (sac.resp9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 28); } else { sq3_result = sqlite3_bind_double(sq3_statement, 28, sac.resp9); }
+    if (sac.stla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 29); } else { sq3_result = sqlite3_bind_double(sq3_statement, 29, sac.stla); }
+    if (sac.stlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 30); } else { sq3_result = sqlite3_bind_double(sq3_statement, 30, sac.stlo); }
+    if (sac.stel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 31); } else { sq3_result = sqlite3_bind_double(sq3_statement, 31, sac.stel); }
+    if (sac.stdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 32); } else { sq3_result = sqlite3_bind_double(sq3_statement, 32, sac.stdp); }
+    if (sac.evla == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 33); } else { sq3_result = sqlite3_bind_double(sq3_statement, 33, sac.evla); }
+    if (sac.evlo == SAC::unset_double) { sq3_result = sqlite3_bind_null(sq3_statement, 34); } else { sq3_result = sqlite3_bind_double(sq3_statement, 34, sac.evlo); }
+    if (sac.evel == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 35); } else { sq3_result = sqlite3_bind_double(sq3_statement, 35, sac.evel); }
+    if (sac.evdp == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 36); } else { sq3_result = sqlite3_bind_double(sq3_statement, 36, sac.evdp); }
+    if (sac.mag == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 37); } else { sq3_result = sqlite3_bind_double(sq3_statement, 37, sac.mag); }
+    if (sac.user0 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 38); } else { sq3_result = sqlite3_bind_double(sq3_statement, 38, sac.user0); }
+    if (sac.user1 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 39); } else { sq3_result = sqlite3_bind_double(sq3_statement, 39, sac.user1); }
+    if (sac.user2 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 40); } else { sq3_result = sqlite3_bind_double(sq3_statement, 40, sac.user2); }
+    if (sac.user3 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 41); } else { sq3_result = sqlite3_bind_double(sq3_statement, 41, sac.user3); }
+    if (sac.user4 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 42); } else { sq3_result = sqlite3_bind_double(sq3_statement, 42, sac.user4); }
+    if (sac.user5 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 43); } else { sq3_result = sqlite3_bind_double(sq3_statement, 43, sac.user5); }
+    if (sac.user6 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 44); } else { sq3_result = sqlite3_bind_double(sq3_statement, 44, sac.user6); }
+    if (sac.user7 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 45); } else { sq3_result = sqlite3_bind_double(sq3_statement, 45, sac.user7); }
+    if (sac.user8 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 46); } else { sq3_result = sqlite3_bind_double(sq3_statement, 46, sac.user8); }
+    if (sac.user9 == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 47); } else { sq3_result = sqlite3_bind_double(sq3_statement, 47, sac.user9); }
+    if (sac.dist == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 48); } else { sq3_result = sqlite3_bind_double(sq3_statement, 48, sac.dist); }
+    if (sac.az == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 49); } else { sq3_result = sqlite3_bind_double(sq3_statement, 49, sac.az); }
+    if (sac.baz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 50); } else { sq3_result = sqlite3_bind_double(sq3_statement, 50, sac.baz); }
+    if (sac.gcarc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 51); } else { sq3_result = sqlite3_bind_double(sq3_statement, 51, sac.gcarc); }
+    if (sac.depmin == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 52); } else { sq3_result = sqlite3_bind_double(sq3_statement, 52, sac.depmin); }
+    if (sac.depmen == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 53); } else { sq3_result = sqlite3_bind_double(sq3_statement, 53, sac.depmen); }
+    if (sac.depmax == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 54); } else { sq3_result = sqlite3_bind_double(sq3_statement, 54, sac.depmax); }
+    if (sac.cmpaz == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 55); } else { sq3_result = sqlite3_bind_double(sq3_statement, 55, sac.cmpaz); }
+    if (sac.cmpinc == SAC::unset_float) { sq3_result = sqlite3_bind_null(sq3_statement, 56); } else { sq3_result = sqlite3_bind_double(sq3_statement, 56, sac.cmpinc); }
+    std::string ref_time{sac_reference_time(sac)};
+    // Need to handle if the nzSTUFF not set to make a null reference time
+    sq3_result = sqlite3_bind_text(sq3_statement, 57, ref_time.c_str(), -1, SQLITE_STATIC);
+    if (sac.norid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 58); } else { sq3_result = sqlite3_bind_int(sq3_statement, 58, sac.norid); }
+    if (sac.nevid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 59); } else { sq3_result = sqlite3_bind_int(sq3_statement, 59, sac.nevid); }
+    if (sac.npts == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 60); } else { sq3_result = sqlite3_bind_int(sq3_statement, 60, sac.npts); }
+    if (sac.nwfid == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 61); } else { sq3_result = sqlite3_bind_int(sq3_statement, 61, sac.nwfid); }
+    if (sac.iftype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 62); } else { sq3_result = sqlite3_bind_int(sq3_statement, 62, sac.iftype); }
+    if (sac.idep == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 63); } else { sq3_result = sqlite3_bind_int(sq3_statement, 63, sac.idep); }
+    if (sac.iztype == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 64); } else { sq3_result = sqlite3_bind_int(sq3_statement, 64, sac.iztype); }
+    if (sac.iinst == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 65); } else { sq3_result = sqlite3_bind_int(sq3_statement, 65, sac.iinst); }
+    if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 66); } else { sq3_result = sqlite3_bind_int(sq3_statement, 66, sac.istreg); }
+    if (sac.ievreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 67); } else { sq3_result = sqlite3_bind_int(sq3_statement, 67, sac.ievreg); }
+    if (sac.ievtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 68); } else { sq3_result = sqlite3_bind_int(sq3_statement, 68, sac.ievtyp); }
+    if (sac.iqual == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 69); } else { sq3_result = sqlite3_bind_int(sq3_statement, 69, sac.iqual); }
+    if (sac.istreg == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 70); } else { sq3_result = sqlite3_bind_int(sq3_statement, 70, sac.isynth); }
+    if (sac.imagtyp == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 71); } else { sq3_result = sqlite3_bind_int(sq3_statement, 71, sac.imagtyp); }
+    if (sac.imagsrc == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 72); } else { sq3_result = sqlite3_bind_int(sq3_statement, 72, sac.imagsrc); }
+    if (sac.ibody == SAC::unset_int) { sq3_result = sqlite3_bind_null(sq3_statement, 73); } else { sq3_result = sqlite3_bind_int(sq3_statement, 73, sac.ibody); }
+    // If not set, they're 0 anyway
+    sq3_result = sqlite3_bind_int(sq3_statement, 74, sac.leven);
+    sq3_result = sqlite3_bind_int(sq3_statement, 75, sac.lpspol);
+    std::string trim_unset_word{SAC::unset_word};
+    boost::algorithm::trim(trim_unset_word);
+    boost::algorithm::trim(sac.kstnm);
+    if (sac.kstnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 76); } else { sq3_result = sqlite3_bind_text(sq3_statement, 76, sac.kstnm.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kevnm);
+    if (sac.kevnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 77); } else { sq3_result = sqlite3_bind_text(sq3_statement, 77, sac.kevnm.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.khole);
+    if (sac.khole == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 78); } else { sq3_result = sqlite3_bind_text(sq3_statement, 78, sac.khole.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.ko);
+    if (sac.ko == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 79); } else { sq3_result = sqlite3_bind_text(sq3_statement, 79, sac.ko.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.ka);
+    if (sac.ka == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 80); } else { sq3_result = sqlite3_bind_text(sq3_statement, 80, sac.ka.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt0);
+    if (sac.kt0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 81); } else { sq3_result = sqlite3_bind_text(sq3_statement, 81, sac.kt0.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt1);
+    if (sac.kt1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 82); } else { sq3_result = sqlite3_bind_text(sq3_statement, 82, sac.kt1.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt2);
+    if (sac.kt2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 83); } else { sq3_result = sqlite3_bind_text(sq3_statement, 83, sac.kt2.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt3);
+    if (sac.kt3 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 84); } else { sq3_result = sqlite3_bind_text(sq3_statement, 84, sac.kt3.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt4);
+    if (sac.kt4 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 85); } else { sq3_result = sqlite3_bind_text(sq3_statement, 85, sac.kt4.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt5);
+    if (sac.kt5 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 86); } else { sq3_result = sqlite3_bind_text(sq3_statement, 86, sac.kt5.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt6);
+    if (sac.kt6 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 87); } else { sq3_result = sqlite3_bind_text(sq3_statement, 87, sac.kt6.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt7);
+    if (sac.kt7 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 88); } else { sq3_result = sqlite3_bind_text(sq3_statement, 88, sac.kt7.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt8);
+    if (sac.kt8 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 89); } else { sq3_result = sqlite3_bind_text(sq3_statement, 89, sac.kt8.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kt9);
+    if (sac.kt9 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 90); } else { sq3_result = sqlite3_bind_text(sq3_statement, 90, sac.kt9.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kf);
+    if (sac.kf == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 91); } else { sq3_result = sqlite3_bind_text(sq3_statement, 91, sac.kf.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kuser0);
+    if (sac.kuser0 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 92); } else { sq3_result = sqlite3_bind_text(sq3_statement, 92, sac.kuser0.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kuser1);
+    if (sac.kuser1 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 93); } else { sq3_result = sqlite3_bind_text(sq3_statement, 93, sac.kuser1.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kuser2);
+    if (sac.kuser2 == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 94); } else { sq3_result = sqlite3_bind_text(sq3_statement, 94, sac.kuser2.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kcmpnm);
+    if (sac.kcmpnm == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kcmpnm.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.knetwk);
+    if (sac.knetwk == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 96); } else { sq3_result = sqlite3_bind_text(sq3_statement, 96, sac.knetwk.c_str(), -1, SQLITE_STATIC); }
+    boost::algorithm::trim(sac.kinst);
+    if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_text(sq3_statement, 97, sac.kinst.c_str(), -1, SQLITE_STATIC); }
+    // Data vectors
+    if (sac.data1.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC); }
+    if (sac.data2.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 99); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 99, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC); }
+    // Execute the statement
+    sq3_result = sqlite3_step(sq3_statement);
+    // Finalize the statement
+    sqlite3_finalize(sq3_statement);
+}
+//------------------------------------------------------------------------
+// End Store the information in the temporary table
 //------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------

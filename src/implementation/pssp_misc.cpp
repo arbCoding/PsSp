@@ -63,6 +63,7 @@ void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
         spectrum.sac.data1[i] = complex_spectrum[i].real();
         spectrum.sac.data2[i] = complex_spectrum[i].imag();
     }
+    sac.in_use = false;
 }
 
 void remove_mean(ProgramStatus& program_status, int data_id)
@@ -103,6 +104,7 @@ void remove_mean(ProgramStatus& program_status, int data_id)
         }
     }
     ++program_status.tasks_completed;
+    sac.in_use = false;
 }
 
 void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids)
@@ -160,6 +162,7 @@ void remove_trend(ProgramStatus& program_status, int data_id)
         sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
     }
     ++program_status.tasks_completed;
+    sac.in_use = false;
 }
 
 void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_ids)
@@ -176,6 +179,7 @@ void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_id
 
 void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
 {
+    //std::cout << "Start lowpass: " << data_id << '\n';
     if (!program_status.project.is_project) { return; }
     sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
     if (!sac_ptr) { return; }
@@ -190,6 +194,8 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
     lowpass(program_status.fftw_planpool, sac, lowpass_options.order, lowpass_options.freq_low);
     ++program_status.tasks_completed;
+    sac.in_use = false;
+    //std::cout << "Finish lowpass: " << data_id << '\n';
 }
 
 void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& lowpass_options)
@@ -220,6 +226,7 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
     highpass(program_status.fftw_planpool, sac, highpass_options.order, highpass_options.freq_low);
     ++program_status.tasks_completed;
+    sac.in_use = false;
 }
 
 void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& highpass_options)
@@ -252,6 +259,7 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
     bandpass(program_status.fftw_planpool, sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
     ++program_status.tasks_completed;
+    sac.in_use = false;
 }
 
 void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& bandpass_options)
@@ -277,6 +285,10 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path file_na
         sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
+    {
+        program_status.data_pool.add_data(program_status.project, sac.data_id);
+    }
     ++program_status.tasks_completed;
 }
 

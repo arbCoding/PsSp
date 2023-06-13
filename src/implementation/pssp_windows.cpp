@@ -489,6 +489,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
                 // Lock and write out the content
                 std::shared_lock<std::shared_mutex> lock_sac(current_ptr->mutex_);
                 current_ptr->sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
+                current_ptr->in_use = false;
             }
         }
         ImGuiFileDialog::Instance()->Close();
@@ -675,6 +676,7 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
             ImPlot::EndPlot();
         }
         ImGui::End();
+        sac.in_use = false;
     }
 }
 //-----------------------------------------------------------------------------
@@ -792,6 +794,7 @@ void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_s
             if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         }
         ImGui::End();
+        sac.in_use = false;
     }
 }
 //-----------------------------------------------------------------------------
