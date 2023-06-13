@@ -44,7 +44,8 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 
 void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
 {
-    sac_1c* sac_ptr = program_status.data_pool.get_pointer(program_status.project, data_id);
+    if (!program_status.project.is_project) { return; }
+    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
     if (!sac_ptr) { return; }
     sac_1c& sac{*sac_ptr};
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
@@ -468,13 +469,14 @@ void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sa
 //------------------------------------------------------------------------
 void unload_data(ProgramStatus& program_status)
 {
-    // Remove the SQLite3 connections and the file paths
-    program_status.project.unload_project();
-    // Empty the data pool
-    program_status.data_pool.empty_pool();
     program_status.state.store(in);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = 1;
+    program_status.total_tasks = 2;
+    // Remove the SQLite3 connections and the file paths
+    program_status.project.unload_project();
+    ++program_status.tasks_completed;
+    // Empty the data pool
+    program_status.data_pool.empty_pool();
     ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------

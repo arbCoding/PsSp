@@ -421,8 +421,6 @@ int main(int arg_count, char* arg_array[])
     std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
     pssp::AllFilterOptions af_settings{};
     pssp::ProgramStatus program_status{};
-    // Pointer for the active_sac
-    pssp::sac_1c* sac_ptr{};
     // Spectrum (only 1 for now)
     pssp::sac_1c spectrum;
     // Which sac-file is active
@@ -468,13 +466,12 @@ int main(int arg_count, char* arg_array[])
           {
             program_status.data_id = data_ids[active_sac];
             update_spectrum = true;
-            sac_ptr = program_status.data_pool.get_pointer(program_status.project, program_status.data_id);
           }
-          window_sac_header(current_settings.window_settings.header, sac_ptr);
+          window_sac_header(current_settings.window_settings.header, program_status, program_status.data_id);
           // Show processing history window is appropriate
           window_processing_history(current_settings.window_settings.processing_history, program_status.project, data_ids[active_sac]);
           // Show the Sac Plot window if appropriate
-          window_plot_sac(current_settings.window_settings.plot_1c, sac_ptr);
+          window_plot_sac(current_settings.window_settings.plot_1c, program_status, program_status.data_id);
           // Show Checkpoint naming window if appropriate
           window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status);
           // Show Checkpoint note window if appropriate
@@ -482,13 +479,13 @@ int main(int arg_count, char* arg_array[])
           // Show the Sac Spectrum window if appropriate
           // We need to see if the FFT needs to be calculated (don't want to do it
           // every frame)
-          if (current_settings.window_settings.spectrum_1c.show && sac_ptr)
+          if (current_settings.window_settings.spectrum_1c.show && update_spectrum)
           {
             // If they're not the same, then calculate the FFT
             if (update_spectrum) { calc_spectrum(program_status, program_status.data_id, spectrum); update_spectrum = false; }
           }
           // Finally plot the spectrum
-          window_plot_spectrum(current_settings.window_settings.spectrum_1c, spectrum);
+          window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);
           // Show a list of available data and allow the user to select the data they want to look at
           window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, data_ids, spectrum, active_sac, clear_sac);
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);

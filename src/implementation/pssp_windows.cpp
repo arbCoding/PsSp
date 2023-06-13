@@ -3,6 +3,7 @@
 #include "pssp_program_settings.hpp"
 #include "pssp_projects.hpp"
 #include <cstddef>
+#include <filesystem>
 
 namespace pssp
 {
@@ -623,12 +624,14 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
 //-----------------------------------------------------------------------------
 // 1-component SAC plot window
 //-----------------------------------------------------------------------------
-void window_plot_sac(WindowSettings& window_settings, sac_1c* sac_ptr)
+void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_status, int data_id)
 {
-    if (!sac_ptr) { return; }
     if (window_settings.show && window_settings.state != hide)
     {
-        sac_1c& sac = *sac_ptr;
+        if (!program_status.project.is_project) { return; }
+        sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+        if (!sac_ptr) { return; }
+        sac_1c& sac{*sac_ptr};
         std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
         if (!window_settings.is_set)
         {
@@ -681,10 +684,11 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c* sac_ptr)
 //-----------------------------------------------------------------------------
 // 1-component SAC spectrum window
 //-----------------------------------------------------------------------------
-void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
+void window_plot_spectrum(WindowSettings& window_settings, bool is_project, sac_1c& spectrum)
 {
     if (window_settings.show && window_settings.state != hide)
     {
+        if (!is_project) { return; }
         std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
         if (!window_settings.is_set)
         {
@@ -726,12 +730,14 @@ void window_plot_spectrum(WindowSettings& window_settings, sac_1c& spectrum)
 //-----------------------------------------------------------------------------
 // 1-component SAC header window
 //-----------------------------------------------------------------------------
-void window_sac_header(WindowSettings& window_settings, sac_1c* sac_ptr)
+void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_status, int data_id)
 {
-    if (!sac_ptr) { return; }
     if (window_settings.show && window_settings.state != hide)
     {
-        sac_1c& sac = *sac_ptr;
+        if (!program_status.project.is_project) { return; }
+        sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+        if (!sac_ptr) { return; }
+        sac_1c& sac{*sac_ptr};
         std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
         if (!window_settings.is_set)
         {
