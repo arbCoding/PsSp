@@ -115,7 +115,7 @@ public:
     // If I allow up to 6, it can experience deadlocks (not always so can be hard to track
     // down)
     //=========================================================================
-    DataPool(std::size_t max_data_ = 7) : max_data(max_data_) {}
+    DataPool(std::size_t max_data_ = 1) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, int data_id);
     // How much data is in the pool

@@ -423,6 +423,13 @@ int main(int arg_count, char* arg_array[])
     std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
     pssp::AllFilterOptions af_settings{};
     pssp::ProgramStatus program_status{};
+    // Make sure we meet the minimum requied amount of data in the data-pool to function without
+    // deadlocking! This logic will belong elsewhere as well, if I allow the user to manually
+    // alter the size of the data-pool (cannot go below the number of threads in the threadpool!)
+    if (program_status.data_pool.max_data < program_status.thread_pool.n_threads_total())
+    {
+        program_status.data_pool.max_data = program_status.thread_pool.n_threads_total();
+    }
     // Spectrum (only 1 for now)
     pssp::sac_1c spectrum;
     // Which sac-file is active
