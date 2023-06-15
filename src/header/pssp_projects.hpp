@@ -66,8 +66,6 @@ class Project
         std::string_view name_{};
         // Path to the database file
         std::filesystem::path path_{};
-        // Checkpoint id
-        int checkpoint_id_{0};
         // SQLite3 BLOB (Binary Large OBject) to std::vector<double>
         std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index);
         // Create provenance table
@@ -111,6 +109,8 @@ class Project
         // Create fresh tables for a brand new project
         void fresh_tables();
     public:
+        // Checkpoint id
+        int checkpoint_id_{0};
         // Connection to the database (file)
         sqlite3* sq3_connection_file{};
         // Conection to the database (memory)
@@ -176,6 +176,11 @@ class Project
         SAC::SacStream load_sacstream_from_checkpoint(int data_id, int checkpoint_id);
         // Get a sacstream for the current checkpoint_id
         SAC::SacStream load_sacstream(int data_id);
+        // Specifically load from the temporary_data table
+        SAC::SacStream load_sacstream_from_temporary(const int data_id, const int checkpoint_id);
+        // Get a sacstream from the temporary_data table if it exists
+        // if not, get it from the checkpoint table
+        SAC::SacStream load_temporary_sacstream(const int data_id, const int checkpoint_id);
         // Get source name from provenance table
         std::string get_source(int data_id);
         // Checkpoint_id setter

@@ -61,7 +61,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
 // Window that displays the frame-rate in Frames Per Second
 void window_fps(fps_info& fps_tracker, WindowSettings& window_settings);
 // Window lists data in project for current checkpoint
-void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, sac_1c& spectrum, int& selected, bool& clear_sac);
+void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, int& selected, bool& clear_sac);
 // Window to name a checkpoint
 void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status);
 // Window to make notes for a checkpoint

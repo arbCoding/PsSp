@@ -5,7 +5,7 @@
 
 namespace pssp
 {
-std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, int data_id)
+std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, const int data_id, const int checkpoint_id)
 {
     // We lock the pool when requesting the data
     std::lock_guard<std::mutex> lock_pool(mutex_);
@@ -20,7 +20,7 @@ std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, int data_id)
     // We need to try to clear a chunk
     if (n_data() > max_data) { clear_chunk(project); }
     // If it is not found, we need to add it to the pool
-    return get_new_pointer(project, data_id);
+    return get_new_pointer(project, data_id, checkpoint_id);
 }
 
 // How much data is in the pool
@@ -29,33 +29,30 @@ std::size_t DataPool::n_data() const
     return data_pool_.size();
 }
 
-// This needs a flag to determine if we're loading
-// from the checkpoint table without looking at the
-// temporary table at all
-// Or if we want to check the temporary table first
-// Then there needs to be a separate project method
-// that checks the temporary table for the data_id
-// and current checkpoint id and returns it if found
-// if not found them it uses load_sacstream to pull
-// it from the data checkpoint
-void DataPool::add_data(Project& project, int data_id)
+// If it is not in temporary for the correct checkpoint
+// and data_id, it is loaded from the proper checkpoint
+// data table
+//=============================================================================
+// Needs a flag to determine if it should try the temporary_data first
+// or directly skip it (straight from checkpoint)
+void DataPool::add_data(Project& project, const int data_id, const int checkpoint_id)
 {
     if (data_id == -1 || !project.is_project) { return; }
     sac_1c sac{};
     std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     sac.file_name = project.get_source(data_id);
-    sac.sac = project.load_sacstream(data_id);
+    sac.sac = project.load_temporary_sacstream(data_id, checkpoint_id);
     sac.data_id = data_id;
     // Add the pointer to the pool
     data_pool_[data_id] = std::make_unique<sac_1c>(std::move(sac));
 }
 
 // Add and return a new raw pointer
-std::shared_ptr<sac_1c> DataPool::get_new_pointer(Project& project, int data_id)
+std::shared_ptr<sac_1c> DataPool::get_new_pointer(Project& project, const int data_id, const int checkpoint_id)
 {
     if (data_id == -1 || !project.is_project) { return nullptr; }
     // Add it to the pool
-    add_data(project, data_id);
+    add_data(project, data_id, checkpoint_id);
     // Retrieve the raw pointer form the pool
     return data_pool_[data_id];
 }
@@ -67,24 +64,23 @@ void DataPool::empty_pool()
     std::lock_guard<std::mutex> lock_pool(mutex_);
     while (data_pool_.size() > 0)
     {
+        std::vector<decltype(data_pool_.begin())> to_delete{};
         // Iterator in reverse order (oldest to newest)
-    for (auto rit = data_pool_.rbegin(); rit != data_pool_.rend(); ++rit)
-    {
-        std::shared_ptr<sac_1c>& sac_ptr = rit->second;
-        bool success{false};
-        if (sac_ptr->mutex_.try_lock())
+        for (auto rit = data_pool_.rbegin(); rit != data_pool_.rend(); ++rit)
         {
-            success = true;
+            std::shared_ptr<sac_1c>& sac_ptr = rit->second;
+            {
+                std::unique_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_, std::try_to_lock);
+                if (lock_sac.owns_lock())
+                {
+                    to_delete.push_back(std::next(rit).base());
+                }
+            }
         }
-        if (success)
+        for (const auto& data : to_delete)
         {
-            // Delete the object
-            sac_ptr.reset();
-            auto erase_iter = std::next(rit).base();
-            data_pool_.erase(erase_iter);
-            break;
+            data_pool_.erase(data);
         }
-    }
     }
     // Clear the data_pool_ map
     data_pool_.clear();
@@ -111,16 +107,6 @@ void DataPool::remove_data(Project& project, int data_id)
     }
 }
 
-void DataPool::reload_data(Project& project, int data_id)
-{
-    std::lock_guard<std::mutex> lock_pool(mutex_);
-    if (data_id == -1 || !project.is_project) { return; } 
-    // Remove if it exists
-    remove_data(project, data_id);
-    // Readd
-    add_data(project, data_id);
-}
-
 // Find an object in the pool that is not being used and remove it
 // Note that the pool is locked already whenever this is called
 // so nobody can get this during the operation anyway
@@ -131,10 +117,14 @@ void DataPool::remove_unused_once(Project& project, std::size_t& removed)
     {
         std::shared_ptr<sac_1c>& sac_ptr = rit->second;
         bool success{false};
-        if (sac_ptr->mutex_.try_lock())
+        // Non-blocking attempt to lock the object
         {
-            success = true;
-            project.store_in_temporary_data(sac_ptr->sac, sac_ptr->data_id);
+            std::unique_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_, std::try_to_lock);
+            if (lock_sac.owns_lock())
+            {
+                success = true; 
+                project.store_in_temporary_data(sac_ptr->sac, sac_ptr->data_id);
+            }
         }
         if (success)
         {
@@ -156,6 +146,8 @@ void DataPool::clear_chunk(Project& project)
     std::size_t chunk_size{(n_data() - target) / 2};
     // Make sure chunk_size is never less than 1
     chunk_size = ((1 > chunk_size) ? 1 : chunk_size);
+    // This doesn't actually get used for anything other than debugging
+    // need to remove this
     std::size_t removed_count{0};
     // Even if we didn't hit the target, at least we're below max_data
     // if we tried to force target, we could deadlock
@@ -166,8 +158,6 @@ void DataPool::clear_chunk(Project& project)
             if (n_data() <= target) { break; }
             remove_unused_once(project, removed_count);
         }
-        // Adding delay for debug
-        //std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 

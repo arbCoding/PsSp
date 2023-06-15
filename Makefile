@@ -29,6 +29,7 @@ param = -std=c++20 -pedantic-errors -Wall
 # though it also flags many false positives (better than missing
 # real positives)
 #common_debug = -fsanitize=thread -pthread -Wextra -Werror -Wshadow -ggdb
+# This does not use the thread-sanitizer (no pthreads needed either)
 common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)

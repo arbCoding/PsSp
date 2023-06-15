@@ -48,7 +48,7 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     
     std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
@@ -72,7 +72,7 @@ void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
 void remove_mean(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     
     program_status.state.store(processing);
@@ -126,7 +126,7 @@ void batch_remove_mean(ProgramStatus& program_status)
 void remove_trend(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     
     program_status.state.store(processing);
@@ -187,7 +187,7 @@ void batch_remove_trend(ProgramStatus& program_status)
 void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
@@ -221,7 +221,7 @@ void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_o
 void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
@@ -254,7 +254,7 @@ void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass
 void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options)
 {
     if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
@@ -299,7 +299,7 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path file_na
     std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
     if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
     {
-        program_status.data_pool.add_data(program_status.project, sac.data_id);
+        program_status.data_pool.add_data(program_status.project, sac.data_id, program_status.project.checkpoint_id_);
     }
     ++program_status.tasks_completed;
 }
@@ -470,17 +470,21 @@ void finish_newframe(GLFWwindow* window, ImVec4 clear_color)
 //------------------------------------------------------------------------
 // Checkpoint data (inside thread_pool)
 //------------------------------------------------------------------------
-void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac)
+// This deadlocks on exactly one file sometimes when waiting to lock the sac_ptr->mutex_
+void checkpoint_data(ProgramStatus& program_status, const int data_id, const int checkpoint_id)
 {
+    if (!program_status.project.is_project) { return; }
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, checkpoint_id)};
+    if (!sac_ptr) { return; }
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     program_status.state.store(out);
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        project.add_data_checkpoint(sac.sac, sac.data_id, true);
-        std::unordered_map<std::string, std::string> checkpoint_metadata{project.get_current_checkpoint_metadata()};
+        program_status.project.add_data_checkpoint(sac_ptr->sac, data_id, true);
+        std::unordered_map<std::string, std::string> checkpoint_metadata{program_status.project.get_current_checkpoint_metadata()};
         std::ostringstream oss{};
         oss << "CHECKPOINT; NAME " << checkpoint_metadata["name"] << "; CREATED: " << checkpoint_metadata["created"] << ";";
         std::string checkpoint_string{oss.str()};
-        project.add_data_processing(project.sq3_connection_file, sac.data_id, checkpoint_string.c_str());
+        program_status.project.add_data_processing(program_status.project.sq3_connection_file, data_id, checkpoint_string.c_str());
     }
     ++program_status.tasks_completed;
 }
@@ -499,8 +503,6 @@ void unload_data(ProgramStatus& program_status)
     // Remove the SQLite3 connections and the file paths
     program_status.project.unload_project();
     ++program_status.tasks_completed;
-    // Empty the data pool
-    program_status.data_pool.empty_pool();
     ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
@@ -512,7 +514,7 @@ void unload_data(ProgramStatus& program_status)
 //------------------------------------------------------------------------
 void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 {
-    program_status.data_pool.add_data(program_status.project, data_id);
+    program_status.data_pool.add_data(program_status.project, data_id, program_status.project.checkpoint_id_);
     ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
@@ -522,7 +524,6 @@ void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 //------------------------------------------------------------------------
 // Load a project from a project file
 //------------------------------------------------------------------------
-// In series it works fine, in parallel it borks at the end.
 void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id)
 {
     {
@@ -558,6 +559,8 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
         program_status.total_tasks = to_load;
         program_status.tasks_completed = 0;
         program_status.state.store(in);
+        // Empty the fucking pool man!
+        program_status.data_pool.empty_pool();
     }
     // If we have space to load more data
     for (std::size_t i{0}; i < to_load; ++i)
@@ -672,30 +675,31 @@ void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int or
 // End Shitty Butterworth bandreject filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
 
-/*
+
 //-----------------------------------------------------------------------------
 // Write a checkpoint
 //-----------------------------------------------------------------------------
-void write_checkpoint(ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque, bool author, bool cull)
+void write_checkpoint(ProgramStatus& program_status, bool author, bool cull)
 {
-    {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.state.store(out);
-        program_status.total_tasks = static_cast<int>(sac_deque.size());
-        program_status.tasks_completed = 0;
-    }
+    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    program_status.state.store(out);
+    std::vector<int> id_input = program_status.data_pool.get_iter(program_status.project);
+    program_status.total_tasks = static_cast<int>(id_input.size());
+    program_status.tasks_completed = 0;
+    int parent_checkpoint_id{program_status.project.checkpoint_id_};
     // Add a checkpoint to the list (made by user)
-    project.write_checkpoint(author, cull);
+    // This step updates the checkpoint id, se we need to pass the old checkpoint id
+    program_status.project.write_checkpoint(author, cull);
     // Checkpoint each piece of data
-    for (std::size_t i{0}; i < sac_deque.size(); ++i)
+    for (std::size_t i{0}; i < id_input.size(); ++i)
     {
-        program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), std::ref(project), std::ref(sac_deque[i]));
+        program_status.thread_pool.enqueue(checkpoint_data, std::ref(program_status), id_input[i], parent_checkpoint_id);
     }
 }
 //-----------------------------------------------------------------------------
 // End Write a checkpoint
 //-----------------------------------------------------------------------------
-*/
+
 
 
 //-----------------------------------------------------------------------------
@@ -723,7 +727,7 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
         program_status.thread_pool.enqueue(delete_data_id_checkpoint, std::ref(program_status), std::ref(project), checkpoint_id, data_id);
     }
     // Tell SQLite3 to issue vacuum on closing database
-    project.vacuum();
+    //project.vacuum();
 }
 //-----------------------------------------------------------------------------
 // End Delete a checkpoint

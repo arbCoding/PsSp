@@ -193,7 +193,7 @@ void prep_newframe();
 // Ran at end of new frame draw cycle
 void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 // Add all each datapoint ot a checkpoint
-void checkpoint_data(ProgramStatus& program_status, Project& project, std::shared_ptr<sac_1c> sac);
+void checkpoint_data(ProgramStatus& program_status, const int data_id, const int checkpoint_id);
 // Unload the project
 void unload_data(ProgramStatus& program_status);
 // Load a single bit of data
@@ -209,7 +209,7 @@ void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, d
 // Shitty bandreject for testing
 void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double lowreject, double highreject);
 // Write a checkpoint (need to set project.checkpoint_name first!)
-void write_checkpoint(ProgramStatus& program_status, Project& project, std::deque<sac_1c>& sac_deque, bool author, bool cull);
+void write_checkpoint(ProgramStatus& program_status, bool author, bool cull);
 // Delete checkpoint data for a data_id (allows to be parallel)
 void delete_data_id_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id, int data_id);
 // Delete a checkpoint

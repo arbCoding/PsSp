@@ -267,7 +267,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         {
             // Add a checkpoint to the list (made by user)
             program_status.project.checkpoint_name = "";
-            //write_checkpoint(program_status, program_status.project, sac_deque, true, false);
+            write_checkpoint(program_status, true, false);
         }
         if (ImGui::MenuItem("Create Named Checkpoint##", nullptr, nullptr, menu_allowed.new_checkpoint))
         {
@@ -294,8 +294,6 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
                 {
                     std::filesystem::path project_file{program_status.project.get_path()};
                     // Need to get checkpoint name and notes
-                    // Unload
-                    unload_data(program_status);
                     // Set checkpoint metadata values
                     program_status.project.checkpoint_name = checkpoint_metadata["name"];
                     program_status.project.checkpoint_notes = checkpoint_metadata["notes"];
@@ -483,7 +481,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             // Get the sac_1c object from the data pool
-            std::shared_ptr<sac_1c> current_ptr = program_status.data_pool.get_ptr(program_status.project, program_status.data_id);
+            std::shared_ptr<sac_1c> current_ptr = program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_);
             // Make sure it isn't a nullptr
             if (current_ptr)
             {
@@ -630,7 +628,7 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
     if (window_settings.show && window_settings.state != hide)
     {
         if (!program_status.project.is_project) { return; }
-        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
         if (!sac_ptr) { return; }
         std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
         if (!window_settings.is_set)
@@ -735,7 +733,7 @@ void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_s
     if (window_settings.show && window_settings.state != hide)
     {
         if (!program_status.project.is_project) { return; }
-        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
+        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
         if (!sac_ptr) { return; }
         std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
         if (!window_settings.is_set)
@@ -858,7 +856,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // Data list window
 //-----------------------------------------------------------------------------
-void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, sac_1c& spectrum, int& selected, bool& clear_sac)
+void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, int& selected, bool& clear_sac)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
     std::string option{};
@@ -898,15 +896,6 @@ void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_setti
                 }
                 
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("Unload SAC data from memory"); }
-                
-                if (ImGui::MenuItem("Reload##"))
-                {
-                    selected = i;
-                    program_status.data_pool.reload_data(program_status.project, selected);
-                    calc_spectrum(program_status, selected, spectrum);
-                }
-                
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled)) { ImGui::SetTooltip("Reload the original SAC file"); }
                 
                 if (ImGui::MenuItem("LowPass##", nullptr, nullptr, menu_allowed.lowpass))
                 {
@@ -977,7 +966,7 @@ void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& prog
         if (ImGui::Button("Ok##"))
         {
             program_status.project.checkpoint_name = checkpoint_name_buffer;
-            //write_checkpoint(program_status, program_status.project, sac_deque, true, false);
+            write_checkpoint(program_status, true, false);
              // Close the window after queueing up the work
             window_settings.show = false;
         }

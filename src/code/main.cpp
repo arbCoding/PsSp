@@ -340,6 +340,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             }
             else 
             {
+                // If we're not in a project and we're idle, empty the pool!
+                if (program_status.data_pool.n_data() > 0) { program_status.data_pool.empty_pool(); }
                 current_settings.menu_allowed.open_1c = false;
                 current_settings.menu_allowed.open_dir = false;
                 current_settings.menu_allowed.save_1c = false;
@@ -495,7 +497,7 @@ int main(int arg_count, char* arg_array[])
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);
           // Show a list of available data and allow the user to select the data they want to look at
-          window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, spectrum, active_sac, clear_sac);
+          window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, active_sac, clear_sac);
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);
           window_highpass_options(current_settings.window_settings.highpass, af_settings.highpass);
           window_bandpass_options(current_settings.window_settings.bandpass, af_settings.bandpass);
