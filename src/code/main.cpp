@@ -256,6 +256,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             {
                 std::shared_lock<std::shared_mutex> lock_project(program_status.project.mutex);
                 data_ids = program_status.project.current_data_ids;
+                // Sort the data_ids
+                std::sort(data_ids.begin(), data_ids.end());
                 // Flag the update has been dealt with
                 program_status.project.updated = false;
             }

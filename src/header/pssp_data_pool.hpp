@@ -7,11 +7,10 @@
 #include "pssp_projects.hpp"
 #include <sac_stream.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <unordered_map>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
-#include <atomic>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -73,7 +72,6 @@ struct sac_1c
     SAC::SacStream sac{};
     std::shared_mutex mutex_{};
     int data_id{};
-    std::atomic<bool> in_use{false};
 
     sac_1c() : file_name(), sac(), mutex_(), data_id() {}
     // Copy constructor
@@ -121,7 +119,7 @@ public:
     // what happens (and implement the hot loading/unload of memory).
     DataPool(std::size_t max_data_ = 500) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
-    sac_1c* get_pointer(Project& project, int data_id);
+    std::shared_ptr<sac_1c> get_ptr(Project& project, int data_id);
     // How much data is in the pool
     std::size_t n_data() const;
     // Fully empty the pool
@@ -131,13 +129,16 @@ public:
     std::size_t max_data{};
     // Add data to the pool
     void add_data(Project& project, int data_id);
+    // Function for returning data to data-pool
+    void return_ptr(Project& project, std::shared_ptr<sac_1c>& sac_ptr);
+    std::vector<int> get_iter(const std::vector<int>& input_ids);
 private:
     std::mutex mutex_{};
-    std::unordered_map<int, std::unique_ptr<sac_1c>> data_pool_{};
+    std::map<int, std::shared_ptr<sac_1c>> data_pool_{};
     // Add and return a new raw pointer
-    sac_1c* get_new_pointer(Project& project, int data_id);
+    std::shared_ptr<sac_1c> get_new_pointer(Project& project, int data_id);
     // Find an object in the pool that is not being used and remove it
-    void remove_unused_once(Project& project);
+    void remove_unused_once(Project& project, std::size_t& removed);
     void clear_chunk(Project& project);
 };
 //-----------------------------------------------------------------------------

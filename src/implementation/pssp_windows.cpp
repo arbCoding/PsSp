@@ -482,14 +482,13 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             // Get the sac_1c object from the data pool
-            sac_1c* current_ptr = program_status.data_pool.get_pointer(program_status.project, program_status.data_id);
+            std::shared_ptr<sac_1c> current_ptr = program_status.data_pool.get_ptr(program_status.project, program_status.data_id);
             // Make sure it isn't a nullptr
             if (current_ptr)
             {
                 // Lock and write out the content
                 std::shared_lock<std::shared_mutex> lock_sac(current_ptr->mutex_);
                 current_ptr->sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
-                current_ptr->in_use = false;
             }
         }
         ImGuiFileDialog::Instance()->Close();
@@ -630,10 +629,9 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
     if (window_settings.show && window_settings.state != hide)
     {
         if (!program_status.project.is_project) { return; }
-        sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
         if (!sac_ptr) { return; }
-        sac_1c& sac{*sac_ptr};
-        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+        std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -647,7 +645,7 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
             {
-                ImPlot::PlotLine("", &sac.sac.data1[0], sac.sac.data1.size(), sac.sac.delta);
+                ImPlot::PlotLine("", &sac_ptr->sac.data1[0], sac_ptr->sac.data1.size(), sac_ptr->sac.delta);
             }
             // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
             // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
@@ -676,7 +674,6 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
             ImPlot::EndPlot();
         }
         ImGui::End();
-        sac.in_use = false;
     }
 }
 //-----------------------------------------------------------------------------
@@ -737,10 +734,9 @@ void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_s
     if (window_settings.show && window_settings.state != hide)
     {
         if (!program_status.project.is_project) { return; }
-        sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
         if (!sac_ptr) { return; }
-        sac_1c& sac{*sac_ptr};
-        std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+        std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -753,48 +749,47 @@ void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_s
             
             if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Network:    %s", sac.sac.knetwk.c_str());
-                ImGui::Text("Station:    %s", sac.sac.kstnm.c_str());
-                ImGui::Text("Instrument: %s", sac.sac.kinst.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.stla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.stlo);
-                ImGui::Text("Elevation:  %.2f m", sac.sac.stel);
-                ImGui::Text("Depth:      %.2f m", sac.sac.stdp);
-                ImGui::Text("Back Azi:   %.2f\u00B0", sac.sac.baz);
+                ImGui::Text("Network:    %s", sac_ptr->sac.knetwk.c_str());
+                ImGui::Text("Station:    %s", sac_ptr->sac.kstnm.c_str());
+                ImGui::Text("Instrument: %s", sac_ptr->sac.kinst.c_str());
+                ImGui::Text("Latitude:   %.2f\u00B0N", sac_ptr->sac.stla);
+                ImGui::Text("Longitude:  %.2f\u00B0E", sac_ptr->sac.stlo);
+                ImGui::Text("Elevation:  %.2f m", sac_ptr->sac.stel);
+                ImGui::Text("Depth:      %.2f m", sac_ptr->sac.stdp);
+                ImGui::Text("Back Azi:   %.2f\u00B0", sac_ptr->sac.baz);
             }
             if (ImGui::CollapsingHeader("Component Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Component:  %s", sac.sac.kcmpnm.c_str());
-                ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.cmpaz);
-                ImGui::Text("Incidence:  %.2f\u00B0", sac.sac.cmpinc);
+                ImGui::Text("Component:  %s", sac_ptr->sac.kcmpnm.c_str());
+                ImGui::Text("Azimuth:    %.2f\u00B0", sac_ptr->sac.cmpaz);
+                ImGui::Text("Incidence:  %.2f\u00B0", sac_ptr->sac.cmpinc);
             }
             if (ImGui::CollapsingHeader("Event Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Name:       %s", sac.sac.kevnm.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", sac.sac.evla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", sac.sac.evlo);
-                ImGui::Text("Depth:      %.2f km", sac.sac.evdp);
-                ImGui::Text("Magnitude:  %.2f", sac.sac.mag);
-                ImGui::Text("Azimuth:    %.2f\u00B0", sac.sac.az);
+                ImGui::Text("Name:       %s", sac_ptr->sac.kevnm.c_str());
+                ImGui::Text("Latitude:   %.2f\u00B0N", sac_ptr->sac.evla);
+                ImGui::Text("Longitude:  %.2f\u00B0E", sac_ptr->sac.evlo);
+                ImGui::Text("Depth:      %.2f km", sac_ptr->sac.evdp);
+                ImGui::Text("Magnitude:  %.2f", sac_ptr->sac.mag);
+                ImGui::Text("Azimuth:    %.2f\u00B0", sac_ptr->sac.az);
             }
             if (ImGui::CollapsingHeader("DateTime Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Year:       %i", sac.sac.nzyear);
-                ImGui::Text("Julian Day: %i", sac.sac.nzjday);
-                ImGui::Text("Hour:       %i", sac.sac.nzhour);
-                ImGui::Text("Minute:     %i", sac.sac.nzmin);
-                ImGui::Text("Second:     %i", sac.sac.nzsec);
-                ImGui::Text("MSecond:    %i", sac.sac.nzmsec);
+                ImGui::Text("Year:       %i", sac_ptr->sac.nzyear);
+                ImGui::Text("Julian Day: %i", sac_ptr->sac.nzjday);
+                ImGui::Text("Hour:       %i", sac_ptr->sac.nzhour);
+                ImGui::Text("Minute:     %i", sac_ptr->sac.nzmin);
+                ImGui::Text("Second:     %i", sac_ptr->sac.nzsec);
+                ImGui::Text("MSecond:    %i", sac_ptr->sac.nzmsec);
             }
             if (ImGui::CollapsingHeader("Data Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Npts:       %i", sac.sac.npts);
-                ImGui::Text("IfType:     %i", sac.sac.iftype);
+                ImGui::Text("Npts:       %i", sac_ptr->sac.npts);
+                ImGui::Text("IfType:     %i", sac_ptr->sac.iftype);
             }
             if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         }
         ImGui::End();
-        sac.in_use = false;
     }
 }
 //-----------------------------------------------------------------------------

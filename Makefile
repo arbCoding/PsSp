@@ -181,7 +181,7 @@ imgui_cxx += -isystem$(implot_dir)
 # Boost
 #------------------------------------------------------------------------------
 ifeq ($(uname_s), Darwin)
-	boost_dir = /opt/homebrew/Cellar/boost/1.81.0_1/
+	boost_dir = /opt/homebrew/Cellar/boost/1.82.0/
 	boost_inc = $(boost_dir)include/
 	boost_lib = $(boost_dir)lib/
 else

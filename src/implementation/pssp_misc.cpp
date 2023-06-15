@@ -20,6 +20,9 @@ void update_fps(fps_info& fps, ImGuiIO& io)
     ++fps.frame_count;
 }
 
+// Sometimes calling the filters hangs the program at 100% (seems like a piece of data is being
+// removed at the same time it is being locked? unsure).
+
 /*
 void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
 {
@@ -45,16 +48,16 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
 {
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
     std::vector<std::complex<double>> complex_spectrum{};
     {
-        spectrum.file_name = sac.file_name;
-        spectrum.sac = sac.sac;
-        complex_spectrum = fft_time_series(program_status.fftw_planpool, sac.sac.data1, true);
+        spectrum.file_name = sac_ptr->file_name;
+        spectrum.sac = sac_ptr->sac;
+        complex_spectrum = fft_time_series(program_status.fftw_planpool, sac_ptr->sac.data1, true);
     }
     spectrum.sac.data1.resize(complex_spectrum.size());
     spectrum.sac.data2.resize(complex_spectrum.size());
@@ -63,48 +66,48 @@ void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
         spectrum.sac.data1[i] = complex_spectrum[i].real();
         spectrum.sac.data2[i] = complex_spectrum[i].imag();
     }
-    sac.in_use = false;
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
 }
 
 void remove_mean(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
+    
     program_status.state.store(processing);
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
         program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
-        if (sac.sac.depmen != SAC::unset_float)
+        if (sac_ptr->sac.depmen != SAC::unset_float)
         {
-            mean = sac.sac.depmen;
+            mean = sac_ptr->sac.depmen;
         }
         else
         {
             // Need to calculate the mean...
-            for (int i{0}; i < sac.sac.npts; ++i)
+            for (int i{0}; i < sac_ptr->sac.npts; ++i)
             {
-                mean += sac.sac.data1[i];
+                mean += sac_ptr->sac.data1[i];
             }
-            mean /= static_cast<double>(sac.sac.npts);
+            mean /= static_cast<double>(sac_ptr->sac.npts);
         }
         // If out mean is zero, then we're done
-        if (mean != 0.0 || sac.sac.depmen != 0.0f)
+        if (mean != 0.0 || sac_ptr->sac.depmen != 0.0f)
         {
             // Subtract the mean from ever data point
-            for (int i{0}; i < sac.sac.npts; ++i)
+            for (int i{0}; i < sac_ptr->sac.npts; ++i)
             {
-                sac.sac.data1[i] -= mean;
+                sac_ptr->sac.data1[i] -= mean;
             }
             // The mean is zero
-            sac.sac.depmen = 0.0f;
+            sac_ptr->sac.depmen = 0.0f;
         }
     }
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
-    sac.in_use = false;
 }
 
 void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids)
@@ -113,56 +116,57 @@ void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(data_ids.size());
-    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    for (std::size_t i{0}; i < id_order.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_mean, std::ref(program_status), data_ids[i]);
+        program_status.thread_pool.enqueue(remove_mean, std::ref(program_status), id_order[i]);
     }
 }
 
 void remove_trend(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
+    
     program_status.state.store(processing);
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE TREND");
     double mean_amplitude{0};
     // Static_cast just to be sure no funny business
-    double mean_t{static_cast<double>(sac.sac.npts) / 2.0};
+    double mean_t{static_cast<double>(sac_ptr->sac.npts) / 2.0};
     // If depmen is not set, so no average to start from
-    if (sac.sac.depmen == SAC::unset_float)
+    if (sac_ptr->sac.depmen == SAC::unset_float)
     {
-        for (int i{0}; i < sac.sac.npts; ++i)
+        for (int i{0}; i < sac_ptr->sac.npts; ++i)
         {
-            mean_amplitude += sac.sac.data1[0];
+            mean_amplitude += sac_ptr->sac.data1[0];
         }
-        mean_amplitude /= static_cast<double>(sac.sac.npts);
+        mean_amplitude /= static_cast<double>(sac_ptr->sac.npts);
     }
     else
     {
-        mean_amplitude = sac.sac.depmen;
+        mean_amplitude = sac_ptr->sac.depmen;
     }
     // Now to calculate the slope and y-intercept (y = amplitude)
     double numerator{0};
     double denominator{0};
     double t_diff{0};
-    for (int i{0}; i < sac.sac.npts; ++i)
+    for (int i{0}; i < sac_ptr->sac.npts; ++i)
     {
         t_diff = i - mean_t;
-        numerator += t_diff * (sac.sac.data1[i] - mean_amplitude);
+        numerator += t_diff * (sac_ptr->sac.data1[i] - mean_amplitude);
         denominator += t_diff * t_diff;
     }
     double slope{numerator / denominator};
     double amplitude_intercept{mean_amplitude - (slope * mean_t)};
     // Now to remove the linear trend from the data
-    for (int i{0}; i < sac.sac.npts; ++i)
+    for (int i{0}; i < sac_ptr->sac.npts; ++i)
     {
-        sac.sac.data1[i] -= (slope * i) + amplitude_intercept;
+        sac_ptr->sac.data1[i] -= (slope * i) + amplitude_intercept;
     }
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
-    sac.in_use = false;
 }
 
 void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_ids)
@@ -171,19 +175,19 @@ void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_id
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(data_ids.size());
-    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    for (std::size_t i{0}; i < id_order.size(); ++i)
     {
-        program_status.thread_pool.enqueue(remove_trend, std::ref(program_status), data_ids[i]);
+        program_status.thread_pool.enqueue(remove_trend, std::ref(program_status), id_order[i]);
     }
 }
 
 void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
 {
-    //std::cout << "Start lowpass: " << data_id << '\n';
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
+    
     program_status.state.store(processing);
     std::ostringstream oss{};
     oss << "LOWPASS; ORDER ";
@@ -192,10 +196,10 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     oss << lowpass_options.freq_low;
     oss << ";";
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
-    lowpass(program_status.fftw_planpool, sac, lowpass_options.order, lowpass_options.freq_low);
+    // It is dying in here
+    lowpass(program_status.fftw_planpool, sac_ptr, lowpass_options.order, lowpass_options.freq_low);
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
-    sac.in_use = false;
-    //std::cout << "Finish lowpass: " << data_id << '\n';
 }
 
 void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& lowpass_options)
@@ -204,18 +208,19 @@ void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_i
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(data_ids.size());
-    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    for (std::size_t i{0}; i < id_order.size(); ++i)
     {
-        program_status.thread_pool.enqueue(apply_lowpass, std::ref(program_status), data_ids[i], std::ref(lowpass_options));
+        program_status.thread_pool.enqueue(apply_lowpass, std::ref(program_status), id_order[i], std::ref(lowpass_options));
     }
 }
 
 void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options)
 {
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
+    
     program_status.state.store(processing);
     std::ostringstream oss{};
     oss << "HIGHPASS; ORDER ";
@@ -224,9 +229,9 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     oss << highpass_options.freq_low;
     oss << ";";
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
-    highpass(program_status.fftw_planpool, sac, highpass_options.order, highpass_options.freq_low);
+    highpass(program_status.fftw_planpool, sac_ptr, highpass_options.order, highpass_options.freq_low);
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
-    sac.in_use = false;
 }
 
 void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& highpass_options)
@@ -235,18 +240,19 @@ void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(data_ids.size());
-    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    for (std::size_t i{0}; i < id_order.size(); ++i)
     {
-        program_status.thread_pool.enqueue(apply_highpass, std::ref(program_status), data_ids[i], std::ref(highpass_options));
+        program_status.thread_pool.enqueue(apply_highpass, std::ref(program_status), id_order[i], std::ref(highpass_options));
     }
 }
 
 void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options)
 {
     if (!program_status.project.is_project) { return; }
-    sac_1c* sac_ptr{program_status.data_pool.get_pointer(program_status.project, data_id)};
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
-    sac_1c& sac{*sac_ptr};
+    
     program_status.state.store(processing);
     std::ostringstream oss{};
     oss << "BANDPASS; ORDER ";
@@ -257,9 +263,9 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     oss << bandpass_options.freq_high;
     oss << ";";
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
-    bandpass(program_status.fftw_planpool, sac, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
+    bandpass(program_status.fftw_planpool, sac_ptr, bandpass_options.order, bandpass_options.freq_low, bandpass_options.freq_high);
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
-    sac.in_use = false;
 }
 
 void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& bandpass_options)
@@ -268,9 +274,10 @@ void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(data_ids.size());
-    for (std::size_t i{0}; i < data_ids.size(); ++i)
+    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    for (std::size_t i{0}; i < id_order.size(); ++i)
     {
-        program_status.thread_pool.enqueue(apply_bandpass, std::ref(program_status), data_ids[i], std::ref(bandpass_options));
+        program_status.thread_pool.enqueue(apply_bandpass, std::ref(program_status), id_order[i], std::ref(bandpass_options));
     }
 }
 
@@ -586,13 +593,13 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
 //-----------------------------------------------------------------------------
 // Shitty Butterworth lowpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
+void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
     // Do the fft
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac.sac.data1);
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};
-    const double sampling_freq{1.0 / sac.sac.delta};
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
     double denominator{};
     double gain{};
@@ -605,7 +612,7 @@ void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
-    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth lowpass filter for testing (not correct, but useful)
@@ -614,13 +621,13 @@ void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
 //-----------------------------------------------------------------------------
 // Shitty Butterworth highpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
+void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     // Do the fft
-    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac.sac.data1);
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};
-    const double sampling_freq{1.0 / sac.sac.delta};
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
     double denominator{};
     double gain{};
@@ -633,7 +640,7 @@ void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
-    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth highpass filter for testing (not correct, but useful)
@@ -642,13 +649,13 @@ void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff)
 //-----------------------------------------------------------------------------
 // Shitty Butterworth bandpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, double highpass)
+void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowpass, double highpass)
 {
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     // Do the fft
-    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac.sac.data1);
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};
-    const double sampling_freq{1.0 / sac.sac.delta};
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
     double denominator_lp{};
     double denominator_hp{};
@@ -666,7 +673,7 @@ void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, d
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
-    sac.sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth bandpass filter for testing (not correct, but useful)
@@ -675,10 +682,10 @@ void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, d
 //-----------------------------------------------------------------------------
 // Shitty Butterworth bandreject filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowreject, double highreject)
+void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowreject, double highreject)
 {
     (void) plan_pool;
-    (void) sac;
+    (void) sac_ptr;
     (void) order;
     (void) lowreject;
     (void) highreject;
@@ -689,6 +696,7 @@ void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowrejec
 // End Shitty Butterworth bandreject filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
 
+/*
 //-----------------------------------------------------------------------------
 // Write a checkpoint
 //-----------------------------------------------------------------------------
@@ -711,6 +719,7 @@ void write_checkpoint(ProgramStatus& program_status, Project& project, std::dequ
 //-----------------------------------------------------------------------------
 // End Write a checkpoint
 //-----------------------------------------------------------------------------
+*/
 
 
 //-----------------------------------------------------------------------------

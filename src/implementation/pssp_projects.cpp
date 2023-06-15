@@ -32,7 +32,7 @@ std::vector<double> Project::blob_to_vector_double(sqlite3_stmt* blob_statement,
 void Project::create_provenance_table()
 {
     std::ostringstream oss{};
-    oss << "CREATE TABLE provenance (";
+    oss << "CREATE TABLE IF NOT EXISTS provenance (";
     oss << "data_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
     // If from file on filesystem, full canonical path for it
     // If from an FDSN (future), then that info
@@ -53,7 +53,7 @@ void Project::create_provenance_table()
 void Project::create_checkpoint_list_table()
 {
     std::ostringstream oss{};
-    oss << "CREATE TABLE checkpoints (";
+    oss << "CREATE TABLE IF NOT EXISTS checkpoints (";
     oss << "checkpoint_id INTEGER PRIMARY KEY, "; // 1 (automatically generated id)
     oss << "parent_id INTEGER, "; // 2 (id of parent checkpoint this spawned from)
     oss << "created DATETIME DEFAULT CURRENT_TIMESTAMP, "; // 3 (when the checkpoint was made)
@@ -75,7 +75,7 @@ void Project::create_checkpoint_list_table()
 void Project::create_data_checkpoint_table(int data_id)
 {
     std::ostringstream oss{};
-    oss << "CREATE TABLE checkpoint_" << data_id << " (";
+    oss << "CREATE TABLE IF NOT EXISTS checkpoint_" << data_id << " (";
     oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the header is associated with
     // Now we need to include the ~100 header values...
     //---------------------------------------------------------------
@@ -201,7 +201,7 @@ void Project::create_data_checkpoint_table(int data_id)
 void Project::create_data_processing_table(sqlite3* connection, int data_id)
 {
     std::ostringstream oss{};
-    oss << "CREATE TABLE processing_" << data_id << " (";
+    oss << "CREATE TABLE IF NOT EXISTS processing_" << data_id << " (";
     oss << "checkpoint_id INTEGER, "; // 1, this is the checkpoint id the data is associated with
     oss << "comment TEXT);"; // 2 (on processing it is the action and parameters, on checkpoint it is CHECKPOINT)
     std::string sq3_string{oss.str()};
@@ -226,8 +226,8 @@ void Project::create_data_processing_table(int data_id)
 void Project::create_temporary_data()
 {
     std::ostringstream oss{};
-    oss << "CREATE TABLE temporary_data (";
-    oss << "data_id INTEGER, "; // 1
+    oss << "CREATE TABLE IF NOT EXISTS temporary_data (";
+    oss << "data_id INTEGER UNIQUE, "; // 1
     oss << "checkpoint_id INTEGER, "; // 2
     // Now we need to include the ~100 header values...
     //---------------------------------------------------------------
@@ -1417,10 +1417,15 @@ void Project::clear_temporary_data()
 //------------------------------------------------------------------------
 // Store the information in the temporary table
 //------------------------------------------------------------------------
+// This needs to test to see if it is in the temporary table first
+// If it is in the temporary table, overwrite it
+// Only add it if it is not in the temporary table
+// Also may be better to use a unique temporary table per data_id
+// first updating the logic to work with one table.
 void Project::store_in_temporary_data(SAC::SacStream& sac, int data_id)
 {
     std::ostringstream oss{};
-    oss << "INSERT INTO temporary_data (";
+    oss << "INSERT OR REPLACE INTO temporary_data (";
     oss << "data_id, "; // 1
     oss << "checkpoint_id, "; // 2
     oss << "delta, "; // 3
