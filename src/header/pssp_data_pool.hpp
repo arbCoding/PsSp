@@ -115,6 +115,13 @@ public:
     // If I allow up to 6, it can experience deadlocks (not always so can be hard to track
     // down)
     //=========================================================================
+    // In the future I'd like to implement smart resizing of the data-pool
+    // if we're close to max-size and the system still has tons of memory
+    // left, we should increase max-size.
+    // If we're below max-size and the system is low on memory,
+    // we should decrease max-size
+    // But, max size must never go below the number of threads
+    // in the thread-pool
     DataPool(std::size_t max_data_ = 1) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, int data_id);

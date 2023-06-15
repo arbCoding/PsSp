@@ -29,6 +29,15 @@ std::size_t DataPool::n_data() const
     return data_pool_.size();
 }
 
+// This needs a flag to determine if we're loading
+// from the checkpoint table without looking at the
+// temporary table at all
+// Or if we want to check the temporary table first
+// Then there needs to be a separate project method
+// that checks the temporary table for the data_id
+// and current checkpoint id and returns it if found
+// if not found them it uses load_sacstream to pull
+// it from the data checkpoint
 void DataPool::add_data(Project& project, int data_id)
 {
     if (data_id == -1 || !project.is_project) { return; }
