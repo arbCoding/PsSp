@@ -110,13 +110,13 @@ void remove_mean(ProgramStatus& program_status, int data_id)
     ++program_status.tasks_completed;
 }
 
-void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids)
+void batch_remove_mean(ProgramStatus& program_status)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = static_cast<int>(data_ids.size());
-    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
     for (std::size_t i{0}; i < id_order.size(); ++i)
     {
         program_status.thread_pool.enqueue(remove_mean, std::ref(program_status), id_order[i]);
@@ -130,52 +130,54 @@ void remove_trend(ProgramStatus& program_status, int data_id)
     if (!sac_ptr) { return; }
     
     program_status.state.store(processing);
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
-    program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE TREND");
-    double mean_amplitude{0};
-    // Static_cast just to be sure no funny business
-    double mean_t{static_cast<double>(sac_ptr->sac.npts) / 2.0};
-    // If depmen is not set, so no average to start from
-    if (sac_ptr->sac.depmen == SAC::unset_float)
     {
+        std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+        program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE TREND");
+        double mean_amplitude{0};
+        // Static_cast just to be sure no funny business
+        double mean_t{static_cast<double>(sac_ptr->sac.npts) / 2.0};
+        // If depmen is not set, so no average to start from
+        if (sac_ptr->sac.depmen == SAC::unset_float)
+        {
+            for (int i{0}; i < sac_ptr->sac.npts; ++i)
+            {
+                mean_amplitude += sac_ptr->sac.data1[0];
+            }
+            mean_amplitude /= static_cast<double>(sac_ptr->sac.npts);
+        }
+        else
+        {
+            mean_amplitude = sac_ptr->sac.depmen;
+        }
+        // Now to calculate the slope and y-intercept (y = amplitude)
+        double numerator{0};
+        double denominator{0};
+        double t_diff{0};
         for (int i{0}; i < sac_ptr->sac.npts; ++i)
         {
-            mean_amplitude += sac_ptr->sac.data1[0];
+            t_diff = i - mean_t;
+            numerator += t_diff * (sac_ptr->sac.data1[i] - mean_amplitude);
+            denominator += t_diff * t_diff;
         }
-        mean_amplitude /= static_cast<double>(sac_ptr->sac.npts);
-    }
-    else
-    {
-        mean_amplitude = sac_ptr->sac.depmen;
-    }
-    // Now to calculate the slope and y-intercept (y = amplitude)
-    double numerator{0};
-    double denominator{0};
-    double t_diff{0};
-    for (int i{0}; i < sac_ptr->sac.npts; ++i)
-    {
-        t_diff = i - mean_t;
-        numerator += t_diff * (sac_ptr->sac.data1[i] - mean_amplitude);
-        denominator += t_diff * t_diff;
-    }
-    double slope{numerator / denominator};
-    double amplitude_intercept{mean_amplitude - (slope * mean_t)};
-    // Now to remove the linear trend from the data
-    for (int i{0}; i < sac_ptr->sac.npts; ++i)
-    {
-        sac_ptr->sac.data1[i] -= (slope * i) + amplitude_intercept;
+        double slope{numerator / denominator};
+        double amplitude_intercept{mean_amplitude - (slope * mean_t)};
+        // Now to remove the linear trend from the data
+        for (int i{0}; i < sac_ptr->sac.npts; ++i)
+        {
+            sac_ptr->sac.data1[i] -= (slope * i) + amplitude_intercept;
+        }
     }
     program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
 }
 
-void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_ids)
+void batch_remove_trend(ProgramStatus& program_status)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = static_cast<int>(data_ids.size());
-    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
     for (std::size_t i{0}; i < id_order.size(); ++i)
     {
         program_status.thread_pool.enqueue(remove_trend, std::ref(program_status), id_order[i]);
@@ -187,6 +189,7 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
     program_status.state.store(processing);
     std::ostringstream oss{};
@@ -202,13 +205,13 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     ++program_status.tasks_completed;
 }
 
-void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& lowpass_options)
+void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = static_cast<int>(data_ids.size());
-    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
     for (std::size_t i{0}; i < id_order.size(); ++i)
     {
         program_status.thread_pool.enqueue(apply_lowpass, std::ref(program_status), id_order[i], std::ref(lowpass_options));
@@ -220,6 +223,7 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
     program_status.state.store(processing);
     std::ostringstream oss{};
@@ -234,13 +238,13 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     ++program_status.tasks_completed;
 }
 
-void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& highpass_options)
+void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = static_cast<int>(data_ids.size());
-    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
     for (std::size_t i{0}; i < id_order.size(); ++i)
     {
         program_status.thread_pool.enqueue(apply_highpass, std::ref(program_status), id_order[i], std::ref(highpass_options));
@@ -252,6 +256,7 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id)};
     if (!sac_ptr) { return; }
+    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     
     program_status.state.store(processing);
     std::ostringstream oss{};
@@ -268,13 +273,13 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     ++program_status.tasks_completed;
 }
 
-void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& bandpass_options)
+void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options)
 {
     std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
-    program_status.total_tasks = static_cast<int>(data_ids.size());
-    std::vector<int> id_order{program_status.data_pool.get_iter( data_ids)};
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
     for (std::size_t i{0}; i < id_order.size(); ++i)
     {
         program_status.thread_pool.enqueue(apply_bandpass, std::ref(program_status), id_order[i], std::ref(bandpass_options));
@@ -502,32 +507,6 @@ void unload_data(ProgramStatus& program_status)
 // End Unload data from memory
 //------------------------------------------------------------------------
 
-/*
-//------------------------------------------------------------------------
-// Get SacStream from project, add to sac_deque
-//------------------------------------------------------------------------
-void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id)
-{
-    program_status.state.store(in);
-    sac_1c sac{};
-    {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
-        // This is sometimes failing after unload and reload
-        // It seems that the data_id is repeated...
-        sac.sac = project.load_sacstream(data_id);
-        sac.file_name = project.get_source(data_id);
-        sac.data_id = data_id;
-    }
-    std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    ++program_status.tasks_completed;
-    sac_deque.push_back(sac);
-}
-//------------------------------------------------------------------------
-// End Get SacStream from project, add to sac_deque
-//------------------------------------------------------------------------
-*/
-
 //------------------------------------------------------------------------
 // Load a single bit of data to the data pool
 //------------------------------------------------------------------------
@@ -596,7 +575,6 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
 void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
     // Do the fft
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};
     const double sampling_freq{1.0 / sac_ptr->sac.delta};
@@ -623,7 +601,6 @@ void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order
 //-----------------------------------------------------------------------------
 void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};
@@ -651,7 +628,6 @@ void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int orde
 //-----------------------------------------------------------------------------
 void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowpass, double highpass)
 {
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
     double frequency{};

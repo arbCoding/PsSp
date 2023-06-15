@@ -158,23 +158,23 @@ void calc_spectrum(ProgramStatus& program_status,int data_id, sac_1c& spectrum);
 // Remove mean from sac_1c object
 void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque
-void batch_remove_mean(ProgramStatus& program_status, std::vector<int>& data_ids);
+void batch_remove_mean(ProgramStatus& program_status);
 // Remove trend from a sac_1c object
 void remove_trend(ProgramStatus& program_status, int data_id);
 // Remove trend from all sac_1c objects in a deque
-void batch_remove_trend(ProgramStatus& program_status, std::vector<int>& data_ids);
+void batch_remove_trend(ProgramStatus& program_status);
 // Lowpass one sac_1c
 void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
-void batch_apply_lowpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& lowpass_options);
+void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options);
 // Highpass one sac_1c
 void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
-void batch_apply_highpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& highpass_options);
+void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options);
 // Bandpass one sac_1c
 void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
-void batch_apply_bandpass(ProgramStatus& program_status, std::vector<int>& data_ids, FilterOptions& bandpass_options);
+void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options);
 // Read in a single sac file and add it to the DataPool
 void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name);
 // Read all SAC files in a directory

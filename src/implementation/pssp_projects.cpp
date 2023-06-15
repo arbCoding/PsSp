@@ -553,17 +553,16 @@ Project::~Project()
 //------------------------------------------------------------------------
 int Project::add_sac(SAC::SacStream& sac, const std::string& source)
 {
+    // Lock the project to minimize issues
+    std::lock_guard<std::shared_mutex> lock_project(mutex);
     int data_id{add_data_provenance(source)};
     create_data_checkpoint_table(data_id);
     add_data_checkpoint(sac, data_id);
     create_data_processing_table(data_id);
     add_data_processing(sq3_connection_file, data_id, "ADD");
-    {
-        std::lock_guard<std::shared_mutex> lock_project(mutex);
-        current_data_ids.push_back(data_id);
-        // Flag that we've been updated
-        updated = true;
-    }
+    current_data_ids.push_back(data_id);
+    // Flag that we've been updated
+    updated = true;
     return data_id;
 }
 //------------------------------------------------------------------------
@@ -614,6 +613,9 @@ void Project::write_checkpoint(bool author, bool cull)
 //------------------------------------------------------------------------
 // Add data checkpoint
 //------------------------------------------------------------------------
+// Sometimes this inserts into both the correct and incorrect
+// table (causing the bug of one data_id having multiple ADD lines)
+// I wonder if this is in relation to how parallel everything is
 void Project::add_data_checkpoint(SAC::SacStream& sac, int data_id, bool processing)
 {
     std::ostringstream oss{};

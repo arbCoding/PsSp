@@ -106,18 +106,16 @@ class DataPool
 {
 public:
     // Parameterized constructor basd upon allowed size of pool
-    // Let's be safe and assume a huge size for seismograms
-    // say each seismogram is 100Hz, 24 hours. At 40 Hz, 1 hour, it is ~1Mb per
-    // so at 2.5 the sampling rate, that is 1 hour at ~2.5Mb (call it 3Mb) per 1 hour
-    // seismogram. So ~75Mb per seismogram (call it 100Mb per). That would make
-    // 10 seismograms 1 Gb of Ram. So in that scenario, the DataPool must be fairly small
-    // maybe only a maximum of 10-50 seismograms at a time.
-    // If we worked with 1 hour seismograms at 40 Hz (as I am testing on) then it is
-    // 1000 seismograms to 1 Gb of Ram. In that scenario, the DataPool can be fairly large
-    // Since I'm using 700 seismograms that are 1 hour long at 40 Hz, let's first set the maximum
-    // size to 1000 (so that it is all in memory). Get the basics down, then reduce to 500 and see
-    // what happens (and implement the hot loading/unload of memory).
-    DataPool(std::size_t max_data_ = 500) : max_data(max_data_) {}
+    //=========================================================================
+    // max_data must allow at least as many objects in the pool
+    // as the number of threads that will be accessing them
+    // once it goes below that number, deadlocks begin to occur
+    // (so on MacOS, I have 7-8 threads (1 for gui, 7 for processing))
+    // If I allow up to 7 (without showing plots of data) it is perfectly fine
+    // If I allow up to 6, it can experience deadlocks (not always so can be hard to track
+    // down)
+    //=========================================================================
+    DataPool(std::size_t max_data_ = 7) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, int data_id);
     // How much data is in the pool
@@ -131,7 +129,8 @@ public:
     void add_data(Project& project, int data_id);
     // Function for returning data to data-pool
     void return_ptr(Project& project, std::shared_ptr<sac_1c>& sac_ptr);
-    std::vector<int> get_iter(const std::vector<int>& input_ids);
+    //std::vector<int> get_iter(const std::vector<int>& input_ids);
+    std::vector<int> get_iter(Project& project);
 private:
     std::mutex mutex_{};
     std::map<int, std::shared_ptr<sac_1c>> data_pool_{};

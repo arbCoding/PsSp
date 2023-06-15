@@ -452,7 +452,7 @@ int main(int arg_count, char* arg_array[])
         // Start the frame
         pssp::prep_newframe();
         status_bar(program_status);
-        main_menu_bar(window, current_settings.window_settings, current_settings.menu_allowed, af_settings, program_status, data_ids, active_sac);
+        main_menu_bar(window, current_settings.window_settings, current_settings.menu_allowed, af_settings, program_status, active_sac);
         // Show the Welcome window if appropriate
         window_welcome(current_settings.window_settings.welcome, welcome_message);
         update_fps(fps_tracker, io);
@@ -488,7 +488,7 @@ int main(int arg_count, char* arg_array[])
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);
           // Show a list of available data and allow the user to select the data they want to look at
-          window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, data_ids, spectrum, active_sac, clear_sac);
+          window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, spectrum, active_sac, clear_sac);
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);
           window_highpass_options(current_settings.window_settings.highpass, af_settings.highpass);
           window_bandpass_options(current_settings.window_settings.bandpass, af_settings.bandpass);
@@ -520,7 +520,7 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.lowpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(data_ids), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(af_settings.lowpass));
                 af_settings.lowpass.apply_batch = false;
             }
             else
@@ -535,7 +535,7 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.highpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(data_ids), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(af_settings.highpass));
                 af_settings.highpass.apply_batch = false;
             }
             else
@@ -550,7 +550,7 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.bandpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(data_ids), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(af_settings.bandpass));
                 af_settings.bandpass.apply_batch = false;
             }
             else

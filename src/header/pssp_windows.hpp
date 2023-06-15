@@ -49,7 +49,7 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
 void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings);
 // Main menu bar along top of screen
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& data_ids, int& active_sac);
+AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac);
 // Plot a single sac file
 void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_status, int data_id);
 // Plot a single real/imaginary spectrum
@@ -61,7 +61,7 @@ void window_welcome(WindowSettings& window_settings, std::string_view& welcome_m
 // Window that displays the frame-rate in Frames Per Second
 void window_fps(fps_info& fps_tracker, WindowSettings& window_settings);
 // Window lists data in project for current checkpoint
-void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, std::vector<int>& data_ids, sac_1c& spectrum, int& selected, bool& clear_sac);
+void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, sac_1c& spectrum, int& selected, bool& clear_sac);
 // Window to name a checkpoint
 void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& program_status);
 // Window to make notes for a checkpoint

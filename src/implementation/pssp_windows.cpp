@@ -195,7 +195,7 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
 // Main menu bar
 //-----------------------------------------------------------------------------
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& data_ids, int& active_sac)
+AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
 {
     sac_1c sac{};
     std::string home_path{};
@@ -209,6 +209,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
 #endif
 
     ImGui::BeginMainMenuBar();
+    std::vector<int> data_ids{program_status.project.current_data_ids};
     // File menu
     if (ImGui::BeginMenu("File##", menu_allowed.file_menu))
     {
@@ -254,7 +255,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
         { ImGui::SetTooltip("Load an existing project"); }
         if (ImGui::MenuItem("Unload Project##", nullptr, nullptr, menu_allowed.unload_project))
         {
-            unload_data(program_status);
+            program_status.thread_pool.enqueue(unload_data, std::ref(program_status));
             program_status.project.clear_name = true;
             program_status.project.clear_notes = true;
             program_status.project.copy_name = false;
@@ -561,7 +562,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
         if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status), std::ref(data_ids));
+            program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove mean value from all data."); }
@@ -569,7 +570,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, std::vector<int>& 
         if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
         {
             std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status), std::ref(data_ids));
+            program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Remove trend value from all data."); }
@@ -857,7 +858,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // Data list window
 //-----------------------------------------------------------------------------
-void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, std::vector<int>& data_ids, sac_1c& spectrum, int& selected, bool& clear_sac)
+void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, sac_1c& spectrum, int& selected, bool& clear_sac)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
     std::string option{};
@@ -870,6 +871,7 @@ void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_setti
             ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
             window_settings.is_set = true;
         }
+        std::vector<int> data_ids{program_status.project.current_data_ids};
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
         if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
         for (int i = 0; const auto& data_id : data_ids)

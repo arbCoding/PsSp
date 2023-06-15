@@ -23,8 +23,9 @@ debug = true
 # Setup compiler
 #------------------------------------------------------------------------------
 # Param is always used
-param = -std=c++20 -pedantic-errors -Wall
+param = -pthread -std=c++20 -pedantic-errors -Wall
 # Common debug params regardless of clang++ or g++
+#common_debug = -fsanitize=thread -Wextra -Werror -Wshadow -ggdb
 common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
