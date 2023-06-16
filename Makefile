@@ -1,17 +1,8 @@
 #------------------------------------------------------------------------------
-# Bugs
-#------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------
-# End bugs
-#------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------
 # We need to know what OS we're on as it determines which compiler we use (and 
 # therefore which compiler parameters are appropriate) and how we link to the
 # necessary libraries
 #------------------------------------------------------------------------------
-# 
 # Use the correct shell for bash scripts
 # seemed to default to /bin/sh when I use /bin/bash
 SHELL := /bin/bash
@@ -25,10 +16,12 @@ debug = true
 # Param is always used
 param = -std=c++20 -pedantic-errors -Wall
 # Common debug params regardless of clang++ or g++
+#
 # This uses the thread-sanitizer, useful for finding data-races
 # though it also flags many false positives (better than missing
 # real positives)
 #common_debug = -fsanitize=thread -pthread -Wextra -Werror -Wshadow -ggdb
+#
 # This does not use the thread-sanitizer (no pthreads needed either)
 common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
@@ -43,8 +36,10 @@ endif
 # Specific to Dear ImGui
 debug_imgui = $(common_debug)
 # Release params only if debug is false
+#
 # This is middle of the road, safe optimizations, quick build
 #release_param = -O2 -DNDEBUG
+#
 # This is the most optimized without doing fine-grain optimizations, while
 # not using fast-math, so if you're worried about any numerical inaccuracy made by the
 # use of fast-math, then swap over to this level of optimization
@@ -52,11 +47,10 @@ debug_imgui = $(common_debug)
 # both in terms of locking the GUI, but also in terms of completely losing the time-series data
 # after applying a filter.
 release_param = -O3 -DNDEBUG
-# This is fast and dangerous (not really, but doesn't strictly comply with the language standards)
-# It is blazingly fact though!
-# It enables fast-math, which has typical rounding errors of machine epsilon (usually about
-# 1e-15 for doubles, which is smaller than what I care about anyway)
+#
+# This is fast and dangerous. It does not play nice with FFTW3 resulting in data corruption.
 #release_param = -Ofast -DNDEBUG
+#
 # This is supposed to make the smallest binary possible, it barely does anything to our size
 # probably because we're super small anyway
 #release_param = -Oz -DNDEBUG
@@ -133,7 +127,7 @@ fftw_params = $(fftw_include) $(fftw_lib)
 #------------------------------------------------------------------------------
 # Dear ImGui
 #------------------------------------------------------------------------------
-# Dead ImGui provides the OS-independent GUI framework
+# Dear ImGui provides the OS-independent GUI framework
 imgui_dir = $(submod_prefix)imgui/
 imgui_ex_dir = $(imgui_dir)examples/example_glfw_opengl3/
 
@@ -296,7 +290,7 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 	@mv $(imgui_ex_dir)*.o $(imgui_dir)objects/
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
-# End Dead ImGui example (glfw+opengl3)
+# End Dear ImGui example (glfw+opengl3)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------

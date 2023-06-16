@@ -24,23 +24,21 @@ The primary issues that I see today are:
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
 by different persons/groups, in order to perform a given research task.
-3) The additional complication of OS-exclusive software, locking users of the wrong operating system out from certain tools and you have a tremendously unfortunate mess.
+3) The additional complication of OS-exclusive software, locking users of the wrong operating system out from certain tools is really quite unfortunate.
 4) The tools are often not parallel at all.
 
 The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
 assumptions, nor the limitations. Often, these tools were never designed to be shared and therefore are designed in a non-intuitive fashion, with virtually no
-comments in the actual code. These tools are often not documented (or under-documented, or even *incorrectly documented*), they tend to be assumed as just plain *obvious*, despite that being entirely dependent upon a very specific (and undocumented) workflow. These issues tend to be discovered after much confusion and frustration (hopefully fairly early on, as opposed to while writing a manuscript). That is not how science should work.
+comments in the actual code. These tools are often not documented (or under-documented, or even *incorrectly documented*), they tend to be assumed as just plain *obvious*, despite that being entirely dependent upon a very specific (and undocumented) workflow by someone who simply does not care about UI/UX.
 
-The disconnected nature of the typical seismic workflow leads to reproducibility issues. A researcher must keep track of every step taken in the analysis manually,
-without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of
-exploration, and so on, it becomes exceedingly difficult to be able to provide an accurate account of the actual processing steps necessary to consistently reproduce presented/published results. In this age of modern computing, it is simply **absurd** that the seismologist has no other choice than to work with this *severe tool-deficit*.
+The disconnected nature of the typical seismic workflow leads to reproducibility issues. A researcher must keep track of every step taken in the analysis manually, without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of exploration, and so on, it becomes exceedingly difficult to be able to provide an accurate account of the actual processing steps necessary to consistently reproduce presented/published results. In this age of modern computing, it is simply **absurd** that the seismologist has no other choice than to work with this *severe tool-deficit*.
 
-The researcher shouldn't need to expend immense amounts of time/energy/mental-bandwidth on making their tools, nor on making them work together. They should be focused on doing science. While advances in machine learning are allowing the modern seismologist to parse massive amounts of data with little effort, we must still look at our data and question the validity of our analysis/interpretation. And we should be able to do this with relative ease and minimal pain.
+The researcher shouldn't need to expend immense amounts of time/energy/mental-bandwidth on making their tools, nor on making them work together. They should be focused on doing science. While advances in machine learning are allowing the modern seismologist to parse massive amounts of data with relatively little effort, we must still look at our data and question the validity of our analysis/interpretation. And we should be able to do this with relative ease and minimal pain.
 
 ### Purpose
 
-PsSp is being developed to solve this problem; to empower the seismologist with tools that are easy to use and foster exploration.
-By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually, I hope to allow the end-user to improve their
+PsSp is being developed to solve these problems; to empower the seismologist with tools that are easy to use and foster exploration.
+By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually I hope to allow the end-user to improve their
 intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed
 with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and
 will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow and
@@ -53,12 +51,10 @@ This is extremely early in development.
 
 ### Current Focus: Unit and Integration Testing for Improved Stability
 
-This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem through distraction
-with a different problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult
-to perform a first pass at implementing. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause
-the analyst headaches due to being unstable.
+This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem via distraction
+with a new, different, and annoying problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult to freshly introduce to the workflow. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause the analyst headaches due to being unstable.
 
-To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
+To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
 
 ### Last Focus: Memory Management
 All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented
