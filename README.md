@@ -110,7 +110,7 @@ or manually. For those other packages I provide installation guidance for MacOS 
 
 I test this on M1 MacOS (Ventura 13.4)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
 
-**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [MSYS2](https://www.msys2.org/), [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/) to setup your compilation environment on Windows.
+**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [MSYS2](https://www.msys2.org/), [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), [Cygwin](https://www.cygwin.com/), or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to setup your compilation environment on Windows.
 
 ---
 ### MacOS
@@ -165,13 +165,13 @@ make clean
 
 ## Special MacOS Application
 
-If you want a stand-alone MacOS application file, there are additional steps.
+If you want a stand-alone MacOS application file, then there are additional steps.
 
 I do not take credit for figuring this out, I found this [blog post](https://newbedev.com/building-osx-app-bundle) on the topic.
 
 First, I use [dylibbundler](https://github.com/auriamg/macdylibbundler/) to handle rebinding
 the links for the non-standard dynamically linked libraries. The application bundle requires that they
-be included in the application (such that user doesn't need to install them).
+be included in the application (such that the end-user doesn't need to install them).
 
 This can be installed via Homebrew
 ```shell

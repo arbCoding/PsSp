@@ -346,7 +346,7 @@ else
 
 Why? For a couple of reasons:
 1) Excluding the curly-brackets (*{}*) risks weird bugs later on if the statement gets changed. All you need to do is forget to add the curly-brackets before/during/after the process of making the modification and enjoy the ensueing weirdness.
-2) I don't want an if statement that needs to only take 1 line end up taking 4-lines. It just unnecessarily inflates the length of your code (which we're already inflating with the infinitely more-valuable comments and wrapped banners!).
+2) I don't want an if statement that needs to only take 1 line to end up taking 4-lines. It just unnecessarily inflates the length of your code (which we're already inflating with the infinitely more-valuable comments and wrapped banners!).
 
 ### Include Statements
 ---
@@ -358,7 +358,7 @@ Inclusion order is as follows:
 
 Within those, it would be ideal for everything to be in alphabetical order.
 
-The style of inclusions if as follows
+The style of inclusions is as follows
 
 ```c++
 #include "our_interface.hpp"

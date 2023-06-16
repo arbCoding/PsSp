@@ -1,9 +1,19 @@
 # Updated on 16 June 2023 (too lazy to renumber daily)
 ---
 
+## Purpose
+---
+
+The purpose of this document is to maintain a running list of plans and ideas for PsSp. It is an evolving document, that is more likely to grow than it is to shrink (which is a good thing!). It may be incomplete, I
+often place thoughts/ramblings inside comments in code where much of my thinking occurs. I will try to move those mental ramblings here with time and possibly even translate them into well formed plans.
+
+## The List
+---
+
 1) Filtering
 
     a) Correct transfer functions for filters (currently just gain)
+
     b) Band-reject is missing entirely
 
 2) Data-request/download from IRIS (or other server)
