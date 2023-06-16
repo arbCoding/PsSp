@@ -7,30 +7,30 @@
 // than what MessagePack can easily handle (settings will be handled like this though
 // so I'm keeping it around as is for now, will need to modify when projects are finished
 // being implemented!)
-#include "pssp_program_settings.hpp"
-// Where we will have all our window functions defined
-#include "pssp_windows.hpp"
 // Definitions of Misc Structs/Classes/Functions
 #include "pssp_misc.hpp"
+#include "pssp_program_settings.hpp"
 // Uses sqlite3 for projects
 #include "pssp_projects.hpp"
+// Where we will have all our window functions defined
+#include "pssp_windows.hpp"
 // SQLite3 library
 #include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-// std::string_view
-#include <string_view>
-// Path stuff
-#include <filesystem>
 // std::clamp
 #include <algorithm>
+// std::getenv()
+#include <cstdlib>
+// path stuff
+#include <filesystem>
 // std::ref, needed to pass by reference to a thread (can't use & to pass by
 // reference in this situation)
 #include <functional>
+#include <shared_mutex>
 // String-stream for mixing types
 #include <sstream>
-// std::getenv()
-#include <cstdlib>
-#include <complex>
+// string_view, only used for the welcome window at the moment...
+#include <string_view>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -38,7 +38,18 @@
 //-----------------------------------------------------------------------------
 // Current Focus
 //-----------------------------------------------------------------------------
-// Data display and migrating away from direct access to the sac_deque.
+// I think we would really benefit from introducing unit testing
+// into the mix, to make this easier in the future (it is hard to remember
+// to test everything after every bug-fix).
+// It looks like Catch2 would be a nice light testing framework.
+//
+// https://github.com/catchorg/Catch2
+// https://stackoverflow.com/questions/52273110/how-do-i-write-a-unit-test-in-c
+//
+// It should be easy to integrate and start using. Of course there will be a ramp
+// up time of introducing it into the mix that will slow developement of new
+// features. But it will make life infinitely easier in the future as this
+// grows.
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------
@@ -72,10 +83,10 @@ void sqliteLogCallback(void* data, int errCode, const char* message)
 //-----------------------------------------------------------------------------
 // Function to handle logic of program state
 //-----------------------------------------------------------------------------
-void handle_program_state(ProgramStatus& program_status, ProgramSettings& current_settings, Project& current_project, std::deque<sac_1c>& sac_deque)
+void handle_program_state(ProgramStatus& program_status, ProgramSettings& current_settings, std::vector<int>& data_ids, sac_1c& visual_sac)
 {
     // If we're done with the task, we need to shift over to the idle state
-    if (program_status.tasks_completed == program_status.total_tasks)
+    if (program_status.tasks_completed >= program_status.total_tasks)
     {
         program_status.state.store(idle);
         program_status.progress = 1.1f;
@@ -250,12 +261,29 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
         case idle:
             // We're idle
             program_status.status_message = "Idle";
+            // If the project has been updated then we need to copy the data_ids
+            if (program_status.project.updated)
+            {
+                std::shared_lock<std::shared_mutex> lock_project(program_status.project.mutex);
+                data_ids = program_status.project.current_data_ids;
+                // Sort the data_ids
+                std::sort(data_ids.begin(), data_ids.end());
+                // Flag the update has been dealt with
+                program_status.project.updated = false;
+                // Try to get a deep copy of the original object
+                std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_)};
+                if (sac_ptr)
+                {
+                    std::lock_guard<std::shared_mutex> lock_sac{sac_ptr->mutex_};
+                    visual_sac = *sac_ptr;
+                }
+            }
             // Empty the FFTW plan_pool, no need to keep it pre-filled.
             if (program_status.fftw_planpool.n_plans() != 0) { program_status.fftw_planpool.empty_pool(); }
             // Any window can be shown
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
-            if (sac_deque.size() > 0)
+            if (data_ids.size() > 0)
             {
                 // Windows
                 current_settings.window_settings.header.state = show;
@@ -312,11 +340,11 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.window_settings.file_dialog.state = show;
             // All menus are also shown
             current_settings.menu_allowed.file_menu = true;
-            if (current_project.is_project)
+            if (program_status.project.is_project)
             {
                 current_settings.menu_allowed.open_1c = true;
                 current_settings.menu_allowed.open_dir = true;
-                if (sac_deque.size() > 0) { current_settings.menu_allowed.save_1c = true; } else { current_settings.menu_allowed.save_1c = false; }
+                if (data_ids.size() > 0) { current_settings.menu_allowed.save_1c = true; } else { current_settings.menu_allowed.save_1c = false; }
                 current_settings.menu_allowed.new_project = false;
                 current_settings.menu_allowed.load_project = false;
                 current_settings.menu_allowed.unload_project = true;
@@ -329,6 +357,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             }
             else 
             {
+                // If we're not in a project and we're idle, empty the pool!
+                if (program_status.data_pool.n_data() > 0) { program_status.data_pool.empty_pool(); }
                 current_settings.menu_allowed.open_1c = false;
                 current_settings.menu_allowed.open_dir = false;
                 current_settings.menu_allowed.save_1c = false;
@@ -412,15 +442,25 @@ int main(int arg_count, char* arg_array[])
     std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
     pssp::AllFilterOptions af_settings{};
     pssp::ProgramStatus program_status{};
-    // Time-series
-    std::deque<pssp::sac_1c> sac_deque;
+    // Make sure we meet the minimum requied amount of data in the data-pool to function without
+    // deadlocking! This logic will belong elsewhere as well, if I allow the user to manually
+    // alter the size of the data-pool (cannot go below the number of threads in the threadpool!)
+    if (program_status.data_pool.max_data < program_status.thread_pool.n_threads_total())
+    {
+        program_status.data_pool.max_data = program_status.thread_pool.n_threads_total();
+    }
     // Spectrum (only 1 for now)
-    pssp::sac_1c spectrum;
+    pssp::sac_1c spectrum{};
+    // Will pass this by reference for the sake of plotting and what-not
+    pssp::sac_1c time_series{};
     // Which sac-file is active
     int active_sac{};
     bool clear_sac{false};
-    // Make a fresh project
-    pssp::Project project{};
+    bool update_spectrum{false};
+    // The data_ids will be used to replace the sac_deque
+    // we can pass the data_ids to different functions and use that to
+    // access the data from the data pool (part of program_status)
+    std::vector<int> data_ids{};
     //---------------------------------------------------------------------------
     // End Misc Draw loop variables
     //---------------------------------------------------------------------------
@@ -434,53 +474,54 @@ int main(int arg_count, char* arg_array[])
     {
         // Each frame, we need to check the program's state
         // to determine what we are and are not allowed to do
-        handle_program_state(program_status, current_settings, project, sac_deque);
+        handle_program_state(program_status, current_settings, data_ids, time_series);
         // Do we need to remove a sac_1c from the sac_deque?
-        cleanup_sac(project, sac_deque, active_sac, clear_sac);
+        //cleanup_sac(program_status.project, sac_deque, active_sac, clear_sac);
         // Start the frame
         pssp::prep_newframe();
         status_bar(program_status);
-        main_menu_bar(window, current_settings.window_settings, current_settings.menu_allowed, af_settings, program_status, sac_deque, active_sac, project);
+        main_menu_bar(window, current_settings.window_settings, current_settings.menu_allowed, af_settings, program_status, active_sac);
         // Show the Welcome window if appropriate
         window_welcome(current_settings.window_settings.welcome, welcome_message);
         update_fps(fps_tracker, io);
         // Show the FPS window if appropriate
         window_fps(fps_tracker, current_settings.window_settings.fps);
-        // Only if there are files in the sac_deque
-        if (sac_deque.size() > 0)
+        // If we're idle and there is data to show, we can show it
+        pssp::program_state current_state{program_status.state.load()};
+        (void) current_state;
+        (void) clear_sac;
+        (void) update_spectrum;
+        (void) spectrum; 
+        if (current_state == pssp::idle && data_ids.size() > 0)
         {
-          // This fixes the issue of deleting all sac_1cs in the deque
-          // loading new ones, and then trying to access the -1 element
-          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(sac_deque.size())) { active_sac = sac_deque.size() - 1; }
-          window_sac_header(current_settings.window_settings.header, sac_deque[active_sac]);
+          if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = 0; }
+          if (program_status.data_id != data_ids[active_sac])
+          {
+            program_status.data_id = data_ids[active_sac];
+            update_spectrum = true;
+            time_series = *program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_);
+          }
+          window_sac_header(current_settings.window_settings.header, time_series);
           // Show processing history window is appropriate
-          window_processing_history(current_settings.window_settings.processing_history, project, sac_deque[active_sac].data_id);
+          window_processing_history(current_settings.window_settings.processing_history, program_status.project, data_ids[active_sac]);
           // Show the Sac Plot window if appropriate
-          window_plot_sac(current_settings.window_settings.plot_1c, sac_deque, active_sac);
+          window_plot_sac(current_settings.window_settings.plot_1c, time_series);
           // Show Checkpoint naming window if appropriate
-          window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status, project, sac_deque);
+          window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status);
           // Show Checkpoint note window if appropriate
-          window_notes_checkpoint(current_settings.window_settings.notes_checkpoint, project);
+          window_notes_checkpoint(current_settings.window_settings.notes_checkpoint, program_status.project);
           // Show the Sac Spectrum window if appropriate
           // We need to see if the FFT needs to be calculated (don't want to do it
           // every frame)
-          if (current_settings.window_settings.spectrum_1c.show)
+          if (current_settings.window_settings.spectrum_1c.show && update_spectrum)
           {
-            // This logic needs to be modified so that we have a better mechanism to avoid
-            // calculating this when it isn't desired
-              bool compare_names{true};
-              {
-                  std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
-                  std::shared_lock<std::shared_mutex> lock_sac(sac_deque[active_sac].mutex_);
-                  compare_names = (spectrum.file_name == sac_deque[active_sac].file_name);
-              }
-              // If they're not the same, then calculate the FFT
-              if (!compare_names) { calc_spectrum(program_status.fftw_planpool, sac_deque[active_sac], spectrum); }
+            // If they're not the same, then calculate the FFT
+            if (update_spectrum) { calc_spectrum(program_status, time_series, spectrum); update_spectrum = false; }
           }
           // Finally plot the spectrum
-          window_plot_spectrum(current_settings.window_settings.spectrum_1c, spectrum);
-          // Show the Sac List window if appropriate
-          window_sac_deque(program_status, current_settings.window_settings, current_settings.menu_allowed, sac_deque, spectrum, active_sac, clear_sac);
+          window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);
+          // Show a list of available data and allow the user to select the data they want to look at
+          window_data_list(program_status, current_settings.window_settings, current_settings.menu_allowed, active_sac, clear_sac);
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);
           window_highpass_options(current_settings.window_settings.highpass, af_settings.highpass);
           window_bandpass_options(current_settings.window_settings.bandpass, af_settings.bandpass);
@@ -512,14 +553,14 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.lowpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_lowpass, std::ref(program_status), std::ref(af_settings.lowpass));
                 af_settings.lowpass.apply_batch = false;
             }
             else
             {
                 program_status.tasks_completed = 0;
                 program_status.total_tasks = 1;
-                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[active_sac]), std::ref(af_settings.lowpass));
+                program_status.thread_pool.enqueue(pssp::apply_lowpass, std::ref(program_status), std::ref(data_ids[active_sac]), std::ref(af_settings.lowpass));
             }
             af_settings.lowpass.apply_filter = false;
         }
@@ -527,14 +568,14 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.highpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_highpass, std::ref(program_status), std::ref(af_settings.highpass));
                 af_settings.highpass.apply_batch = false;
             }
             else
             {
                 program_status.tasks_completed = 0;
                 program_status.total_tasks = 1;
-                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[active_sac]), std::ref(af_settings.highpass));
+                program_status.thread_pool.enqueue(pssp::apply_highpass, std::ref(program_status), std::ref(data_ids[active_sac]), std::ref(af_settings.highpass));
             }
             af_settings.highpass.apply_filter = false;
         }
@@ -542,14 +583,14 @@ int main(int arg_count, char* arg_array[])
         {
             if (af_settings.bandpass.apply_batch)
             {
-                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(project), std::ref(program_status), std::ref(sac_deque), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::batch_apply_bandpass, std::ref(program_status), std::ref(af_settings.bandpass));
                 af_settings.bandpass.apply_batch = false;
             }
             else
             {
                 program_status.tasks_completed = 0;
                 program_status.total_tasks = 1;
-                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(project), std::ref(program_status), std::ref(sac_deque[active_sac]), std::ref(af_settings.bandpass));
+                program_status.thread_pool.enqueue(pssp::apply_bandpass, std::ref(program_status), std::ref(data_ids[active_sac]), std::ref(af_settings.bandpass));
             }
             af_settings.bandpass.apply_filter = false;
         }

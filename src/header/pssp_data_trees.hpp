@@ -5,13 +5,163 @@
 // Include statements
 //-----------------------------------------------------------------------------
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <memory>
-#include <string>
+#include <exception>
 #include <iostream>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <queue>
 //-----------------------------------------------------------------------------
 // End Include statements
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// ToDo
+//-----------------------------------------------------------------------------
+// I suspect I was overcomplicating the issue of the data-structure
+//
+// We decide we want to create group-nodes base upon a header-value, say station
+// name
+//
+// We create a root group-node that exists only to be our root.
+//
+// This is the only time we'll need the std::vector<int>, afterward
+// we'll be using the already made node's, instead of making new ones
+// We take out first data_id (say from a std::vector<int>, we pop it)
+//
+// We determine its reference time, create a group-node with that name and
+//  attach it as the first child to that group-node and attach that as the first
+//  child to the root-node.
+//
+// Then we go to the next data_id, check its reference time.
+// We see if group-node is a child (not grandchild or beyond) of the root (breadth search
+// of a given level):
+//  If it is, we attach it as a child
+//  If it is not, we create a new group-node with that name and attach it
+//      as the first child to the group-node and attach that a child to the root-node.
+// We do that until we're out of data-ids.
+//
+// Next we want to create sub-groups for each reference time
+// Say we want to, from each group, create sub-groups based upon array-name
+//
+// So for each of these first level-children we detach them from the root-node
+// and from their sibling nodes (tread each group independently, which can be
+// done in parallel)
+//
+// We take the first node, determines it's array-name, create a new group-node with that name
+// and rinse and repeat.
+//
+// So the first tree needs to have an initial root-node
+// When we do the split, we detach the children from the root-node
+// each child joins a group-node, then each group-node becomes a child of the root-node
+//
+// That means I want an algorithm that given a tree, will give me all of the pointers
+// to the group-nodes at a specific depth in the n-ary tree. Each of these can then
+// be used as the root-node to the next stage of grouping (which can be passed to the
+// threadpool)
+//
+// While not the most-efficient algorithm, I prefer to make things general.
+//
+// And we may be able to use multi-threading (at least after the first pass),
+//  to make up for any inefficiency down the line.
+//
+// Later I'll need a way to serialize the structure of the tree, for saving
+// and loading (that way it doesn't need to be done all the time)
+//
+// To do that, I think we'll need for each node to have a unique node_id
+//  I can't use the unique data_id because group-nodes won't have a
+//  unique data_id...
+//
+// I could us the data_id field to handle this, since for any actual data
+//  the data_id > 0.
+// Then data_id = 0 could be special (main root-node only)
+// And data_id < 0 could be for group-nodes
+// I'll need to be careful to prevent conflicts when working in parallel.
+// So that means I'll need to tell any grouping algorithm what negative number to start from
+// (it can go up to that number minues the elements in the group, so we can figure out
+//  what the next group start number will need to be to safely prevent conflicts)
+//
+// That isn't a great idea. It would be better if we could use something like the
+// name of the group, as the linkage, but group names might not be unique across
+// the entirety of the tree (same station observes multiple earthquakes, for example)
+// Or many different BHZ components across an array (if we wanted to group by
+// component)
+//
+// Really what I want, is for each node, to know its geneology.
+// I don't care who it's siblings are, or who it's children are, just it's parents up.
+//
+// That would mean their parents, from the root (because this must be sufficiently
+// unique to construct the tree to begin with, its relative position within the group
+// is unimporant).
+//
+// So to that end I'll want 5 unique algorithms:
+// 1) Take a std::vector<int> of raw data_ids and make it into an n-ary tree
+//      (don't care about the order) with a default root group-node
+// 2) Given an n-ary tree and a parameter to group-by, detach the children from the root.
+//      Go through each child and attach it to an appropriate group node
+//      Attach the group-nodes to the root-node
+// 3) Given an n-ary tree, and a target depth, return the pointers
+//  for all group-nodes at that depth. Those can then be used as the root-node
+//  in 2) [allowing us to do this grouping iteratively]
+// 4) Given an n-ary tree, traverse it in-order and store the geneology of each node
+//  in the tree. I need to think about how to store this information...
+// 5) Given a geneology, recreate the tree. This depends on how the geneology
+//  is stored, so I cannot come up with many details at the moment.
+//
+// This is an over complication (again).
+// To store the n-ary tree structure, so that it can be re-created I need
+// to traverse the tree (breadth first, or depth first) and as I visit each node
+// in order, store its name, data_id, and its child's name and data_id (if it has any).
+// 
+// I need to think about this some more later.
+//=============================================================================
+// Later (11 June 2023)
+//=============================================================================
+// Really what we need is a group_id array. Every level deeper we go, we add
+// an additional value to the group_id array. Valid group_id's start from 0
+// so we can pre-set a maximum depth-level.
+// Let's imagine a very deep project
+// for every event (say someone wants 10,000 earthquakes [stupid huge])
+// they have 10 arrays (ridiculous)
+// they have 500 stations per array (also insane)
+// Each station can essentially an basically MAX_INT / (500 * 10 * 10,000)
+// which is approximately 85 components (you can have MAX_INT unique seismograms in a project)
+//
+// This is huge overkill. But it massively simplifies the logic for me.
+// uint8_t is 0 -> 255 (256 values) (8-bits, 1-byte)
+// uint16_t is 0 -> 65,535 (65,536 values) (16-bits, 2-bytes)
+// so if we use 10 uint_16t for grouping, that is 20-bytes per seismogram
+// That means that for MAX_INT unique data_ids
+// storing our group_id's will cost 86 Gb (not to mention the actual seismograms)
+//
+// Moral of the story, a user will likely not use MAX_INT data_ids
+//
+// I think, that using uint16_t will work out well
+// (let's say the user had 9,000 total seismograms for the project, let's say 10 components a pop
+// that is 900 station groups minimum, if only 3 components then 3,000 station groups maximum is all in
+// a single array, so the uint8_t doesn't have sufficient dynamic range). Even then, that is 180 Kb at the seismogram level
+// It would be about 60 Kb at the station level (3000 stations)
+//
+// It would be about 200 b at the array level
+//
+// It would be 20 b per event. So really, the data usage of using uint_8t is tiny for this
+// (even using standard integers it'd be only double the size, barely anything).
+//
+// So I think an appropriate lineage structure is a std::vector<int>, of size depth
+//
+// So we'd have
+// {} root
+// {0} first group
+// {0, 0} first child of first group
+// {0, 1} second child of first group
+// {0, 1, 0} first child of second child of first group
+// {0, 1, 0, 1} and so on.
+// The leaf nodes will go to whatever depth, then just use the data_id from sqlite3
+// (if that isn't sufficiently large enough, then I think we've moved on well beyond
+// that which is expect for a desktop application!)
+//
+//-----------------------------------------------------------------------------
+// End ToDo
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -136,13 +286,16 @@
 namespace pssp
 {
 //-----------------------------------------------------------------------------
-// NTreeStruct
+// NTreeNode struct
 //-----------------------------------------------------------------------------
 struct NTreeNode
 {
     // Name is always used (group-name, file-name, station-name, whatever)
     std::string name{};
-    // Default is -1, which means it is a group (data have data_ids > 0)
+    // If size is 0, then is a root-node
+    // Group_id vector
+    std::vector<int> group_ids{};
+    // Default is -1, which means no-data assignd
     int data_id{-1};
     // Pointer to sibling node
     // Sibling nodes exist at the same depth-level in the tree (same group)
@@ -151,23 +304,26 @@ struct NTreeNode
     // Child nodes are down an additional level (sub-group)
     std::unique_ptr<NTreeNode> child_node{};
     // Constructor
-    NTreeNode(const std::string& name_, const int data_id_) : name(name_), data_id(data_id_) {}
+    NTreeNode(const std::string& name_, const std::vector<int>& group_ids_, const int data_id_ = -1)
+    : name(name_), group_ids(group_ids_), data_id(data_id_) {}
     // Destructor that prints-out on destruction for debugging purposes
     // Excellent, now we can confirm destruction quite easily, the
     //  unique_ptrs are working their magic!
     //~NTreeNode() { std::cout << "Destroying node: " << name << '\n'; }
 };
 //-----------------------------------------------------------------------------
-// End NTreeStruct
+// End NTreeNode struct
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Functions that act on an NTreeStruct
+// Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
+// Create a root-node (super group-node)
+std::unique_ptr<NTreeNode> create_root_node();
 // Create a group-node
-std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name);
+std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name, const std::vector<int>& group_ids_);
 // Create a leaf-node
-std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const int leaf_data_id);
+std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const std::vector<int>& group_ids_, const int leaf_data_id);
 // Print the node information (name/value) as appropriate
 // This doesn't care about ownership, so we use raw pointers to make life easier
 void print_node(const NTreeNode* node);
@@ -184,7 +340,7 @@ void print_postorder(const std::unique_ptr<NTreeNode>& node);
 // Traverse the tree and print out the names/values in level-order
 void print_levelorder(const std::unique_ptr<NTreeNode>& node);
 //-----------------------------------------------------------------------------
-// End Functions that act on an NTreeStruct
+// End Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
 }
 

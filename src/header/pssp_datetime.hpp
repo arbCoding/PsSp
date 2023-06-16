@@ -1,15 +1,15 @@
 #ifndef PSSP_DATETIME_HPP_20230610
 #define PSSP_DATETIME_HPP_20230610
 
-#include "sac_stream.hpp"
-#include <string>
-#include <sstream>
+#include <sac_stream.hpp>
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <iomanip>
+#include <sstream>
+#include <string>
 
 namespace pssp
 {
 // Left pad integers to a given width (with zeros)
-// Should migrate elsewhere later
 std::string left_pad_integers(int n, int width);
 // Days per month, should move to a time header
 int days_per_month(int year, int month);

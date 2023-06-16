@@ -5,7 +5,8 @@
 
 The purpose of this document is to define the stylistic choices for coding in this repository.
 
-This is likely to be an incomplete document, that will evolve as the style evolves.
+This is likely to be an incomplete document that will evolve as the style evolves. Any information that is incorrect is purely by mistake and will be corrected
+as soon as I am aware.
 
 ## Styles
 ---
@@ -27,7 +28,7 @@ The above is an empty, hyphenated banner (because hyphens are used for form the 
 
 The base standard banner has an 80 character line width. The internal comment may have text on it.
 
-Key portions of code should be **wrapped** between a banner and it's **End**-equivalent banner.
+Key portions of code should be **wrapped** between a banner and its **end** banner.
 
 e.g.
 
@@ -110,7 +111,7 @@ Class some_class
 }
 ```
 
-THe above is a simple example where it isn't too complicated to see the stack of closing curly-brackets at the end and figure thingso out.
+The above is a simple example where it isn't too complicated to see the stack of closing curly-brackets at the end and figure thingso out.
 But when a source-code file is 1000+ lines long, with multiple levels of internal structure that extend longer than a vertical page, it can be
 very difficult to quickly distinguish where exactly you are in the code. Banners, while increasing the overall length of the file, provide
 a powerful tool to quickly and visually separate chunks.
@@ -221,7 +222,7 @@ I have chosen the naming convention of .hpp for a C++ header file because my edi
 Inside header files, you should declare structs, classes, and constants. You should also forward delcare you functions (that is, give the return type, name, and information on all the input variables). Do not implement a function inside an interface unless you must (specifically, in pssp_threadpool.hpp I had to define the enqueue function due to the template meta-programming on the Functions and Arguments, there was no way to explicitly forward declare every possible combination of input Function and variable Arguments, so the implementation in that case had to be in the interface file). You'll note that
 is distinctly different from the template programs in the sac-format library, where I was able to forward declare the explicit versions of the template functions because they were both 1) known a priori and 2) few in number. As much as possible, try to keep implementations out of interfaces.
 
-This is useful because the interface allows us to hide the internal functionality from those who want to use it. This is valuable because it reduces **clutter** in the interface. That allows us to look at the interface file and figure out the higher-level logic/organization more easily. The implementation isn't actually hidden, as it is easily accessible in it's appropriate interface file in it's full glory. It is a small bit of additional
+This is useful because the interface allows us to hide the internal functionality from those who want to use it. This is valuable because it reduces **clutter** in the interface. That allows us to look at the interface file and figure out the higher-level logic/organization more easily. The implementation isn't actually hidden, as it is easily accessible in its appropriate interface file in its full glory. It is a small bit of additional
 book-keeping, for a huge improvement in overall clarity/readibility at different levels.
 
 This is also useful because it speeds up compilation. When compiling, the compiler sees the interface and the promised functionality and puts a marker there for the linker to handle linking later. I know, linker errors can be ugly, but having both sets is rather useful. If there is a disconnect between the interface and the implementation, your language server will detect this mismatch (clangd for instance), before you ever reach compilation to begin with.
@@ -232,7 +233,7 @@ For now, PsSp is small and this isn't a huge concern, but I see no reason not to
 
 Interfaces go in the header file and get automatically included in the build. Implementations are automatically included in the build as well.
 
-Always user header-guards for your interfaces and keep all include statements in the interface (the only include statement inside of an implementation should be for it's respective interface).
+Always user header-guards for your interfaces and keep all include statements in the interface (the only include statement inside of an implementation should be for its respective interface).
 
 e.g. (interface.hpp)
 ```c++
@@ -251,7 +252,7 @@ e.g. (interface.cpp)
 ### Header-Guards
 ---
 
-Header-guard names are in full-caps, prefaced by the namespace (or program), and followed by the extension (HPP) and then the date the header guard was added/modified in YYYYMMDD format. Previously the date addition was not included, it has been tacked on to the format for extra internal safety.
+Header-guard names are in full-caps, prefaced by the namespace (or program), then the actual header followed by the extension (HPP) and then the date the header guard was added/modified in YYYYMMDD format. These subsections of the header-guard are separate by and underscore character (_). Previously the date addition was not included, it has been tacked on to the format for extra internal safety.
 
 e.g. (Good)
 ```c++
@@ -282,7 +283,7 @@ Why not use `pragma once`? Because it is not a standard component of the C++ lan
 ### Multi-line statements
 ---
 
-In general, if a statement is short, it should be single-line and if it is long, it should be multi-line.
+In general, if a statement is short, it should be a single-line statement and if it is long it should be a multi-line statement.
 
 This comes up very commonly for `if` statements.
 
@@ -312,25 +313,40 @@ e.g. (Bad)
 if (statment)
     return;
 
-if (statement)
-{
-    return;
-}
-
 if (statment) 
 {
     return true;
-} 
-else 
+}
+else
 {
     return false;
 }
+
+if (really_long_statement_that_results_in_taking_most_of_the_line) {
+    return true;
+} 
+else {
+    return false;
+}
+
+if (statement)
+{
+    do_something();
+    do_something_else();
+    for (int i{0}; i < 10; ++i)
+    {
+        do_even_more_stuff(i);
+    }
+}
+else
+{
+    do_something_else();
+}
 ```
 
-why? I don't like having loops without curly-brackets, because it is entirely likely you'll want it to do multiple different things
-later, which if you forget to add the curly-brackets at that time, funny bugs that are a pain to track can result.
-
-I don't want an if statement that needs to only take 1 line end up taking 4-lines. It just unnecessarily inflates the length of your code (which we're already inflating with the infinitely more-valuable comments and wrapped banners!).
+Why? For a couple of reasons:
+1) Excluding the curly-brackets (*{}*) risks weird bugs later on if the statement gets changed. All you need to do is forget to add the curly-brackets before/during/after the process of making the modification and enjoy the ensueing weirdness.
+2) I don't want an if statement that needs to only take 1 line end up taking 4-lines. It just unnecessarily inflates the length of your code (which we're already inflating with the infinitely more-valuable comments and wrapped banners!).
 
 ### Include Statements
 ---
@@ -340,7 +356,7 @@ Inclusion order is as follows:
 2) External, non-standard libraries
 3) Standard library stuff
 
-Within those, I don't care too much about the order.
+Within those, it would be ideal for everything to be in alphabetical order.
 
 The style of inclusions if as follows
 
@@ -354,3 +370,5 @@ Note our internal interfaces are enclosed in double-quotes (and always end in .h
 
 Stuff from the standard library is also included inside angular brackets, but we do not provide the file-extension. This is because the standard library
 has internal header-guards such that single-components of the library can be include (instead of the entire file). This is unique to the standard library.
+
+It is also ideal to add a note above the include statement as to why it is being included (what does it do, what does it provide?).

@@ -128,7 +128,7 @@ void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& s
     std::getline(iss, s_minute, ':');
     std::getline(iss, s_second, '.');
     std::getline(iss, s_milliseconds);
-    sac.nzyear = std::stoi(s_year);
+    if (!s_year.empty()) { sac.nzyear = std::stoi(s_year); }
     int month{std::stoi(s_month)};
     int day{std::stoi(s_day)};
     sac.nzjday = ymd_2_doy(sac.nzyear, month, day);

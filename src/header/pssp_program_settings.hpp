@@ -13,10 +13,10 @@
 #include <filesystem>
 // File IO
 #include <fstream>
-// std::string
-#include <string>
 // std::cout
 #include <iostream>
+// std::string
+#include <string>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------

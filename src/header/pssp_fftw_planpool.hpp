@@ -4,10 +4,10 @@
 // FFTW3 library
 #include <fftw3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <unordered_map>
-#include <mutex>
 // Needed by FFTW library
 #include <cmath>
+#include <mutex>
+#include <unordered_map>
 
 //-----------------------------------------------------------------------------
 // Description

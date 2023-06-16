@@ -7,29 +7,30 @@
 //-----------------------------------------------------------------------------
 // Include statments
 //-----------------------------------------------------------------------------
-#include "pssp_program_settings.hpp"
+#include "pssp_data_pool.hpp"
+#include "pssp_data_trees.hpp"
 // pssp::FFTWPlanPool class
 #include "pssp_fftw_planpool.hpp"
+#include "pssp_program_settings.hpp"
+// pssp::Project class
+#include "pssp_projects.hpp"
 // Spectral proccesing functionality
 #include "pssp_spectral.hpp"
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
-// pssp::Project class
-#include "pssp_projects.hpp"
+// GLFW graphical backend
+#include <GLFW/glfw3.h>
 // Dear ImGui and Graphical Backends
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 // ImPlot add-on for Dear ImGui
 #include <implot.h>
-// GLFW graphical backend
-#include <GLFW/glfw3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <atomic>
-#include <shared_mutex>
-#include <deque>
 #include <filesystem>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 //-----------------------------------------------------------------------------
 // End Include statments
@@ -69,18 +70,6 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Custom structs
 //-----------------------------------------------------------------------------
-/*
-struct FileIO
-{
-    std::atomic<int> count{0};
-    std::atomic<int> total{0};
-    // Used to flag if we're reading or not 
-    std::atomic<bool> is_reading{false};
-    // Used to flag if we're processing data or not
-    std::atomic<bool> is_processing{false};
-    std::shared_mutex mutex_{};
-};
-*/
 // Enum for program state
 enum program_state{ in, out, processing, idle };
 
@@ -101,8 +90,14 @@ struct ProgramStatus
     // Our FFTW Plan pool
     FFTWPlanPool fftw_planpool{};
     std::string status_message{};
+    // Our Data pool
+    DataPool data_pool{};
+    // Our Project
+    Project project{};
+    // The data_id of the active sac file
+    int data_id{-1};
 };
-//
+// Struct for Frames Per Second info
 struct fps_info
 { 
     float prev_time{0.0f};
@@ -115,35 +110,6 @@ struct fps_info
     std::mutex mutex_{};
 };
 
-struct sac_1c
-{
-    std::string file_name{};
-    SAC::SacStream sac{};
-    std::shared_mutex mutex_{};
-    int data_id{};
-
-    sac_1c() : file_name(), sac(), mutex_(), data_id() {}
-    // Copy constructor
-    sac_1c(const sac_1c& other)
-    {
-        file_name = other.file_name;
-        sac = other.sac;
-        data_id = other.data_id;
-        // Don't copy the mutex
-    }
-    // Assignment operator
-    sac_1c& operator=(const sac_1c& other)
-    {
-        if (this != &other)
-        {
-            file_name = other.file_name;
-            sac = other.sac;
-            data_id = other.data_id;
-            // Don't assign the mutex
-        }
-        return *this;
-    }
-};
 // Struct for filters
 struct FilterOptions
 {
@@ -185,33 +151,33 @@ struct AllFilterOptions
 // Updates the FPS tracker
 void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
-void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
+//void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
-void calc_spectrum(FFTWPlanPool& fftw_planpool, const sac_1c& sac, sac_1c& spectrum);
+void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& spectrum);
 // Remove mean from sac_1c object
-void remove_mean(Project& project, ProgramStatus& program_status, sac_1c& sac);
+void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque
-void batch_remove_mean(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_mean(ProgramStatus& program_status);
 // Remove trend from a sac_1c object
-void remove_trend(Project& project, ProgramStatus& program_status, sac_1c& sac);
+void remove_trend(ProgramStatus& program_status, int data_id);
 // Remove trend from all sac_1c objects in a deque
-void batch_remove_trend(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
+void batch_remove_trend(ProgramStatus& program_status);
 // Lowpass one sac_1c
-void apply_lowpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& lowpass_options);
+void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
-void batch_apply_lowpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& lowpass_options);
+void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options);
 // Highpass one sac_1c
-void apply_highpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& highpass_options);
+void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
-void batch_apply_highpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& highpass_options);
+void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options);
 // Bandpass one sac_1c
-void apply_bandpass(Project& project, ProgramStatus& program_status, sac_1c& sac, FilterOptions& bandpass_options);
+void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
-void batch_apply_bandpass(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, FilterOptions& bandpass_options);
-// Read in a single sac_file
-void read_sac_1c(std::deque<sac_1c>& sac_deque, ProgramStatus& program_status, const std::filesystem::path file_name, Project& project);
+void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options);
+// Read in a single sac file and add it to the DataPool
+void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name);
 // Read all SAC files in a directory
-void scan_and_read_dir(ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, std::filesystem::path directory, Project& project);
+void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path directory);
 // Setup the graphical backends
 const char* setup_gl();
 // Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO
@@ -226,22 +192,27 @@ void prep_newframe();
 // Ran at end of new frame draw cycle
 void finish_newframe(GLFWwindow* window, ImVec4 clear_color);
 // Add all each datapoint ot a checkpoint
-void checkpoint_data(ProgramStatus& program_status, Project& project, sac_1c& sac);
+void checkpoint_data(ProgramStatus& program_status, const int data_id, const int checkpoint_id);
 // Unload the project
-void unload_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque);
-void fill_deque_project(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, int data_id);
+void unload_data(ProgramStatus& program_status);
+// Load a single bit of data
+void load_2_data_pool(ProgramStatus& program_status, const int data_id);
 // Load an existing project
-void load_data(Project& project, ProgramStatus& program_status, std::deque<sac_1c>& sac_deque, const std::filesystem::path project_file, int checkpoint_id);
-// Delete a checkpoint
-void delete_checkpoint(Project& project, int checkpoint_id);
+void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id);
 // Shitty lowpass for testing
-void lowpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
+void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double cutoff);
 // Shitty highpass for testing
-void highpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double cutoff);
+void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double cutoff);
 // Shitty bandpass for testing
-void bandpass(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowpass, double highpass);
+void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double lowpass, double highpass);
 // Shitty bandreject for testing
-void bandreject(FFTWPlanPool& plan_pool, sac_1c& sac, int order, double lowreject, double highreject);
+void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double lowreject, double highreject);
+// Write a checkpoint (need to set project.checkpoint_name first!)
+void write_checkpoint(ProgramStatus& program_status, bool author, bool cull);
+// Delete checkpoint data for a data_id (allows to be parallel)
+void delete_data_id_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id, int data_id);
+// Delete a checkpoint
+void delete_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

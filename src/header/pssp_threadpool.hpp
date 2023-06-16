@@ -5,20 +5,20 @@
 // Include statements
 //-----------------------------------------------------------------------------
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-// std::thread
-#include <thread>
-// std::vector
-#include <vector>
-// std::queue
-#include <queue>
-// std::mutex, std::unique_lock
-#include <mutex>
+// Thread-safe integral type variables
+#include <atomic>
 // std::condition_variable
 #include <condition_variable>
 // Needed for `typname Function` and `typename... Args` template components
 #include <functional>
-// Thread-safe integral type variables
-#include <atomic>
+// std::mutex, std::unique_lock
+#include <mutex>
+// std::queue
+#include <queue>
+// std::thread
+#include <thread>
+// std::vector
+#include <vector>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------

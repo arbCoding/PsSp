@@ -25,6 +25,11 @@ debug = true
 # Param is always used
 param = -std=c++20 -pedantic-errors -Wall
 # Common debug params regardless of clang++ or g++
+# This uses the thread-sanitizer, useful for finding data-races
+# though it also flags many false positives (better than missing
+# real positives)
+#common_debug = -fsanitize=thread -pthread -Wextra -Werror -Wshadow -ggdb
+# This does not use the thread-sanitizer (no pthreads needed either)
 common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
@@ -181,7 +186,7 @@ imgui_cxx += -isystem$(implot_dir)
 # Boost
 #------------------------------------------------------------------------------
 ifeq ($(uname_s), Darwin)
-	boost_dir = /opt/homebrew/Cellar/boost/1.81.0_1/
+	boost_dir = /opt/homebrew/Cellar/boost/1.82.0/
 	boost_inc = $(boost_dir)include/
 	boost_lib = $(boost_dir)lib/
 else

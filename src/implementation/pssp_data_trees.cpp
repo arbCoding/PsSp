@@ -3,15 +3,27 @@
 namespace pssp
 {
 //-----------------------------------------------------------------------------
-// Functions that act on an NTreeStruct
+// Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+// Create a root-node
+//------------------------------------------------------------------------
+std::unique_ptr<NTreeNode> create_root_node()
+{
+    std::vector<int> group_ids_{};
+    return std::make_unique<NTreeNode>("root", group_ids_);
+}
+//------------------------------------------------------------------------
+// End Create a root-node
+//------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
 // Create a group-node
 //------------------------------------------------------------------------
-std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name)
+std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name, const std::vector<int>& group_ids_)
 {
-    return std::make_unique<NTreeNode>(group_name, -1);
+    return std::make_unique<NTreeNode>(group_name, group_ids_);
 }
 //------------------------------------------------------------------------
 // End Create a group-node
@@ -20,9 +32,9 @@ std::unique_ptr<NTreeNode> create_group_node(const std::string& group_name)
 //------------------------------------------------------------------------
 // Create a leaf-node
 //------------------------------------------------------------------------
-std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const int leaf_data_id)
+std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const std::vector<int>& group_ids_, const int leaf_data_id)
 {
-    return std::make_unique<NTreeNode>(leaf_name, leaf_data_id);
+    return std::make_unique<NTreeNode>(leaf_name, group_ids_, leaf_data_id);
 }
 //------------------------------------------------------------------------
 // End Create a leaf-node
@@ -34,8 +46,12 @@ std::unique_ptr<NTreeNode> create_leaf_node(const std::string& leaf_name, const 
 void print_node(const NTreeNode* node)
 {
     std::ostringstream oss{};
+    /*
     if (node->data_id == -1) { oss << "Group: " << node->name << '\n'; }
     else { oss << "Name: " << node->name << ", ID: " << node->data_id << '\n'; }
+    */
+    for (std::size_t i{0}; i < node->group_ids.size(); ++i) { oss << node->group_ids[i] << ','; }
+    oss << node->data_id << '\n';
     std::cout << oss.str();
 }
 //------------------------------------------------------------------------
@@ -109,6 +125,6 @@ void print_levelorder(const std::unique_ptr<NTreeNode>& node)
 //------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// End Functions that act on an NTreeStruct
+// End Functions that act on a tree of NTreeNodes
 //-----------------------------------------------------------------------------
 }

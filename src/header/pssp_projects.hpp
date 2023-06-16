@@ -4,23 +4,25 @@
 //-----------------------------------------------------------------------------
 // Include statements
 //-----------------------------------------------------------------------------
-#include "pssp_datetime.hpp"
 #include "pssp_data_trees.hpp"
-#include "sac_io.hpp"
-#include "sac_stream.hpp"
-// SQLite3 official library
-#include <sqlite3.h>
+#include "pssp_datetime.hpp"
 // String comparisons in C++ suck, boost adds needed functionality!
 #include <boost/algorithm/string.hpp>
+#include <sac_io.hpp>
+#include <sac_stream.hpp>
+// SQLite3 official library
+#include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <algorithm>
+#include <atomic>
 #include <filesystem>
+#include <ios>
 #include <iostream>
+#include <memory>
+#include <shared_mutex>
 #include <sstream>
 #include <thread>
-#include <ios>
 #include <unordered_map> 
-#include <algorithm>
-#include <memory>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -28,43 +30,6 @@
 //-----------------------------------------------------------------------------
 // ToDo
 //-----------------------------------------------------------------------------
-// So, upon working on organizing my data-trees, it turns out the current
-//  organization scheme is not great.
-//
-// At present, every seismogram has two tables, one for checkpoints and one
-//  for processing notes.
-//
-// But what if I want to query across all seismogram's to get all the unique
-//  component names, or event reference times, or array names?
-//
-// Well, I can use dynamic SQL querys for search across all those tables. Except,
-//  when the number of tables becomes large, that becomes super inefficient.
-//  There is also additional storage overhead of keeping distinct tables.
-//
-// The benefit is that the organization is more intuitive to me.
-//
-// But for larger projects, this will become an issue.
-//
-// So I've decided to restructure the table (hopefully never again).
-//
-// We have a table of unique_ids (provenance, no change)
-// A table listing unique checkpoints (checkpoints, no change)
-// A table with all the checkpointed data
-//  This is a change, instead of a separate table per seismogram, one table to rule them all
-// A table with all processing notes
-//  This is a change, instead of a separate table per seismogram, one table to rule them all
-//
-// This will allow for:
-//  simplified queries
-//  improved query performance
-//      (which includes faster I/O)
-//  data consistency
-//  flexibility in modifying the data schema
-//
-// This is a painful change to make, especially as the current implementation
-//  does work. So I'm going to push this to the main project as the present
-//  working version and create a new branch for scheming (at least I can
-//  take solace in an amusing branch name!)
 //-----------------------------------------------------------------------------
 // End ToDo
 //-----------------------------------------------------------------------------
@@ -101,8 +66,6 @@ class Project
         std::string_view name_{};
         // Path to the database file
         std::filesystem::path path_{};
-        // Checkpoint id
-        int checkpoint_id_{0};
         // SQLite3 BLOB (Binary Large OBject) to std::vector<double>
         std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index);
         // Create provenance table
@@ -125,6 +88,10 @@ class Project
         void create_data_processing_table(sqlite3* connection, int data_id);
         // Convenience function to mirror the tables between the file and memory
         void create_data_processing_table(int data_id);
+        // Create a table for temporary data table
+        // This is always on disk (for use when a project is too big
+        // to be held entirely in memory)
+        void create_temporary_data();
         // Add data provenance to data provenance table
         // This gets called ONLY when data gets added to a project
         // You get the data_id back upon insertion
@@ -142,6 +109,8 @@ class Project
         // Create fresh tables for a brand new project
         void fresh_tables();
     public:
+        // Checkpoint id
+        int checkpoint_id_{0};
         // Connection to the database (file)
         sqlite3* sq3_connection_file{};
         // Conection to the database (memory)
@@ -157,6 +126,11 @@ class Project
         bool copy_name{true};
         bool copy_notes{true};
         bool is_project{false};
+        // Vector of data_id's
+        std::vector<int> current_data_ids{};
+        // Boolean to flag an update
+        std::atomic<bool> updated{false};
+        std::shared_mutex mutex{};
         // Empty constructor
         Project() {};
         // Parameterized constructor
@@ -202,14 +176,23 @@ class Project
         SAC::SacStream load_sacstream_from_checkpoint(int data_id, int checkpoint_id);
         // Get a sacstream for the current checkpoint_id
         SAC::SacStream load_sacstream(int data_id);
+        // Specifically load from the temporary_data table
+        SAC::SacStream load_sacstream_from_temporary(const int data_id, const int checkpoint_id);
+        // Get a sacstream from the temporary_data table if it exists
+        // if not, get it from the checkpoint table
+        SAC::SacStream load_temporary_sacstream(const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
         // Get source name from provenance table
         std::string get_source(int data_id);
         // Checkpoint_id setter
         void set_checkpoint_id(int checkpoint_id);
         // Path getter
         std::filesystem::path get_path();
-        // Checkpoint deleter
-        void delete_checkpoint(int checkpoint_id);
+        // Delete checkpoint from list
+        void delete_checkpoint_from_list(int checkpoint_id);
+        // Delete checkpoint_id data for data_id
+        void delete_data_id_checkpoint(int data_id, int checkpoint_id);
+        // Issue VACUUM command to database
+        void vacuum();
         // Get meta-data for checkpoint (name, comments, creation timestamp)
         std::unordered_map<std::string, std::string> get_checkpoint_metadata(int checkpoint_id);
         // Get meta-data for current checkpoint
@@ -221,17 +204,10 @@ class Project
         std::string get_processing_history(int data_id, int checkpoint_id);
         // Get the history for data_id and the current checkpoint_id
         std::string get_current_processing_history(int data_id);
-        // In order to build the N-ary tree we need to access the database
-        // For now, I'm going to make a hard-coded ordering of
-        // Reference_Time->Array->Station->Component (Should only be 1-reference time)
-        // In the future, I'll add more flexible versions
-        // This will allow us to efficiently store data-organization
-        // Without needing to implement internal sorting/reoganizing in the
-        // NTreeNode, which I don't feel like doing at the moment
-        //
-        // This is a place holder, I'll get back to this problem later
-        //  first I need to update the database schema to be more efficient...
-        std::unique_ptr<NTreeNode> build_data_id_tree();
+        // Clear the temporary data table
+        void clear_temporary_data();
+        // Store the information in the temporary table
+        void store_in_temporary_data(SAC::SacStream& sac, int data_id);
 };
 }
 
