@@ -7,6 +7,7 @@
 #include "pssp_projects.hpp"
 #include <sac_stream.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -122,9 +123,9 @@ public:
     // we should decrease max-size
     // But, max size must never go below the number of threads
     // in the thread-pool
-    DataPool(std::size_t max_data_ = 1) : max_data(max_data_) {}
+    DataPool(std::size_t max_data_ = 1000) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
-    std::shared_ptr<sac_1c> get_ptr(Project& project, const int data_id, const int checkpoint_id);
+    std::shared_ptr<sac_1c> get_ptr(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // How much data is in the pool
     std::size_t n_data() const;
     // Fully empty the pool
@@ -132,7 +133,7 @@ public:
     void remove_data(Project& project, int data_id);
     std::size_t max_data{};
     // Add data to the pool
-    void add_data(Project& project, const int data_id, const int checkpoint_id);
+    void add_data(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // Function for returning data to data-pool
     void return_ptr(Project& project, std::shared_ptr<sac_1c>& sac_ptr);
     //std::vector<int> get_iter(const std::vector<int>& input_ids);
@@ -141,7 +142,7 @@ private:
     std::mutex mutex_{};
     std::map<int, std::shared_ptr<sac_1c>> data_pool_{};
     // Add and return a new raw pointer
-    std::shared_ptr<sac_1c> get_new_pointer(Project& project, const int data_id, const int checkpoint_id);
+    std::shared_ptr<sac_1c> get_new_pointer(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // Find an object in the pool that is not being used and remove it
     void remove_unused_once(Project& project, std::size_t& removed);
     void clear_chunk(Project& project);

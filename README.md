@@ -1,6 +1,6 @@
 # Passive-source Seismic-processing (PsSp)
 
-![PsSp Main Window](screenshots/pssp_main_window_16May2023.png)
+![PsSp Main Window](screenshots/pssp_main_window_16June2023.png)
 
 The purpose of this is to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
 
@@ -9,14 +9,11 @@ The purpose of this is to provide an OS-independent, graphical, seismic-processi
 ## Why does this exist?
 ### Summary
 
-The purpose can be summarized as **extending the productivity suite of the seismologist**. Seismologists have their program for writing manuscripts
-(e.g. MS Word, LaTeX), their program for giving scientific presentations (e.g. MS Powerpoint, Impress Presentation, etc.), their
-program for handling emails (Outlook, Thunderbird, whatever). The gap that exists is **what program do they use to do seismic anlaysis**? Far too often,
-it is whatever they manage to cludge together, so long as it *seems* to work.
+The purpose of this project is to **extend the productivity suite of the passive-source seismologist**. There exist great tools for writing manuscripts (e.g. MS Word, LibreOffice, LaTeX, ...). There exist great tools for creating presentations (e.g. MS Powerpoint, Impress Presentation, ...). There exist great tools for communicating with each other across the world (Outlook, Thunderbird, Zoom, MS Teams, ...). What tools exist for doing seismic analysis? Far too often, it is whatever the analyst manages to cludge together, provided it *seems* to do the job.
 
 ### Introduction
 
-Despite the various seismological tools that exist (and honestly, because of how they are designed) the seismologist will **most likely** need to code 
+Despite the various seismological tools that exist, and because of how they are designed, the seismologist will **most likely** need to code 
 their own tool(s) (as a shell script stitching programs together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if it is 
 desired by the researcher is awesome, the need to do it is unfortunate as not everyone wants to (or knows how to) write their own codes. It gets worse when you consider the performance of these codes, or how the codes end up becoming obsolete after a short time (try using someone's old Python scripts, or Matlab codes, have them not work and be stuck trying to figure out what is wrong instead of making progress on your research).
 
@@ -26,8 +23,9 @@ The primary issues that I see today are:
 1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
 but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
-by different persons/groups, in order to perform a given research task. Add in the additional complication of OS-exclusive software, locking users
-of the wrong operating system out from certain tools and you have a tremendously unfortunate mess.
+by different persons/groups, in order to perform a given research task.
+3) The additional complication of OS-exclusive software, locking users of the wrong operating system out from certain tools and you have a tremendously unfortunate mess.
+4) The tools are often not parallel at all.
 
 The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
 assumptions, nor the limitations. Often, these tools were never designed to be shared and therefore are designed in a non-intuitive fashion, with virtually no
@@ -53,32 +51,24 @@ the quality of research that is accomplished while minimizing the amount of time
 
 This is extremely early in development.
 
-### Current Focus: Data manipulation/display interface
+### Current Focus: Unit and Integration Testing for Improved Stability
 
-The next major update is to provide an interface to interact with the data. As opposed to right now, where we do everything via displaying the values of
-the sac_deque.
+This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem through distraction
+with a different problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult
+to perform a first pass at implementing. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause
+the analyst headaches due to being unstable.
 
-I think we can have the sac_deque window, but instead of should be an unordered_map of data_id's and file_names. It shows the file_names, upon
-selecting, we get the data_id and can load that one data_id into a SacStream object, which will need to be tied to an update flag (so that we
-can flag that it has been updated to whoever is accessing it). That is the object which gets plotted, or has the spectrum calculated and plotted.
+To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
 
-It is also not directly tied to the sac_deque, such that when processing or I/O operations are occuring, we can still display it and everything related
-to it (just cannot alter it if other things are happening). That means we won't need to close off as many windows during processing or I/O. We'll need
-a flag to pass back to the deque if the user has altered its information (updated a header value, for instance) so that the change can be propagated
-back to the sac_deque safely.
-
-Then we need a window for displaying all headers values that allows the user to update them (with formatting restrictions to prevent nonsense).
-
-Additionally, we can have an unordered_map for data_id's to header values, allowing us to show that same information, across all SacStreams in a
-tabular format. To allow the user to scan and manipulate their data. (This is later).
-
-Need a mechanism for grouping data (by station, by component, by event, by array, by whatever). An abstract grouping that can be as deep as the data allows. Think of it like grouping objects in illustrator, or in QGIS.
+### Last Focus: Memory Management
+All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented
+a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory (*currently static, needs to be adjustable via a menu*). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
 ---
 
 ## ToDo
 
-See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on what is currently going-on/planned for the future.
+See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on what is currently going-on/planned for the future as well as the above discussion on the project focus.
 
 ---
 
@@ -87,6 +77,10 @@ See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on wha
 Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice
 or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
 
+* [Catch2](https://github.com/catchorg/Catch2)
+   * This will provide the unit/integration testing framework
+   * Git submodule
+   * **Not yet integrated, this is planned.**
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
    * This provides the OS-independent GUI.
    * Git submodule.
@@ -118,16 +112,15 @@ or manually. For those other packages I provide installation guidance for MacOS 
 
 ## Compilation instructions
 
-I test this on M1 MacOS (Ventura 13.3.1 (a)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
+I test this on M1 MacOS (Ventura 13.4)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
 
-**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/)
-to setup your compilation environment on Windows.
+**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [MSYS2](https://www.msys2.org/), [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), or [Cygwin](https://www.cygwin.com/) to setup your compilation environment on Windows.
 
 ---
 ### MacOS
 Using [Homebrew](https://brew.sh/)
 ```shell
-brew install fftw glfw msgpack-cxx sqlite
+brew install fftw glfw msgpack-cxx sqlite boost
 ```
 
 **NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are

@@ -1,5 +1,4 @@
 #include "pssp_spectral.hpp"
-#include "fftw3.h"
 
 namespace pssp
 {

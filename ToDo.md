@@ -1,27 +1,24 @@
-# Updated on 9 June 2023 (too lazy to renumber daily)
+# Updated on 16 June 2023 (too lazy to renumber daily)
 ---
 
-1) Bandreject filter
+1) Filtering
+
+    a) Correct transfer functions for filters (currently just gain)
+    b) Band-reject is missing entirely
 
 2) Data-request/download from IRIS (or other server)
 
-3) Mapping of data (implot has a nifty map example code)
+3) Mapping (geographic map, C++ map) of data (implot has a nifty map example code)
 
-4) Sorting of data in sac_deque
+4) Grouping data using N-ary tree
 
-    4a) By filename
+    a) Default grouping
 
-    4b) By component
-
-    4c) By station
-
-    4d) By event station distance
-
-    4e) By azimuth/back-azimuth
-
-    4f) By eventid
-
-    4g) ???? Basically any header variable
+        i) Event ID or Reference Time
+        ii) Array
+        iii) Station name
+        iv) Component
+    b) User defined groups
 
 5) Geometric calculations (gcarc, az, baz, dist)
 
@@ -33,49 +30,41 @@
 
 9) Spectrogram
 
-10) Grouping data
+10) Help menu
 
-    10a) Three-component
+11) Center windows functionality
 
-    10b) Array/sub-array
+12) Overwrite layout functionality
 
-    10c) Event
-
-    10d) Manually via the user, can provide their own name
-
-11) Help menu
-
-12) Center windows functionality
-
-13) Overwrite layout functionality
+13) Program settings
 
 14) Advanced plots (record section, particle motion)
 
 15) Deconvolution (instrument response, source wavelet)
 
-    15a) Spectral division with water-level
+    a) Spectral division with water-level
 
-    15b) Spectral division with static shift
+    b) Spectral division with static shift
 
-    15c) Iterative time-domain
+    c) Iterative time-domain
 
 16) Generic basic waveforms (for exploring effects of processing flow)
 
-    16a) Dirac Delta function
+    a) Dirac Delta function
 
-    16b) Dirac Delta-comb function
+    b) Dirac Delta-comb function
 
-    16c) Boxcar function
+    c) Boxcar function
 
-    16d) Triangle function
+    d) Triangle function
 
-    16e) Gaussian
+    e) Gaussian
 
-    16f) Sombrero function
+    f) Sombrero function
 
 17) Keyboard shortcuts for common operations
 
-18) Tab-key navigation between components in window
+18) Tab-key navigation between components in window (seems to be an issue with ImGUI that they are working on)
 
 19) User note's log (project wide, checkpoint notes are already implemented).
 
@@ -119,26 +108,26 @@ I would prefer to gray-out the window and make the options non-selectable during
 
 29) Functionality for stacking seismograms
 
-    29a) Standard-stack
+    a) Standard-stack
     
-    29b) Slant-stack
+    b) Slant-stack
 
-    29c) H-k stack
+    c) H-k stack
 
 30) Arrival time prediction from 1-d earth model (spherical)
 
-    30a) That requires ray-tracing through 1-d earth model
+    a) That requires ray-tracing through 1-d earth model
     
-    30b) That requires definition of naming of phases
+    b) That requires definition of naming of phases
         
-    30bb) There are various definitions, but I want to be able to be completely explicit about a phases path
+    c) There are various definitions, but I want to be able to be completely explicit about a phases path
         Both source-side and receiver-side because there is ambiguity in the naming schemes
         As well as specifying depths of certain interactions (I want reflects off the Moho on the receiver-side, or from a theoretical reflection from an interface at a depth of 20-km beneath the receiver, but I don't care about making
         that modification to the 1-D model also effect the source-side, I also don't care if there is no pre-defined reflection
         from that depth, imagine it happend [treat reflection point as a source, can the specified wave get to the receiver?])
         *While non-standard, I think that would be most valuable for the end-user (even though it'll be a pain to implement)
     
-    30bb*) To do this, I think ray-tracing needs to work from the end-points in to the "mid" point of the ray-path.
+    d) To do this, I think ray-tracing needs to work from the end-points in to the "mid" point of the ray-path.
         From the end-point to the next internal point, is it even possible? If no, then fail. If yes, then what conditions must be met. Then within those conditions, is it possible for this internal point to connect appropriately to the next, more-internal, point. Each end does this until either one fails-out, or they match-up and we're done with this check.
         Of course, if there are multiple possible paths, we need to make sure to include them in our analysis (we take the path with least travel-time, but if paths have the same travel-time, we keep them together [like a hash function]).
         We could even, in theory, define the set of points that falls within +/- tolerance of the minimum travel-time found, which would in the future lead to being able to deal with finite-frequency (finite bandwidth, instead of infinitesimal bandwidth) effects.
@@ -150,4 +139,10 @@ I would prefer to gray-out the window and make the options non-selectable during
 33) Instrument response needs to be dealt with. That means we need to be able to handle PZ-files, or RESP files, to generate
 the instruments transfer function, which can then be deconvolved from the time-series.
 
-    33*) That means we need to be able to handle doing a  discrete laplace transform [z-transform](https://en.wikipedia.org/wiki/Z-transform)
+    a) That means we need to be able to handle doing a  discrete laplace transform [z-transform](https://en.wikipedia.org/wiki/Z-transform)
+
+34) Need to fix data-processing information not going to the sq3 db in memory see comment above apply_lowpass in pssp_misc.cpp. Seems to happen after loading a checkpoint, no need additions ever make it into memory.
+
+35) Unit testing.
+
+36) Integration testing.

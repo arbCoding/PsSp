@@ -1,18 +1,15 @@
 #include "pssp_data_pool.hpp"
-#include <iterator>
-#include <mutex>
-#include <shared_mutex>
 
 namespace pssp
 {
-std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, const int data_id, const int checkpoint_id)
+std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint)
 {
     // We lock the pool when requesting the data
     std::lock_guard<std::mutex> lock_pool(mutex_);
     // if data_id = -1, there is nothing to retrieve (if it is not a project, nothing to retrieve)
     if (data_id == -1 || !project.is_project) { return nullptr; }
     // If it is the pool, simply return the raw pointer
-    if (data_pool_.count(data_id) > 0)
+    if (data_pool_.count(data_id) > 0 && !from_checkpoint)
     {
         return data_pool_[data_id];
     }
@@ -20,7 +17,7 @@ std::shared_ptr<sac_1c> DataPool::get_ptr(Project& project, const int data_id, c
     // We need to try to clear a chunk
     if (n_data() > max_data) { clear_chunk(project); }
     // If it is not found, we need to add it to the pool
-    return get_new_pointer(project, data_id, checkpoint_id);
+    return get_new_pointer(project, data_id, checkpoint_id, from_checkpoint);
 }
 
 // How much data is in the pool
@@ -29,30 +26,24 @@ std::size_t DataPool::n_data() const
     return data_pool_.size();
 }
 
-// If it is not in temporary for the correct checkpoint
-// and data_id, it is loaded from the proper checkpoint
-// data table
-//=============================================================================
-// Needs a flag to determine if it should try the temporary_data first
-// or directly skip it (straight from checkpoint)
-void DataPool::add_data(Project& project, const int data_id, const int checkpoint_id)
+// Add the data to the data-pool with a unique_ptr
+void DataPool::add_data(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint)
 {
     if (data_id == -1 || !project.is_project) { return; }
     sac_1c sac{};
-    std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
     sac.file_name = project.get_source(data_id);
-    sac.sac = project.load_temporary_sacstream(data_id, checkpoint_id);
+    sac.sac = project.load_temporary_sacstream(data_id, checkpoint_id, from_checkpoint);
     sac.data_id = data_id;
     // Add the pointer to the pool
     data_pool_[data_id] = std::make_unique<sac_1c>(std::move(sac));
 }
 
 // Add and return a new raw pointer
-std::shared_ptr<sac_1c> DataPool::get_new_pointer(Project& project, const int data_id, const int checkpoint_id)
+std::shared_ptr<sac_1c> DataPool::get_new_pointer(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint)
 {
     if (data_id == -1 || !project.is_project) { return nullptr; }
     // Add it to the pool
-    add_data(project, data_id, checkpoint_id);
+    add_data(project, data_id, checkpoint_id, from_checkpoint);
     // Retrieve the raw pointer form the pool
     return data_pool_[data_id];
 }
@@ -60,27 +51,44 @@ std::shared_ptr<sac_1c> DataPool::get_new_pointer(Project& project, const int da
 // Fully empty the pool
 void DataPool::empty_pool()
 {
+    // If loading and unloading repeatedly, the data pool becomes unstable
+    // It seems that a situation can arise where a memory address in invalid
+    // either to be deleted, or to be added to. Currently trying
+    // to track it down...
+    // I wonder if it struggles with the active_sac being "persistently" alive
+    // in the sense that it could be preserved across unloads and reloads.
+    // It shouldn't be, but maybe it is...
+    // That is in fact the issue, there is a data-race going on.
+    // I should not access the data-pool from the windows for plotting and what-not
+    // that should come from a sac_1c object kept persistently in memory.
+    // It can be blanked if we're not in a project, but upon the project
+    // updating it gets reset. All windows that need to access it's data
+    // should receiver it by it's own shared_ptr
     // Lock the pool, don't want any funny business
     std::lock_guard<std::mutex> lock_pool(mutex_);
-    while (data_pool_.size() > 0)
+    int count{0};
+    constexpr int attempt_limit{10};
+    while (!data_pool_.empty())
     {
-        std::vector<decltype(data_pool_.begin())> to_delete{};
+        std::vector<int> to_delete{};
         // Iterator in reverse order (oldest to newest)
         for (auto rit = data_pool_.rbegin(); rit != data_pool_.rend(); ++rit)
         {
             std::shared_ptr<sac_1c>& sac_ptr = rit->second;
             {
                 std::unique_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_, std::try_to_lock);
-                if (lock_sac.owns_lock())
+                if (!sac_ptr || lock_sac.owns_lock())
                 {
-                    to_delete.push_back(std::next(rit).base());
+                    to_delete.push_back(rit->first);
                 }
             }
         }
+        if (to_delete.size() == 0 && count >= attempt_limit) { break; }
         for (const auto& data : to_delete)
         {
             data_pool_.erase(data);
         }
+        ++count;
     }
     // Clear the data_pool_ map
     data_pool_.clear();

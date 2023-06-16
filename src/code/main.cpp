@@ -7,31 +7,30 @@
 // than what MessagePack can easily handle (settings will be handled like this though
 // so I'm keeping it around as is for now, will need to modify when projects are finished
 // being implemented!)
-#include "pssp_program_settings.hpp"
-// Where we will have all our window functions defined
-#include "pssp_windows.hpp"
 // Definitions of Misc Structs/Classes/Functions
 #include "pssp_misc.hpp"
+#include "pssp_program_settings.hpp"
 // Uses sqlite3 for projects
 #include "pssp_projects.hpp"
+// Where we will have all our window functions defined
+#include "pssp_windows.hpp"
 // SQLite3 library
-#include <shared_mutex>
 #include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-// std::string_view
-#include <string_view>
-// Path stuff
-#include <filesystem>
 // std::clamp
 #include <algorithm>
+// std::getenv()
+#include <cstdlib>
+// path stuff
+#include <filesystem>
 // std::ref, needed to pass by reference to a thread (can't use & to pass by
 // reference in this situation)
 #include <functional>
+#include <shared_mutex>
 // String-stream for mixing types
 #include <sstream>
-// std::getenv()
-#include <cstdlib>
-#include <complex>
+// string_view, only used for the welcome window at the moment...
+#include <string_view>
 //-----------------------------------------------------------------------------
 // End include statements
 //-----------------------------------------------------------------------------
@@ -39,7 +38,18 @@
 //-----------------------------------------------------------------------------
 // Current Focus
 //-----------------------------------------------------------------------------
-// Data display and migrating away from direct access to the sac_deque.
+// I think we would really benefit from introducing unit testing
+// into the mix, to make this easier in the future (it is hard to remember
+// to test everything after every bug-fix).
+// It looks like Catch2 would be a nice light testing framework.
+//
+// https://github.com/catchorg/Catch2
+// https://stackoverflow.com/questions/52273110/how-do-i-write-a-unit-test-in-c
+//
+// It should be easy to integrate and start using. Of course there will be a ramp
+// up time of introducing it into the mix that will slow developement of new
+// features. But it will make life infinitely easier in the future as this
+// grows.
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------
@@ -73,7 +83,7 @@ void sqliteLogCallback(void* data, int errCode, const char* message)
 //-----------------------------------------------------------------------------
 // Function to handle logic of program state
 //-----------------------------------------------------------------------------
-void handle_program_state(ProgramStatus& program_status, ProgramSettings& current_settings, std::vector<int>& data_ids)
+void handle_program_state(ProgramStatus& program_status, ProgramSettings& current_settings, std::vector<int>& data_ids, sac_1c& visual_sac)
 {
     // If we're done with the task, we need to shift over to the idle state
     if (program_status.tasks_completed >= program_status.total_tasks)
@@ -260,6 +270,13 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
                 std::sort(data_ids.begin(), data_ids.end());
                 // Flag the update has been dealt with
                 program_status.project.updated = false;
+                // Try to get a deep copy of the original object
+                std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_)};
+                if (sac_ptr)
+                {
+                    std::lock_guard<std::shared_mutex> lock_sac{sac_ptr->mutex_};
+                    visual_sac = *sac_ptr;
+                }
             }
             // Empty the FFTW plan_pool, no need to keep it pre-filled.
             if (program_status.fftw_planpool.n_plans() != 0) { program_status.fftw_planpool.empty_pool(); }
@@ -433,7 +450,9 @@ int main(int arg_count, char* arg_array[])
         program_status.data_pool.max_data = program_status.thread_pool.n_threads_total();
     }
     // Spectrum (only 1 for now)
-    pssp::sac_1c spectrum;
+    pssp::sac_1c spectrum{};
+    // Will pass this by reference for the sake of plotting and what-not
+    pssp::sac_1c time_series{};
     // Which sac-file is active
     int active_sac{};
     bool clear_sac{false};
@@ -455,7 +474,7 @@ int main(int arg_count, char* arg_array[])
     {
         // Each frame, we need to check the program's state
         // to determine what we are and are not allowed to do
-        handle_program_state(program_status, current_settings, data_ids);
+        handle_program_state(program_status, current_settings, data_ids, time_series);
         // Do we need to remove a sac_1c from the sac_deque?
         //cleanup_sac(program_status.project, sac_deque, active_sac, clear_sac);
         // Start the frame
@@ -469,6 +488,10 @@ int main(int arg_count, char* arg_array[])
         window_fps(fps_tracker, current_settings.window_settings.fps);
         // If we're idle and there is data to show, we can show it
         pssp::program_state current_state{program_status.state.load()};
+        (void) current_state;
+        (void) clear_sac;
+        (void) update_spectrum;
+        (void) spectrum; 
         if (current_state == pssp::idle && data_ids.size() > 0)
         {
           if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = 0; }
@@ -476,12 +499,13 @@ int main(int arg_count, char* arg_array[])
           {
             program_status.data_id = data_ids[active_sac];
             update_spectrum = true;
+            time_series = *program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_);
           }
-          window_sac_header(current_settings.window_settings.header, program_status, program_status.data_id);
+          window_sac_header(current_settings.window_settings.header, time_series);
           // Show processing history window is appropriate
           window_processing_history(current_settings.window_settings.processing_history, program_status.project, data_ids[active_sac]);
           // Show the Sac Plot window if appropriate
-          window_plot_sac(current_settings.window_settings.plot_1c, program_status, program_status.data_id);
+          window_plot_sac(current_settings.window_settings.plot_1c, time_series);
           // Show Checkpoint naming window if appropriate
           window_name_checkpoint(current_settings.window_settings.name_checkpoint, program_status);
           // Show Checkpoint note window if appropriate
@@ -492,7 +516,7 @@ int main(int arg_count, char* arg_array[])
           if (current_settings.window_settings.spectrum_1c.show && update_spectrum)
           {
             // If they're not the same, then calculate the FFT
-            if (update_spectrum) { calc_spectrum(program_status, program_status.data_id, spectrum); update_spectrum = false; }
+            if (update_spectrum) { calc_spectrum(program_status, time_series, spectrum); update_spectrum = false; }
           }
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);

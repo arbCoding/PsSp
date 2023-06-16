@@ -1,5 +1,4 @@
 #include "pssp_fftw_planpool.hpp"
-#include <mutex>
 
 namespace pssp
 {

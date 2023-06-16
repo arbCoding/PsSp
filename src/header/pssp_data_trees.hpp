@@ -5,10 +5,11 @@
 // Include statements
 //-----------------------------------------------------------------------------
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <memory>
-#include <string>
+#include <exception>
 #include <iostream>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <queue>
 //-----------------------------------------------------------------------------
 // End Include statements

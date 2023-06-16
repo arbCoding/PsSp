@@ -1,5 +1,4 @@
 #include "pssp_projects.hpp"
-#include <shared_mutex>
 
 namespace pssp
 {
@@ -1338,13 +1337,11 @@ SAC::SacStream Project::load_sacstream(int data_id)
 //------------------------------------------------------------------------
 // Get a sacstream from the temporary_data table if it exists
 // if not, get it from the checkpoint table
-SAC::SacStream Project::load_temporary_sacstream(const int data_id, const int checkpoint_id)
+SAC::SacStream Project::load_temporary_sacstream(const int data_id, const int checkpoint_id, const bool from_checkpoint)
 {
-    SAC::SacStream sac{load_sacstream_from_temporary(data_id, checkpoint_id)};
-    if (sac.data1.size() == 0)
-    {
-        sac = load_sacstream_from_checkpoint(data_id, checkpoint_id);
-    }
+    SAC::SacStream sac{};
+    if (!from_checkpoint) { sac = load_sacstream_from_temporary(data_id, checkpoint_id); } else { sac = load_sacstream_from_checkpoint(data_id, checkpoint_id); }
+    if (!from_checkpoint && sac.data1.size() == 0) { sac = load_sacstream_from_checkpoint(data_id, checkpoint_id); }
     return sac;
 }
 //------------------------------------------------------------------------

@@ -2,11 +2,13 @@
 #define PSSP_SPECTRAL_HPP_20230610
 
 #include "pssp_fftw_planpool.hpp"
+// FFTW3 library
+#include <fftw3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <vector>
-#include <complex>
 // Needed by FFTW library
 #include <cmath>
+#include <complex>
+#include <vector>
 
 //-----------------------------------------------------------------------------
 // Description

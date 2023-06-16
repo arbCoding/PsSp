@@ -4,25 +4,25 @@
 //-----------------------------------------------------------------------------
 // Include statements
 //-----------------------------------------------------------------------------
-#include "pssp_datetime.hpp"
 #include "pssp_data_trees.hpp"
-#include "sac_io.hpp"
-#include "sac_stream.hpp"
-// SQLite3 official library
-#include <sqlite3.h>
+#include "pssp_datetime.hpp"
 // String comparisons in C++ suck, boost adds needed functionality!
 #include <boost/algorithm/string.hpp>
+#include <sac_io.hpp>
+#include <sac_stream.hpp>
+// SQLite3 official library
+#include <sqlite3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <filesystem>
-#include <iostream>
-#include <sstream>
-#include <thread>
-#include <ios>
-#include <unordered_map> 
 #include <algorithm>
+#include <atomic>
+#include <filesystem>
+#include <ios>
+#include <iostream>
 #include <memory>
 #include <shared_mutex>
-#include <atomic>
+#include <sstream>
+#include <thread>
+#include <unordered_map> 
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -180,7 +180,7 @@ class Project
         SAC::SacStream load_sacstream_from_temporary(const int data_id, const int checkpoint_id);
         // Get a sacstream from the temporary_data table if it exists
         // if not, get it from the checkpoint table
-        SAC::SacStream load_temporary_sacstream(const int data_id, const int checkpoint_id);
+        SAC::SacStream load_temporary_sacstream(const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
         // Get source name from provenance table
         std::string get_source(int data_id);
         // Checkpoint_id setter

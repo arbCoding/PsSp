@@ -1,9 +1,4 @@
 #include "pssp_windows.hpp"
-#include "pssp_misc.hpp"
-#include "pssp_program_settings.hpp"
-#include "pssp_projects.hpp"
-#include <cstddef>
-#include <filesystem>
 
 namespace pssp
 {
@@ -623,14 +618,11 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
 //-----------------------------------------------------------------------------
 // 1-component SAC plot window
 //-----------------------------------------------------------------------------
-void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_status, int data_id)
+void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac)
 {
     if (window_settings.show && window_settings.state != hide)
     {
-        if (!program_status.project.is_project) { return; }
-        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
-        if (!sac_ptr) { return; }
-        std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+        std::shared_lock<std::shared_mutex> lock_sac(visual_sac.mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -644,7 +636,7 @@ void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_sta
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
             {
-                ImPlot::PlotLine("", &sac_ptr->sac.data1[0], sac_ptr->sac.data1.size(), sac_ptr->sac.delta);
+                ImPlot::PlotLine("", &visual_sac.sac.data1[0], visual_sac.sac.data1.size(), visual_sac.sac.delta);
             }
             // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
             // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
@@ -728,14 +720,11 @@ void window_plot_spectrum(WindowSettings& window_settings, bool is_project, sac_
 //-----------------------------------------------------------------------------
 // 1-component SAC header window
 //-----------------------------------------------------------------------------
-void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_status, int data_id)
+void window_sac_header(WindowSettings& window_settings, sac_1c& visual_sac)
 {
     if (window_settings.show && window_settings.state != hide)
     {
-        if (!program_status.project.is_project) { return; }
-        std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
-        if (!sac_ptr) { return; }
-        std::shared_lock<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+        std::shared_lock<std::shared_mutex> lock_sac(visual_sac.mutex_);
         if (!window_settings.is_set)
         {
             ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
@@ -748,43 +737,43 @@ void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_s
             
             if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Network:    %s", sac_ptr->sac.knetwk.c_str());
-                ImGui::Text("Station:    %s", sac_ptr->sac.kstnm.c_str());
-                ImGui::Text("Instrument: %s", sac_ptr->sac.kinst.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", sac_ptr->sac.stla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", sac_ptr->sac.stlo);
-                ImGui::Text("Elevation:  %.2f m", sac_ptr->sac.stel);
-                ImGui::Text("Depth:      %.2f m", sac_ptr->sac.stdp);
-                ImGui::Text("Back Azi:   %.2f\u00B0", sac_ptr->sac.baz);
+                ImGui::Text("Network:    %s", visual_sac.sac.knetwk.c_str());
+                ImGui::Text("Station:    %s", visual_sac.sac.kstnm.c_str());
+                ImGui::Text("Instrument: %s", visual_sac.sac.kinst.c_str());
+                ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.stla);
+                ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.stlo);
+                ImGui::Text("Elevation:  %.2f m", visual_sac.sac.stel);
+                ImGui::Text("Depth:      %.2f m", visual_sac.sac.stdp);
+                ImGui::Text("Back Azi:   %.2f\u00B0", visual_sac.sac.baz);
             }
             if (ImGui::CollapsingHeader("Component Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Component:  %s", sac_ptr->sac.kcmpnm.c_str());
-                ImGui::Text("Azimuth:    %.2f\u00B0", sac_ptr->sac.cmpaz);
-                ImGui::Text("Incidence:  %.2f\u00B0", sac_ptr->sac.cmpinc);
+                ImGui::Text("Component:  %s", visual_sac.sac.kcmpnm.c_str());
+                ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.cmpaz);
+                ImGui::Text("Incidence:  %.2f\u00B0", visual_sac.sac.cmpinc);
             }
             if (ImGui::CollapsingHeader("Event Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Name:       %s", sac_ptr->sac.kevnm.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", sac_ptr->sac.evla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", sac_ptr->sac.evlo);
-                ImGui::Text("Depth:      %.2f km", sac_ptr->sac.evdp);
-                ImGui::Text("Magnitude:  %.2f", sac_ptr->sac.mag);
-                ImGui::Text("Azimuth:    %.2f\u00B0", sac_ptr->sac.az);
+                ImGui::Text("Name:       %s", visual_sac.sac.kevnm.c_str());
+                ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.evla);
+                ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.evlo);
+                ImGui::Text("Depth:      %.2f km", visual_sac.sac.evdp);
+                ImGui::Text("Magnitude:  %.2f", visual_sac.sac.mag);
+                ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.az);
             }
             if (ImGui::CollapsingHeader("DateTime Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Year:       %i", sac_ptr->sac.nzyear);
-                ImGui::Text("Julian Day: %i", sac_ptr->sac.nzjday);
-                ImGui::Text("Hour:       %i", sac_ptr->sac.nzhour);
-                ImGui::Text("Minute:     %i", sac_ptr->sac.nzmin);
-                ImGui::Text("Second:     %i", sac_ptr->sac.nzsec);
-                ImGui::Text("MSecond:    %i", sac_ptr->sac.nzmsec);
+                ImGui::Text("Year:       %i", visual_sac.sac.nzyear);
+                ImGui::Text("Julian Day: %i", visual_sac.sac.nzjday);
+                ImGui::Text("Hour:       %i", visual_sac.sac.nzhour);
+                ImGui::Text("Minute:     %i", visual_sac.sac.nzmin);
+                ImGui::Text("Second:     %i", visual_sac.sac.nzsec);
+                ImGui::Text("MSecond:    %i", visual_sac.sac.nzmsec);
             }
             if (ImGui::CollapsingHeader("Data Information##", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("Npts:       %i", sac_ptr->sac.npts);
-                ImGui::Text("IfType:     %i", sac_ptr->sac.iftype);
+                ImGui::Text("Npts:       %i", visual_sac.sac.npts);
+                ImGui::Text("IfType:     %i", visual_sac.sac.iftype);
             }
             if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         }

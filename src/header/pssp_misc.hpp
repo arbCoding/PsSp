@@ -9,29 +9,28 @@
 //-----------------------------------------------------------------------------
 #include "pssp_data_pool.hpp"
 #include "pssp_data_trees.hpp"
-#include "pssp_program_settings.hpp"
 // pssp::FFTWPlanPool class
 #include "pssp_fftw_planpool.hpp"
+#include "pssp_program_settings.hpp"
+// pssp::Project class
+#include "pssp_projects.hpp"
 // Spectral proccesing functionality
 #include "pssp_spectral.hpp"
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
-// pssp::Project class
-#include "pssp_projects.hpp"
+// GLFW graphical backend
+#include <GLFW/glfw3.h>
 // Dear ImGui and Graphical Backends
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 // ImPlot add-on for Dear ImGui
 #include <implot.h>
-// GLFW graphical backend
-#include <GLFW/glfw3.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <atomic>
-#include <shared_mutex>
-#include <deque>
 #include <filesystem>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 //-----------------------------------------------------------------------------
 // End Include statments
@@ -154,7 +153,7 @@ void update_fps(fps_info& fps, ImGuiIO& io);
 // Removes the selected SacStream from the deque
 //void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
-void calc_spectrum(ProgramStatus& program_status,int data_id, sac_1c& spectrum);
+void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& spectrum);
 // Remove mean from sac_1c object
 void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque

@@ -7,16 +7,17 @@
 // Necessary structs from pssp_projects
 #include "pssp_data_pool.hpp"
 #include "pssp_program_settings.hpp"
-#include "pssp_misc.hpp"
 #include "pssp_projects.hpp"
+#include "pssp_misc.hpp"
 // Dear ImGui
 #include <imgui.h>
-// Dear ImGui C++ textinput wrappers
-#include <misc/cpp/imgui_stdlib.h>
 // FileDialog add-on for Dear ImGui
 #include <ImGuiFileDialog.h>
 // ImPlot add-on for Dear ImGui
 #include <implot.h>
+// Dear ImGui C++ textinput wrappers
+#include <misc/cpp/imgui_stdlib.h>
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <deque>
 #include <filesystem>
 //-----------------------------------------------------------------------------
@@ -51,11 +52,11 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
 AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac);
 // Plot a single sac file
-void window_plot_sac(WindowSettings& window_settings, ProgramStatus& program_status, int data_id);
+void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac);
 // Plot a single real/imaginary spectrum
 void window_plot_spectrum(WindowSettings& window_settings, bool is_project, sac_1c& spectrum);
 // Window that displays sac header information
-void window_sac_header(WindowSettings& window_settings, ProgramStatus& program_status, int data_id);
+void window_sac_header(WindowSettings& window_settings, sac_1c& visual_sac);
 // Window that displays welcome message on startup
 void window_welcome(WindowSettings& window_settings, std::string_view& welcome_message);
 // Window that displays the frame-rate in Frames Per Second

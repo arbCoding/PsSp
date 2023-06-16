@@ -1,6 +1,4 @@
 #include "pssp_misc.hpp"
-#include "pssp_spectral.hpp"
-#include <shared_mutex>
 
 namespace pssp
 {
@@ -45,19 +43,15 @@ void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected,
 }
 */
 
-void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
-{
-    if (!program_status.project.is_project) { return; }
-    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
-    if (!sac_ptr) { return; }
-    
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& spectrum)
+{   
+    std::lock_guard<std::shared_mutex> lock_sac(visual_sac.mutex_);
     std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
     std::vector<std::complex<double>> complex_spectrum{};
     {
-        spectrum.file_name = sac_ptr->file_name;
-        spectrum.sac = sac_ptr->sac;
-        complex_spectrum = fft_time_series(program_status.fftw_planpool, sac_ptr->sac.data1, true);
+        spectrum.file_name = visual_sac.file_name;
+        spectrum.sac = visual_sac.sac;
+        complex_spectrum = fft_time_series(program_status.fftw_planpool, visual_sac.sac.data1, true);
     }
     spectrum.sac.data1.resize(complex_spectrum.size());
     spectrum.sac.data2.resize(complex_spectrum.size());
@@ -66,7 +60,6 @@ void calc_spectrum(ProgramStatus& program_status, int data_id, sac_1c& spectrum)
         spectrum.sac.data1[i] = complex_spectrum[i].real();
         spectrum.sac.data2[i] = complex_spectrum[i].imag();
     }
-    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
 }
 
 void remove_mean(ProgramStatus& program_status, int data_id)
@@ -184,6 +177,8 @@ void batch_remove_trend(ProgramStatus& program_status)
     }
 }
 
+// For some reason these are not adding the processing notes after reloading
+// I wonder if the connection to the sq3 db in memory is getting lost/corrupted?
 void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
 {
     if (!program_status.project.is_project) { return; }
@@ -498,12 +493,9 @@ void checkpoint_data(ProgramStatus& program_status, const int data_id, const int
 void unload_data(ProgramStatus& program_status)
 {
     program_status.state.store(in);
-    program_status.tasks_completed = 0;
-    program_status.total_tasks = 2;
     // Remove the SQLite3 connections and the file paths
     program_status.project.unload_project();
-    ++program_status.tasks_completed;
-    ++program_status.tasks_completed;
+    program_status.data_pool.empty_pool();
 }
 //------------------------------------------------------------------------
 // End Unload data from memory
@@ -514,7 +506,7 @@ void unload_data(ProgramStatus& program_status)
 //------------------------------------------------------------------------
 void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 {
-    program_status.data_pool.add_data(program_status.project, data_id, program_status.project.checkpoint_id_);
+    program_status.data_pool.add_data(program_status.project, data_id, program_status.project.checkpoint_id_, true);
     ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
@@ -530,7 +522,7 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
         std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
         program_status.state.store(in);
         program_status.tasks_completed = 0;
-        program_status.total_tasks = 3;
+        program_status.total_tasks = 4;
     }
     // First make sure we unload the present project
     unload_data(program_status);
@@ -540,6 +532,9 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
     if (checkpoint_id == -1){ checkpoint_id = program_status.project.get_latest_checkpoint_id(); }
     // Set the checkpoint id to the latest checkpoint
     program_status.project.set_checkpoint_id(checkpoint_id);
+    // Clear the temporary data if it is there
+    program_status.project.clear_temporary_data();
+    ++program_status.tasks_completed;
     // Get the data-ids to load
     program_status.project.current_data_ids = program_status.project.get_data_ids_for_current_checkpoint();
     program_status.project.updated = true;
@@ -559,8 +554,6 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
         program_status.total_tasks = to_load;
         program_status.tasks_completed = 0;
         program_status.state.store(in);
-        // Empty the fucking pool man!
-        program_status.data_pool.empty_pool();
     }
     // If we have space to load more data
     for (std::size_t i{0}; i < to_load; ++i)
