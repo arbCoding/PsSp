@@ -64,6 +64,8 @@ void DataPool::empty_pool()
     // It can be blanked if we're not in a project, but upon the project
     // updating it gets reset. All windows that need to access it's data
     // should receiver it by it's own shared_ptr
+    //=========================
+    // I think this is fixed, but I'm leaving the above just in case it comes up again.
     // Lock the pool, don't want any funny business
     std::lock_guard<std::mutex> lock_pool(mutex_);
     int count{0};
@@ -86,6 +88,7 @@ void DataPool::empty_pool()
         if (to_delete.size() == 0 && count >= attempt_limit) { break; }
         for (const auto& data : to_delete)
         {
+            data_pool_[data].reset();
             data_pool_.erase(data);
         }
         ++count;
