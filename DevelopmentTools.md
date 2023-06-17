@@ -54,6 +54,8 @@ The purpose of this document is to provide a list of the tools that are being us
 
     d) [Markdown yaml Preamble](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-yaml-preamble)
 
+5) [clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd) - Provides auto-complete functionality for VSCodium (language server).
+
 ## Static Analysis
 ---
 
