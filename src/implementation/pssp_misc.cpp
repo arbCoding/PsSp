@@ -5,7 +5,7 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Misc functions
 //-----------------------------------------------------------------------------
-void update_fps(fps_info& fps, ImGuiIO& io)
+void update_fps(fps_info& fps, const ImGuiIO& io)
 {
     // Lock the fps_tracker
     std::lock_guard<std::mutex> guard(fps.mutex_);

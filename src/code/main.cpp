@@ -396,6 +396,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
+// Main has high cyclomatic complexity, should be refactored.
 int main(int arg_count, char* arg_array[])
 {
     // Prevent unused variable warning for arg_count, it is required if I want
@@ -516,7 +517,8 @@ int main(int arg_count, char* arg_array[])
           if (current_settings.window_settings.spectrum_1c.show && update_spectrum)
           {
             // If they're not the same, then calculate the FFT
-            if (update_spectrum) { calc_spectrum(program_status, time_series, spectrum); update_spectrum = false; }
+            calc_spectrum(program_status, time_series, spectrum);
+            update_spectrum = false;
           }
           // Finally plot the spectrum
           window_plot_spectrum(current_settings.window_settings.spectrum_1c, program_status.project.is_project, spectrum);

@@ -149,7 +149,7 @@ struct AllFilterOptions
 // Misc function forward declarations
 //-----------------------------------------------------------------------------
 // Updates the FPS tracker
-void update_fps(fps_info& fps, ImGuiIO& io);
+void update_fps(fps_info& fps, const ImGuiIO& io);
 // Removes the selected SacStream from the deque
 //void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object

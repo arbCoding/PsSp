@@ -83,7 +83,7 @@ public:
 // Parameterized constructor
 // Tell me how many threads you want and I'll add them to the vector of
 // threads
-ThreadPool(std::size_t n_threads = std::thread::hardware_concurrency() - 1);
+explicit ThreadPool(std::size_t n_threads = std::thread::hardware_concurrency() - 1);
 // Destructor
 ~ThreadPool();
 //========================================================================
@@ -104,6 +104,7 @@ void enqueue(Function&& func, Args&&... args)
 {
     std::unique_lock<std::mutex> lock(mutex_);
     // Add it to the queue!
+    // Intentionally ignoring the return value of bind (CppCheck warning) as it isn't needed in this context
     tasks_.emplace(std::bind(std::forward<Function>(func), std::forward<Args>(args)...));
     // Let one worker know they have stuff to do
     condition_.notify_one();
