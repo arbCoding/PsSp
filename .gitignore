@@ -63,3 +63,11 @@ bin/*
 *.proj
 # Any log files
 *.log
+
+# Static analysis stuff
+.cache
+# Made using `bear -- make`, meant to be used by CppCheck
+# Make sure to remove all lines for boost and msgpack
+# as they cause preprocessor directive errors for CppCheck
+# took a little while to figure that out
+compile_commands.json
