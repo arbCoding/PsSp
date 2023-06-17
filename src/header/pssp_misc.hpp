@@ -71,13 +71,12 @@ namespace pssp
 // Custom structs
 //-----------------------------------------------------------------------------
 // Enum for program state
-enum program_state{ in, out, processing, idle };
+enum class program_state{ in, out, processing, idle };
 
 struct ProgramStatus
 {
     std::shared_mutex program_mutex{};
-    //FileIO fileio{};
-    std::atomic<program_state> state{idle};
+    std::atomic<program_state> state{program_state::idle};
     // How many tasks have been completed
     std::atomic<int> tasks_completed{0};
     // How many tasks do we need to do in order to complete

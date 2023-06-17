@@ -68,10 +68,10 @@ namespace pssp
 // SQLite3 error-logging
 //-----------------------------------------------------------------------------
 // Suppress the error/warning logs from cout and instead direct them to a file
-void sqliteLogCallback(void* data, int errCode, const char* message)
+void sqliteLogCallback(unsigned char* data, int errCode, const char* message)
 {
     // Cast the data pointer to an ofstream object
-    std::ofstream& logFile{*reinterpret_cast<std::ofstream*>(data)};
+    std::ofstream& logFile{*std::bit_cast<std::ofstream*>(data)};
 
     // Write the SQLite warning message to the log file
     logFile << "SQLite Warning (" << errCode << "): " << message << std::endl;
@@ -88,7 +88,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
     // If we're done with the task, we need to shift over to the idle state
     if (program_status.tasks_completed >= program_status.total_tasks)
     {
-        program_status.state.store(idle);
+        program_status.state.store(program_state::idle);
         program_status.progress = 1.1f;
     }
     else
@@ -99,7 +99,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
     // The program state determines what we are allowed to do
     switch (current_state)
     {
-        case in:
+        case program_state::in:
             program_status.status_message = "Reading data in...";
             // We're reading in files
             // So most windows are hidden
@@ -152,7 +152,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.picking_menu = false;
             current_settings.menu_allowed.batch_menu = false;
             break;
-        case out:
+        case program_state::out:
             program_status.status_message = "Writing data out...";
             // We're writing out files
             // So some windows are hidden
@@ -205,7 +205,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.picking_menu = false;
             current_settings.menu_allowed.batch_menu = false;
             break;
-        case processing:
+        case program_state::processing:
             program_status.status_message = "Processing data...";
             // We're currently processing data
             // So most windows are hidden
@@ -258,7 +258,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.picking_menu = false;
             current_settings.menu_allowed.batch_menu = false;
             break;
-        case idle:
+        case program_state::idle:
             // We're idle
             program_status.status_message = "Idle";
             // If the project has been updated then we need to copy the data_ids
@@ -384,7 +384,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             break;
         default:
             // We're in an unknown state
-            program_status.state.store(idle);
+            program_status.state.store(program_state::idle);
             break;
     }
 }
@@ -493,7 +493,7 @@ int main(int arg_count, char* arg_array[])
         (void) clear_sac;
         (void) update_spectrum;
         (void) spectrum; 
-        if (current_state == pssp::idle && data_ids.size() > 0)
+        if (current_state == pssp::program_state::idle && !data_ids.empty())
         {
           if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = 0; }
           if (program_status.data_id != data_ids[active_sac])

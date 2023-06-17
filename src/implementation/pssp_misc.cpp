@@ -8,7 +8,7 @@ namespace pssp
 void update_fps(fps_info& fps, const ImGuiIO& io)
 {
     // Lock the fps_tracker
-    std::lock_guard<std::mutex> guard(fps.mutex_);
+    std::scoped_lock fps_lock(fps.mutex_);
     // Not using the lock_guard here
     // Increase time
     fps.current_time += io.DeltaTime;
@@ -18,35 +18,9 @@ void update_fps(fps_info& fps, const ImGuiIO& io)
     ++fps.frame_count;
 }
 
-// Sometimes calling the filters hangs the program at 100% (seems like a piece of data is being
-// removed at the same time it is being locked? unsure).
-
-/*
-void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear)
-{
-    if (clear)
-    {
-        (void) project;
-        --selected;
-        {
-            // I still need to add in timestamping the removal in the database
-            std::lock_guard<std::shared_mutex> lock_sac(sac_deque[selected].mutex_);
-            project.add_data_processing(project.sq3_connection_file, sac_deque[selected].data_id, "REMOVED");
-        }
-        sac_deque.erase(sac_deque.begin() + selected + 1);
-        if (selected < 0 && sac_deque.size() > 0)
-        {
-            selected = 0;
-        }
-        clear = false;
-    }
-}
-*/
-
 void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& spectrum)
 {   
-    std::lock_guard<std::shared_mutex> lock_sac(visual_sac.mutex_);
-    std::lock_guard<std::shared_mutex> lock_spectrum(spectrum.mutex_);
+    std::scoped_lock lock_sac_spectrum(visual_sac.mutex_, spectrum.mutex_);
     std::vector<std::complex<double>> complex_spectrum{};
     {
         spectrum.file_name = visual_sac.file_name;
@@ -68,9 +42,9 @@ void remove_mean(ProgramStatus& program_status, int data_id)
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+        std::scoped_lock lock_sac(sac_ptr->mutex_);
         program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
@@ -106,7 +80,7 @@ void remove_mean(ProgramStatus& program_status, int data_id)
 void batch_remove_mean(ProgramStatus& program_status)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
     program_status.total_tasks = static_cast<int>(id_order.size());
@@ -122,9 +96,9 @@ void remove_trend(ProgramStatus& program_status, int data_id)
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
     
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+        std::scoped_lock lock_sac(sac_ptr->mutex_);
         program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE TREND");
         double mean_amplitude{0};
         // Static_cast just to be sure no funny business
@@ -145,10 +119,9 @@ void remove_trend(ProgramStatus& program_status, int data_id)
         // Now to calculate the slope and y-intercept (y = amplitude)
         double numerator{0};
         double denominator{0};
-        double t_diff{0};
         for (int i{0}; i < sac_ptr->sac.npts; ++i)
         {
-            t_diff = i - mean_t;
+            double t_diff{i - mean_t};
             numerator += t_diff * (sac_ptr->sac.data1[i] - mean_amplitude);
             denominator += t_diff * t_diff;
         }
@@ -166,8 +139,8 @@ void remove_trend(ProgramStatus& program_status, int data_id)
 
 void batch_remove_trend(ProgramStatus& program_status)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(processing);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
     program_status.total_tasks = static_cast<int>(id_order.size());
@@ -184,9 +157,9 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+    std::scoped_lock lock_sac(sac_ptr->mutex_);
     
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     std::ostringstream oss{};
     oss << "LOWPASS; ORDER ";
     oss << lowpass_options.order;
@@ -202,8 +175,8 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
 
 void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(processing);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
     program_status.total_tasks = static_cast<int>(id_order.size());
@@ -218,9 +191,9 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+    std::scoped_lock lock_sac(sac_ptr->mutex_);
     
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     std::ostringstream oss{};
     oss << "HIGHPASS; ORDER ";
     oss << highpass_options.order;
@@ -235,8 +208,8 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
 
 void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(processing);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
     program_status.total_tasks = static_cast<int>(id_order.size());
@@ -251,9 +224,9 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
     if (!sac_ptr) { return; }
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
+    std::scoped_lock lock_sac(sac_ptr->mutex_);
     
-    program_status.state.store(processing);
+    program_status.state.store(program_state::processing);
     std::ostringstream oss{};
     oss << "BANDPASS; ORDER ";
     oss << bandpass_options.order;
@@ -270,8 +243,8 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
 
 void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(processing);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
     program_status.total_tasks = static_cast<int>(id_order.size());
@@ -283,15 +256,15 @@ void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass
 
 void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name)
 {
-    program_status.state.store(in);
+    program_status.state.store(program_state::in);
     sac_1c sac{};
     {
-        std::lock_guard<std::shared_mutex> lock_sac(sac.mutex_);
+        std::scoped_lock lock_sac(sac.mutex_);
         sac.file_name = file_name;
         sac.sac = SAC::SacStream(sac.file_name);
         sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
     }
-    std::shared_lock<std::shared_mutex> lock_sac(sac.mutex_);
+    std::shared_lock lock_sac(sac.mutex_);
     if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
     {
         program_status.data_pool.add_data(program_status.project, sac.data_id, program_status.project.checkpoint_id_);
@@ -312,8 +285,8 @@ void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path dire
             file_names.push_back(std::filesystem::canonical(entry.path()));
         }
     }
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(in);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::in);
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(file_names.size());
     // Queue them up!
@@ -471,15 +444,15 @@ void checkpoint_data(ProgramStatus& program_status, const int data_id, const int
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, checkpoint_id)};
     if (!sac_ptr) { return; }
-    std::lock_guard<std::shared_mutex> lock_sac(sac_ptr->mutex_);
-    program_status.state.store(out);
+    std::scoped_lock lock_sac(sac_ptr->mutex_);
+    program_status.state.store(program_state::out);
     {
         program_status.project.add_data_checkpoint(sac_ptr->sac, data_id, true);
+        // Ignoring sonarlint warning cpp:S6045 as it is not relevant here
         std::unordered_map<std::string, std::string> checkpoint_metadata{program_status.project.get_current_checkpoint_metadata()};
         std::ostringstream oss{};
         oss << "CHECKPOINT; NAME " << checkpoint_metadata["name"] << "; CREATED: " << checkpoint_metadata["created"] << ";";
-        std::string checkpoint_string{oss.str()};
-        program_status.project.add_data_processing(program_status.project.sq3_connection_file, data_id, checkpoint_string.c_str());
+        program_status.project.add_data_processing(program_status.project.sq3_connection_file, data_id, oss.str().c_str());
     }
     ++program_status.tasks_completed;
 }
@@ -492,7 +465,7 @@ void checkpoint_data(ProgramStatus& program_status, const int data_id, const int
 //------------------------------------------------------------------------
 void unload_data(ProgramStatus& program_status)
 {
-    program_status.state.store(in);
+    program_status.state.store(program_state::in);
     // Remove the SQLite3 connections and the file paths
     program_status.project.unload_project();
     program_status.data_pool.empty_pool();
@@ -519,8 +492,8 @@ void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id)
 {
     {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.state.store(in);
+        std::scoped_lock lock_program(program_status.program_mutex);
+        program_status.state.store(program_state::in);
         program_status.tasks_completed = 0;
         program_status.total_tasks = 4;
     }
@@ -550,10 +523,10 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
         to_load = total_ids;
     }
     {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.total_tasks = to_load;
+        std::scoped_lock lock_program(program_status.program_mutex);
+        program_status.total_tasks = static_cast<int>(to_load);
         program_status.tasks_completed = 0;
-        program_status.state.store(in);
+        program_status.state.store(program_state::in);
     }
     // If we have space to load more data
     for (std::size_t i{0}; i < to_load; ++i)
@@ -572,17 +545,14 @@ void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order
 {
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
-    double frequency{};
     const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
-    double denominator{};
-    double gain{};
     for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
     {
-        frequency = i * freq_step;
-        denominator = std::pow(frequency / cutoff, 2.0 * order);
+        double frequency{i * freq_step};
+        double denominator{std::pow(frequency / cutoff, 2.0 * order)};
         denominator = std::sqrt(1.0 + denominator);
-        gain = 1.0 / denominator;
+        double gain{1.0 / denominator};
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
@@ -599,17 +569,14 @@ void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int orde
 {
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
-    double frequency{};
     const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
-    double denominator{};
-    double gain{};
     for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
     {
-        frequency = i * freq_step;
-        denominator = std::pow(cutoff / frequency, 2.0 * order);
+        double frequency{i * freq_step};
+        double denominator{std::pow(cutoff / frequency, 2.0 * order)};
         denominator = std::sqrt(1.0 + denominator);
-        gain = 1.0 / denominator;
+        double gain{1.0 / denominator};
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
@@ -626,22 +593,16 @@ void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int orde
 {
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
-    double frequency{};
     const double sampling_freq{1.0 / sac_ptr->sac.delta};
     const double freq_step{sampling_freq / complex_spectrum.size()};
-    double denominator_lp{};
-    double denominator_hp{};
-    double denominator{};
-    double gain{};
     for (std::size_t i{0}; i < complex_spectrum.size(); ++i)
     {
-        frequency = i * freq_step;
-        denominator_lp = std::pow(frequency / highpass, 2.0 * order);
+        double frequency{i * freq_step};
+        double denominator_lp{std::pow(frequency / highpass, 2.0 * order)};
         denominator_lp = std::sqrt(1.0 + denominator_lp);
-        denominator_hp = std::pow(lowpass / frequency, 2.0 * order);
+        double denominator_hp{std::pow(lowpass / frequency, 2.0 * order)};
         denominator_hp = std::sqrt(1.0 + denominator_hp);
-        denominator = denominator_lp * denominator_hp;
-        gain = 1.0 / denominator;
+        double gain{1.0 / (denominator_lp * denominator_hp)};
         complex_spectrum[i] *= gain;
     }
     // Do the ifft
@@ -674,8 +635,8 @@ void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int or
 //-----------------------------------------------------------------------------
 void write_checkpoint(ProgramStatus& program_status, bool author, bool cull)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-    program_status.state.store(out);
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::out);
     std::vector<int> id_input = program_status.data_pool.get_iter(program_status.project);
     program_status.total_tasks = static_cast<int>(id_input.size());
     program_status.tasks_completed = 0;
@@ -709,8 +670,8 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
     project.delete_checkpoint_from_list(checkpoint_id);
     std::vector<int> data_ids{project.get_data_ids()};
     {
-        std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
-        program_status.state.store(out);
+        std::scoped_lock lock_program(program_status.program_mutex);
+        program_status.state.store(program_state::out);
         program_status.total_tasks = static_cast<int>(data_ids.size());
         program_status.tasks_completed = 0;
     }
