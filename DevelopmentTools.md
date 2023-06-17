@@ -18,7 +18,7 @@ The purpose of this document is to provide a list of the tools that are being us
 
 ### VSCodium Extensions
 
-1) [C/C++ Advanced Lint](https://open-vsx.org/extension/jbenden/c-cpp-flylint) - This automatically runs the various [static analysis tools](#static-analysis) within VSCodium.
+1) [C/C++ Advanced Lint](https://open-vsx.org/extension/jbenden/c-cpp-flylint) - This automatically runs most of the various [static analysis tools](#static-analysis) within VSCodium.
 2) [CodeLLDB](https://open-vsx.org/extension/vadimcn/vscode-lldb) - Debugger that integrates with VSCodium.
 3) [Git Extension Pack](https://open-vsx.org/extension/sugatoray/vscode-git-extension-pack) - Convenience package that provides git integration to VS Codium.
 
@@ -56,6 +56,8 @@ The purpose of this document is to provide a list of the tools that are being us
 
 5) [clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd) - Provides auto-complete functionality for VSCodium (language server).
 
+6) [SonarLint](https://open-vsx.org/extension/SonarSource/sonarlint-vscode) - Additional static analysis tool.
+
 ## Static Analysis
 ---
 
@@ -63,6 +65,7 @@ The purpose of this document is to provide a list of the tools that are being us
 2) [CppCheck](https://cppcheck.sourceforge.io/)
 3) [Lizard](https://github.com/terryyin/lizard)
 4) [FlawFinder](https://dwheeler.com/flawfinder/)
+5) [SonarLint](https://docs.sonarcloud.io/improving/sonarlint/)
 
 ## Dynamic Analysis
 ---

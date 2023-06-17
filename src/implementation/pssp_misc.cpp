@@ -105,7 +105,7 @@ void remove_mean(ProgramStatus& program_status, int data_id)
 
 void batch_remove_mean(ProgramStatus& program_status)
 {
-    std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+    std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(processing);
     program_status.tasks_completed = 0;
     std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
