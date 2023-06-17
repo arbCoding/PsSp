@@ -1,5 +1,7 @@
-# If using cloc to get a lines of code use
+# If using cloc to get a lines of code use (by file)
 #find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc --by-file {} +
+# or (by language)
+##find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc {} +
 #------------------------------------------------------------------------------
 # We need to know what OS we're on as it determines which compiler we use (and 
 # therefore which compiler parameters are appropriate) and how we link to the
@@ -182,7 +184,7 @@ imgui_cxx += -isystem$(implot_dir)
 # Boost
 #------------------------------------------------------------------------------
 ifeq ($(uname_s), Darwin)
-	boost_dir = /opt/homebrew/Cellar/boost/1.82.0/
+	boost_dir = /opt/homebrew/Cellar/boost/1.82.0_1/
 	boost_inc = $(boost_dir)include/
 	boost_lib = $(boost_dir)lib/
 else
