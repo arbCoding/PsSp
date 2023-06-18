@@ -27,7 +27,6 @@
 // ImPlot add-on for Dear ImGui
 #include <implot.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
-#include <algorithm>
 #include <atomic>
 #include <filesystem>
 #include <mutex>

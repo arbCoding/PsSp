@@ -82,3 +82,7 @@ The purpose of this document is to provide a list of the tools that are being us
 2) [isocpp.org](https://isocpp.org/)
 3) [learncpp.com](https://www.learncpp.com/)
 4) [r/cpp](https://www.reddit.com/r/cpp)
+5) [C++20 Compiler Support](https://en.cppreference.com/w/cpp/compiler_support/20)
+6) [LibC++20 Status](https://libcxx.llvm.org/Status/Cxx20.html)
+7) [Incomplete List of Static Analysis Tools](https://github.com/analysis-tools-dev/static-analysis#cpp)
+8) [Incomplete List of Dynamic Analysis Tools](https://github.com/analysis-tools-dev/dynamic-analysis#cpp)
