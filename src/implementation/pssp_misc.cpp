@@ -36,6 +36,16 @@ void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& sp
     }
 }
 
+// Calculate the mean of a series of doubles
+double calc_mean(const std::vector<double>& data_vector)
+{
+    double mean{0};
+    for (double value : data_vector)
+    { mean += value; }
+    mean /= static_cast<double>(data_vector.size());
+    return mean;
+}
+
 void remove_mean(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
@@ -48,27 +58,13 @@ void remove_mean(ProgramStatus& program_status, int data_id)
         program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
-        if (sac_ptr->sac.depmen != SAC::unset_float)
-        {
-            mean = sac_ptr->sac.depmen;
-        }
-        else
-        {
-            // Need to calculate the mean...
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                mean += sac_ptr->sac.data1[i];
-            }
-            mean /= static_cast<double>(sac_ptr->sac.npts);
-        }
+        if (sac_ptr->sac.depmen != SAC::unset_float) { mean = sac_ptr->sac.depmen; }
+        else { mean = calc_mean(sac_ptr->sac.data1); }
         // If out mean is zero, then we're done
         if (mean != 0.0 || sac_ptr->sac.depmen != 0.0f)
         {
             // Subtract the mean from ever data point
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                sac_ptr->sac.data1[i] -= mean;
-            }
+            for (int i{0}; i < sac_ptr->sac.npts; ++i) { sac_ptr->sac.data1[i] -= mean; }
             // The mean is zero
             sac_ptr->sac.depmen = 0.0f;
         }
@@ -104,18 +100,8 @@ void remove_trend(ProgramStatus& program_status, int data_id)
         // Static_cast just to be sure no funny business
         double mean_t{static_cast<double>(sac_ptr->sac.npts) / 2.0};
         // If depmen is not set, so no average to start from
-        if (sac_ptr->sac.depmen == SAC::unset_float)
-        {
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                mean_amplitude += sac_ptr->sac.data1[0];
-            }
-            mean_amplitude /= static_cast<double>(sac_ptr->sac.npts);
-        }
-        else
-        {
-            mean_amplitude = sac_ptr->sac.depmen;
-        }
+        if (sac_ptr->sac.depmen == SAC::unset_float) { mean_amplitude = calc_mean(sac_ptr->sac.data1); }
+        else { mean_amplitude = sac_ptr->sac.depmen; }
         // Now to calculate the slope and y-intercept (y = amplitude)
         double numerator{0};
         double denominator{0};
@@ -152,7 +138,7 @@ void batch_remove_trend(ProgramStatus& program_status)
 
 // For some reason these are not adding the processing notes after reloading
 // I wonder if the connection to the sq3 db in memory is getting lost/corrupted?
-void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
+void apply_lowpass(ProgramStatus& program_status, int data_id, const FilterOptions& lowpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -173,7 +159,7 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     ++program_status.tasks_completed;
 }
 
-void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options)
+void batch_apply_lowpass(ProgramStatus& program_status, const FilterOptions& lowpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -186,7 +172,7 @@ void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_o
     }
 }
 
-void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options)
+void apply_highpass(ProgramStatus& program_status, int data_id, const FilterOptions& highpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -206,7 +192,7 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     ++program_status.tasks_completed;
 }
 
-void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options)
+void batch_apply_highpass(ProgramStatus& program_status, const FilterOptions& highpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -219,7 +205,7 @@ void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass
     }
 }
 
-void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options)
+void apply_bandpass(ProgramStatus& program_status, int data_id, const FilterOptions& bandpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -241,7 +227,7 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     ++program_status.tasks_completed;
 }
 
-void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options)
+void batch_apply_bandpass(ProgramStatus& program_status, const FilterOptions& bandpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -254,7 +240,7 @@ void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass
     }
 }
 
-void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name)
+void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_name)
 {
     program_status.state.store(program_state::in);
     sac_1c sac{};
@@ -272,7 +258,7 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path file_na
     ++program_status.tasks_completed;
 }
 
-void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path directory)
+void scan_and_read_dir(ProgramStatus& program_status, const std::filesystem::path& directory)
 {
     // Iterate over files in directory
     std::vector<std::filesystem::path> file_names{};
@@ -327,7 +313,7 @@ const char* setup_gl()
     return glsl_version;
 }
 
-ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path)
+ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, const std::filesystem::path& program_path)
 {
     if (window == nullptr)
     {
@@ -489,7 +475,7 @@ void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 //------------------------------------------------------------------------
 // Load a project from a project file
 //------------------------------------------------------------------------
-void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id)
+void load_data(ProgramStatus& program_status, const std::filesystem::path& project_file, int checkpoint_id)
 {
     {
         std::scoped_lock lock_program(program_status.program_mutex);

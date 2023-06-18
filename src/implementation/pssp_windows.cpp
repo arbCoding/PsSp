@@ -5,7 +5,7 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // Status Bar
 //-----------------------------------------------------------------------------
-void status_bar(ProgramStatus& program_status)
+void status_bar(const ProgramStatus& program_status)
 {
     // Size and position
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
@@ -50,8 +50,8 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
 
@@ -97,8 +97,8 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
 
@@ -143,8 +143,8 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
 
@@ -189,8 +189,8 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
 //-----------------------------------------------------------------------------
 // Main menu bar
 //-----------------------------------------------------------------------------
-void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, MenuAllowed& menu_allowed,
-AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
+void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, const MenuAllowed& menu_allowed,
+AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_sac)
 {
     sac_1c sac{};
     std::string home_path{};
@@ -199,8 +199,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
     const char* user_profile{std::getenv("USERPROFILE")};
     if (user_profile) { home_path = user_profile; home_path += '\\'; }
 #else
-    const char* home_dir{std::getenv("HOME")};
-    if (home_dir) { home_path = home_dir; home_path += '/'; }
+    if (const char* home_dir{std::getenv("HOME")}) { home_path = home_dir; home_path += '/'; }
 #endif
 
     ImGui::BeginMainMenuBar();
@@ -277,6 +276,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
             std::vector<int> checkpoint_ids{program_status.project.get_checkpoint_ids()};
             for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
             {
+                // Ignoring SonarLint S6045 because it requires modification of the standard library
                 std::unordered_map<std::string, std::string> checkpoint_metadata{program_status.project.get_checkpoint_metadata(checkpoint_ids[i])};
                 std::ostringstream oss{};
                 oss << "ID: ";
@@ -284,8 +284,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
                 oss << " Name: ";
                 oss << checkpoint_metadata["name"];
                 oss << "##";
-                std::string checkpoint_name{oss.str()};
-                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                if (std::string checkpoint_name{oss.str()}; ImGui::MenuItem(checkpoint_name.c_str()))
                 {
                     std::filesystem::path project_file{program_status.project.get_path()};
                     // Need to get checkpoint name and notes
@@ -310,6 +309,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
             std::vector<int> checkpoint_ids{program_status.project.get_checkpoint_ids()};
             for (std::size_t i{0}; i < checkpoint_ids.size(); ++i)
             {
+                // Ignoring SonarLint S6045 because it requires modification of the standard library
                 std::unordered_map<std::string, std::string> checkpoint_metadata{program_status.project.get_checkpoint_metadata(checkpoint_ids[i])};
                 std::ostringstream oss{};
                 oss << "ID: ";
@@ -317,8 +317,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
                 oss << " Name: ";
                 oss << checkpoint_metadata["name"];
                 oss << "##";
-                std::string checkpoint_name{oss.str()};
-                if (ImGui::MenuItem(checkpoint_name.c_str()))
+                if (std::string checkpoint_name{oss.str()}; ImGui::MenuItem(checkpoint_name.c_str()))
                 {
                     program_status.thread_pool.enqueue(delete_checkpoint, std::ref(program_status), std::ref(program_status.project), checkpoint_ids[i]);
                 }
@@ -416,8 +415,8 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         ImGui::EndMenu();
     }
     // Open File Dialog (single SAC)
-    ImVec2 maxSize = ImVec2(allwindow_settings.file_dialog.width * 1.5, allwindow_settings.file_dialog.height * 1.5);
-    ImVec2 minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
+    auto maxSize = ImVec2(static_cast<float>(allwindow_settings.file_dialog.width * 1.5), static_cast<float>(allwindow_settings.file_dialog.height * 1.5));
+    auto minSize = ImVec2(maxSize.x * 0.75f, maxSize.y * 0.75f);
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize))
     {
         // Read the SAC-File safely
@@ -435,7 +434,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             std::filesystem::path directory = ImGuiFileDialog::Instance()->GetFilePathName();
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            std::scoped_lock lock_program(program_status.program_mutex);
             program_status.thread_pool.enqueue(scan_and_read_dir, std::ref(program_status), directory);
         }
         ImGuiFileDialog::Instance()->Close();
@@ -448,7 +447,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
             std::filesystem::path full_file = ImGuiFileDialog::Instance()->GetFilePathName();
             std::filesystem::path parent_path = std::filesystem::canonical(full_file.parent_path());
             std::string project_name = full_file.stem().string();
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            std::scoped_lock lock_program(program_status.program_mutex);
             program_status.project.new_project(project_name, parent_path);
         }
         ImGuiFileDialog::Instance()->Close();
@@ -459,6 +458,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         {
             std::filesystem::path project_file{std::filesystem::canonical(ImGuiFileDialog::Instance()->GetFilePathName())};
             program_status.project.connect_2_existing(project_file);
+            // Ignoring SolarLint S6045 as it requires modifications of the standard library
             std::unordered_map<std::string, std::string> checkpoint_metadata{program_status.project.get_checkpoint_metadata(program_status.project.get_latest_checkpoint_id())};
             // Set checkpoint metadata values
             program_status.project.checkpoint_name = checkpoint_metadata["name"];
@@ -481,7 +481,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
             if (current_ptr)
             {
                 // Lock and write out the content
-                std::shared_lock<std::shared_mutex> lock_sac(current_ptr->mutex_);
+                std::shared_lock lock_sac(current_ptr->mutex_);
                 current_ptr->sac.write(ImGuiFileDialog::Instance()->GetFilePathName());
             }
         }
@@ -554,7 +554,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
     {
         if (ImGui::MenuItem("Remove Mean##", nullptr, nullptr, menu_allowed.rmean))
         {
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            std::scoped_lock lock_program(program_status.program_mutex);
             program_status.thread_pool.enqueue(batch_remove_mean, std::ref(program_status));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -562,7 +562,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, int& active_sac)
         
         if (ImGui::MenuItem("Remove Trend##", nullptr, nullptr, menu_allowed.rtrend))
         {
-            std::lock_guard<std::shared_mutex> lock_program(program_status.program_mutex);
+            std::scoped_lock lock_program(program_status.program_mutex);
             program_status.thread_pool.enqueue(batch_remove_trend, std::ref(program_status));
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -622,11 +622,11 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac)
 {
     if (window_settings.show && window_settings.state != hide)
     {
-        std::shared_lock<std::shared_mutex> lock_sac(visual_sac.mutex_);
+        std::shared_lock lock_sac(visual_sac.mutex_);
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         
@@ -635,28 +635,25 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac)
         if (ImPlot::BeginPlot("Seismogram##"))
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
-            {
-                ImPlot::PlotLine("", &visual_sac.sac.data1[0], visual_sac.sac.data1.size(), visual_sac.sac.delta);
-            }
+            ImPlot::PlotLine("", &visual_sac.sac.data1[0], static_cast<int>(visual_sac.sac.data1.size()), visual_sac.sac.delta);
             // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
             // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
             // directly modifying ImPlot, which I don't want to do)
-            ImPlotContext* plot_ctx = ImPlot::GetCurrentContext();
-            if (plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            if (ImPlotContext const* plot_ctx{ImPlot::GetCurrentContext()}; plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             { ImGui::OpenPopup("CustomPlotOptions##"); }
             
             if (ImGui::BeginPopup("CustomPlotOptions##"))
             {
                 if (ImGui::BeginMenu("Test##"))
                 {
-                    if (ImGui::MenuItem("Custom 1##")) {}
+                    if (ImGui::MenuItem("Custom 1##")) { /*Just a placeholder*/}
 
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Test 2##"))
                 {
-                    if (ImGui::MenuItem("Custom 2##")) {}
-                    if (ImGui::MenuItem("Custom 3##")) {}
+                    if (ImGui::MenuItem("Custom 2##")) { /*Just a placeholder*/}
+                    if (ImGui::MenuItem("Custom 3##")) { /*Just a placeholder*/}
                     
                     ImGui::EndMenu();
                 }
@@ -679,34 +676,30 @@ void window_plot_spectrum(WindowSettings& window_settings, bool is_project, sac_
     if (window_settings.show && window_settings.state != hide)
     {
         if (!is_project) { return; }
-        std::shared_lock<std::shared_mutex> lock_spectrum(spectrum.mutex_);
+        std::shared_lock lock_spectrum(spectrum.mutex_);
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
         ImGui::Columns(2);
         if (ImPlot::BeginPlot("Real##"))
         {
-            {
-                ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-                const double sampling_freq{1.0 / spectrum.sac.delta};
-                const double freq_step{sampling_freq / spectrum.sac.npts};
-                ImPlot::PlotLine("", &spectrum.sac.data1[0], spectrum.sac.data1.size() / 2, freq_step);
-            }
+            ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+            const double sampling_freq{1.0 / spectrum.sac.delta};
+            const double freq_step{sampling_freq / spectrum.sac.npts};
+            ImPlot::PlotLine("", &spectrum.sac.data1[0], static_cast<int>(spectrum.sac.data1.size()) / 2, freq_step);
             ImPlot::EndPlot();
         }
         ImGui::NextColumn();
         if (ImPlot::BeginPlot("Imaginary##"))
         {
-            {
-                ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
-                const double sampling_freq{1.0 / spectrum.sac.delta};
-                const double freq_step{sampling_freq / spectrum.sac.npts};
-                ImPlot::PlotLine("", &spectrum.sac.data2[0], spectrum.sac.data2.size() / 2, freq_step);
-            }
+            ImPlot::SetupAxis(ImAxis_X1, "Freq (Hz)");
+            const double sampling_freq{1.0 / spectrum.sac.delta};
+            const double freq_step{sampling_freq / spectrum.sac.npts};
+            ImPlot::PlotLine("", &spectrum.sac.data2[0], static_cast<int>(spectrum.sac.data2.size()) / 2, freq_step);
             ImPlot::EndPlot();
         }
         ImGui::Columns(1);
@@ -724,59 +717,57 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& visual_sac)
 {
     if (window_settings.show && window_settings.state != hide)
     {
-        std::shared_lock<std::shared_mutex> lock_sac(visual_sac.mutex_);
+        std::shared_lock lock_sac(visual_sac.mutex_);
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
+        
+        if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
-            
-            if (ImGui::CollapsingHeader("Station Information##", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Text("Network:    %s", visual_sac.sac.knetwk.c_str());
-                ImGui::Text("Station:    %s", visual_sac.sac.kstnm.c_str());
-                ImGui::Text("Instrument: %s", visual_sac.sac.kinst.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.stla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.stlo);
-                ImGui::Text("Elevation:  %.2f m", visual_sac.sac.stel);
-                ImGui::Text("Depth:      %.2f m", visual_sac.sac.stdp);
-                ImGui::Text("Back Azi:   %.2f\u00B0", visual_sac.sac.baz);
-            }
-            if (ImGui::CollapsingHeader("Component Information##", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Text("Component:  %s", visual_sac.sac.kcmpnm.c_str());
-                ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.cmpaz);
-                ImGui::Text("Incidence:  %.2f\u00B0", visual_sac.sac.cmpinc);
-            }
-            if (ImGui::CollapsingHeader("Event Information##", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Text("Name:       %s", visual_sac.sac.kevnm.c_str());
-                ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.evla);
-                ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.evlo);
-                ImGui::Text("Depth:      %.2f km", visual_sac.sac.evdp);
-                ImGui::Text("Magnitude:  %.2f", visual_sac.sac.mag);
-                ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.az);
-            }
-            if (ImGui::CollapsingHeader("DateTime Information##", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Text("Year:       %i", visual_sac.sac.nzyear);
-                ImGui::Text("Julian Day: %i", visual_sac.sac.nzjday);
-                ImGui::Text("Hour:       %i", visual_sac.sac.nzhour);
-                ImGui::Text("Minute:     %i", visual_sac.sac.nzmin);
-                ImGui::Text("Second:     %i", visual_sac.sac.nzsec);
-                ImGui::Text("MSecond:    %i", visual_sac.sac.nzmsec);
-            }
-            if (ImGui::CollapsingHeader("Data Information##", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                ImGui::Text("Npts:       %i", visual_sac.sac.npts);
-                ImGui::Text("IfType:     %i", visual_sac.sac.iftype);
-            }
-            if (window_settings.state == frozen) { ImGui::EndDisabled(); }
+            ImGui::Text("Network:    %s", visual_sac.sac.knetwk.c_str());
+            ImGui::Text("Station:    %s", visual_sac.sac.kstnm.c_str());
+            ImGui::Text("Instrument: %s", visual_sac.sac.kinst.c_str());
+            ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.stla);
+            ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.stlo);
+            ImGui::Text("Elevation:  %.2f m", visual_sac.sac.stel);
+            ImGui::Text("Depth:      %.2f m", visual_sac.sac.stdp);
+            ImGui::Text("Back Azi:   %.2f\u00B0", visual_sac.sac.baz);
         }
+        if (ImGui::CollapsingHeader("Component Information##", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Text("Component:  %s", visual_sac.sac.kcmpnm.c_str());
+            ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.cmpaz);
+            ImGui::Text("Incidence:  %.2f\u00B0", visual_sac.sac.cmpinc);
+        }
+        if (ImGui::CollapsingHeader("Event Information##", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Text("Name:       %s", visual_sac.sac.kevnm.c_str());
+            ImGui::Text("Latitude:   %.2f\u00B0N", visual_sac.sac.evla);
+            ImGui::Text("Longitude:  %.2f\u00B0E", visual_sac.sac.evlo);
+            ImGui::Text("Depth:      %.2f km", visual_sac.sac.evdp);
+            ImGui::Text("Magnitude:  %.2f", visual_sac.sac.mag);
+            ImGui::Text("Azimuth:    %.2f\u00B0", visual_sac.sac.az);
+        }
+        if (ImGui::CollapsingHeader("DateTime Information##", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Text("Year:       %i", visual_sac.sac.nzyear);
+            ImGui::Text("Julian Day: %i", visual_sac.sac.nzjday);
+            ImGui::Text("Hour:       %i", visual_sac.sac.nzhour);
+            ImGui::Text("Minute:     %i", visual_sac.sac.nzmin);
+            ImGui::Text("Second:     %i", visual_sac.sac.nzsec);
+            ImGui::Text("MSecond:    %i", visual_sac.sac.nzmsec);
+        }
+        if (ImGui::CollapsingHeader("Data Information##", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Text("Npts:       %i", visual_sac.sac.npts);
+            ImGui::Text("IfType:     %i", visual_sac.sac.iftype);
+        }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
         ImGui::End();
     }
 }
@@ -787,14 +778,14 @@ void window_sac_header(WindowSettings& window_settings, sac_1c& visual_sac)
 //-----------------------------------------------------------------------------
 // Welcome window
 //-----------------------------------------------------------------------------
-void window_welcome(WindowSettings& window_settings, std::string_view& welcome_message)
+void window_welcome(WindowSettings& window_settings, const std::string_view& welcome_message)
 {
     if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
@@ -814,12 +805,12 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 {
     if (window_settings.show && window_settings.state != hide)
     {
-        std::lock_guard<std::mutex> guard(fps_tracker.mutex_);
+        std::scoped_lock lock_fps(fps_tracker.mutex_);
         if (!window_settings.is_set)
         {
             // Setup the window
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
             // Reset the fps_tracker
             fps_tracker.prev_time = 0.0f;
@@ -845,7 +836,7 @@ void window_fps(fps_info& fps_tracker, WindowSettings& window_settings)
 //-----------------------------------------------------------------------------
 // Data list window
 //-----------------------------------------------------------------------------
-void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, MenuAllowed& menu_allowed, int& selected, bool& clear_sac)
+void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_settings, const MenuAllowed& menu_allowed, int& selected, bool& clear_sac)
 {
     WindowSettings& window_settings = aw_settings.sac_files;
     std::string option{};
@@ -854,8 +845,8 @@ void window_data_list(ProgramStatus& program_status, AllWindowSettings& aw_setti
         if (!window_settings.is_set)
         {
             // Setup the window
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         std::vector<int> data_ids{program_status.project.current_data_ids};
@@ -933,8 +924,8 @@ void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& prog
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
 
@@ -979,8 +970,8 @@ void window_notes_checkpoint(WindowSettings& window_settings, Project& project)
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
 
@@ -1025,22 +1016,20 @@ void window_processing_history(WindowSettings& window_settings, Project& project
     {
         if (!window_settings.is_set)
         {
-            ImGui::SetNextWindowSize(ImVec2(window_settings.width, window_settings.height));
-            ImGui::SetNextWindowPos(ImVec2(window_settings.pos_x, window_settings.pos_y));
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        static int current_data_id{-1};
+        static std::string processing_history{};
+        // We only update this is we need to update it!
+        if (current_data_id != data_id)
         {
-            static int current_data_id{-1};
-            static std::string processing_history{};
-            // We only update this is we need to update it!
-            if (current_data_id != data_id)
-            {
-                current_data_id = data_id;
-                processing_history = project.get_current_processing_history(current_data_id);
-            }
-            ImGui::TextWrapped("%s", processing_history.c_str());
+            current_data_id = data_id;
+            processing_history = project.get_current_processing_history(current_data_id);
         }
+        ImGui::TextWrapped("%s", processing_history.c_str());
         ImGui::End();
     }
 }

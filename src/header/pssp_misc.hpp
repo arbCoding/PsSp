@@ -153,6 +153,8 @@ void update_fps(fps_info& fps, const ImGuiIO& io);
 //void cleanup_sac(Project& project, std::deque<sac_1c>& sac_deque, int& selected, bool& clear);
 // Calculates real/imaginary spectrum of sac_1c object
 void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& spectrum);
+// Calculate the mean of a series of doubles
+double calc_mean(const std::vector<double>& data_vector);
 // Remove mean from sac_1c object
 void remove_mean(ProgramStatus& program_status, int data_id);
 // Remove mean from all sac_1c objects in a deque
@@ -162,26 +164,26 @@ void remove_trend(ProgramStatus& program_status, int data_id);
 // Remove trend from all sac_1c objects in a deque
 void batch_remove_trend(ProgramStatus& program_status);
 // Lowpass one sac_1c
-void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options);
+void apply_lowpass(ProgramStatus& program_status, int data_id, const FilterOptions& lowpass_options);
 // Lowpass all sac_1c's in a deque
-void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options);
+void batch_apply_lowpass(ProgramStatus& program_status, const FilterOptions& lowpass_options);
 // Highpass one sac_1c
-void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options);
+void apply_highpass(ProgramStatus& program_status, int data_id, const FilterOptions& highpass_options);
 // Highpass all sac_1c's in a deque
-void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options);
+void batch_apply_highpass(ProgramStatus& program_status, const FilterOptions& highpass_options);
 // Bandpass one sac_1c
-void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options);
+void apply_bandpass(ProgramStatus& program_status, int data_id, const FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
-void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options);
+void batch_apply_bandpass(ProgramStatus& program_status, const FilterOptions& bandpass_options);
 // Read in a single sac file and add it to the DataPool
-void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name);
+void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_name);
 // Read all SAC files in a directory
-void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path directory);
+void scan_and_read_dir(ProgramStatus& program_status, const std::filesystem::path& directory);
 // Setup the graphical backends
 const char* setup_gl();
 // Start the graphical backends, create ImGui and ImPlot contexts and get the ImGuiIO
 // stuff (Fonts, other things I'm sure)
-ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path);
+ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, const std::filesystem::path& program_path);
 // Cleanly destroy everything, performed just before program ends
 void end_graphics(GLFWwindow* window);
 // Helper program for errors with glfw
@@ -197,7 +199,7 @@ void unload_data(ProgramStatus& program_status);
 // Load a single bit of data
 void load_2_data_pool(ProgramStatus& program_status, const int data_id);
 // Load an existing project
-void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id);
+void load_data(ProgramStatus& program_status, const std::filesystem::path& project_file, int checkpoint_id);
 // Shitty lowpass for testing
 void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac, int order, double cutoff);
 // Shitty highpass for testing
