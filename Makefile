@@ -1,7 +1,7 @@
 # If using cloc to get a lines of code use (by file)
 #find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc --by-file {} +
 # or (by language)
-##find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc {} +
+#find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc {} +
 #------------------------------------------------------------------------------
 # We need to know what OS we're on as it determines which compiler we use (and 
 # therefore which compiler parameters are appropriate) and how we link to the

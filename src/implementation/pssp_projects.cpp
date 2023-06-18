@@ -185,10 +185,7 @@ void Project::create_data_checkpoint_table(int data_id)
     oss << "data2 BLOB);"; // 98 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
     std::string sq3_string{oss.str()};
     sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
-    if (sq3_result != SQLITE_OK)
-    {
-        std::cout << sqlite3_errmsg(sq3_connection_file) << '\n';
-    }
+    if (sq3_result != SQLITE_OK) { std::cout << sqlite3_errmsg(sq3_connection_file) << '\n'; }
 }
 //------------------------------------------------------------------------
 // End data checkpoint table creation
@@ -337,10 +334,7 @@ void Project::create_temporary_data()
     oss << "data2 BLOB);"; // 99 (sac.data1, if unevenly sampled, these are the sample times) (null if evenly sampled or not a checkpoint)
     std::string sq3_string{oss.str()};
     sq3_result = sqlite3_exec(sq3_connection_file, sq3_string.c_str(), nullptr, nullptr, &sq3_error_message);
-    if (sq3_result != SQLITE_OK)
-    {
-        std::cout << sqlite3_errmsg(sq3_connection_file) << '\n';
-    }
+    if (sq3_result != SQLITE_OK) { std::cout << sqlite3_errmsg(sq3_connection_file) << '\n'; }
 }
 //------------------------------------------------------------------------
 // End Temporary data table creation
@@ -401,14 +395,14 @@ void Project::connect()
 //------------------------------------------------------------------------
 // Disconnects
 //------------------------------------------------------------------------
+// Slated to be moved to a general location
 void Project::disconnect(sqlite3* connection)
 {
     // Close connections
     bool connection_closed{false};
-    int connection_status{};
     while (!connection_closed)
     {
-        connection_status = sqlite3_close_v2(connection);
+        int connection_status{sqlite3_close_v2(connection)};
         if (connection_status == SQLITE_OK) { connection_closed = true; }
         else if (connection_status == SQLITE_BUSY) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
         else { break; }
@@ -453,11 +447,10 @@ void Project::fresh_tables()
 //------------------------------------------------------------------------
 // Parameterized Constructor
 //------------------------------------------------------------------------
-Project::Project(std::string name, std::filesystem::path base_path) : name_{name}, path_{base_path / (name + ".proj")}
+Project::Project(const std::string& name, const std::filesystem::path& base_path) : name_{name}, path_{base_path / (name + ".proj")}, is_project{true}
 {
     connect();
     fresh_tables();
-    is_project = true;
 }
 //------------------------------------------------------------------------
 // End Parameterized Constructor
@@ -466,7 +459,7 @@ Project::Project(std::string name, std::filesystem::path base_path) : name_{name
 //------------------------------------------------------------------------
 // Connect to existing project
 //------------------------------------------------------------------------
-void Project::connect_2_existing(std::filesystem::path full_path)
+void Project::connect_2_existing(const std::filesystem::path& full_path)
 {
     name_ = full_path.stem().string();
     path_ = full_path;
@@ -480,7 +473,7 @@ void Project::connect_2_existing(std::filesystem::path full_path)
 //------------------------------------------------------------------------
 // Setter to modify the project object
 //------------------------------------------------------------------------
-void Project::new_project(std::string name, std::filesystem::path base_path)
+void Project::new_project(const std::string& name, const std::filesystem::path& base_path)
 {
     name_ = name;
     path_ = base_path / (name + ".proj");
@@ -500,7 +493,7 @@ void Project::new_project(std::string name, std::filesystem::path base_path)
 // Deleting them works perfectly fine on Linux.
 void Project::unload_project()
 {
-    std::lock_guard<std::shared_mutex> lock_project(mutex);
+    std::scoped_lock lock_project(mutex);
     clear_temporary_data();
     is_project = false;
     disconnect();
@@ -530,19 +523,6 @@ void Project::unload_project()
 Project::~Project() 
 {
     unload_project();
-    /*
-    is_project = false;
-    disconnect();
-    // Remove extraneous files (shm = shared memory, wal = write ahead log)
-    std::filesystem::path shm_file{path_};
-    shm_file += "-shm";
-    std::filesystem::remove(shm_file);
-    std::filesystem::path wal_file{path_};
-    wal_file += "-wal";
-    // Clear the paths
-    name_ = "";
-    path_ = "";
-    */
 }
 //------------------------------------------------------------------------
 // End Destructor
@@ -554,7 +534,7 @@ Project::~Project()
 int Project::add_sac(SAC::SacStream& sac, const std::string& source)
 {
     // Lock the project to minimize issues
-    std::lock_guard<std::shared_mutex> lock_project(mutex);
+    std::scoped_lock lock_project(mutex);
     int data_id{add_data_provenance(source)};
     create_data_checkpoint_table(data_id);
     add_data_checkpoint(sac, data_id);
@@ -854,8 +834,8 @@ void Project::add_data_checkpoint(SAC::SacStream& sac, int data_id, bool process
     if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 95); } else { sq3_result = sqlite3_bind_text(sq3_statement, 95, sac.kinst.c_str(), -1, SQLITE_STATIC); }
     sq3_result = sqlite3_bind_int(sq3_statement, 96, checkpoint_id_);
     // Data vectors
-    if (sac.data1.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC); }
-    if (sac.data2.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC); }
+    if (sac.data1.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 97, sac.data1.data(), static_cast<int>(sac.data1.size()) * sizeof(double), SQLITE_STATIC); }
+    if (sac.data2.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data2.data(), static_cast<int>(sac.data2.size()) * sizeof(double), SQLITE_STATIC); }
     // Execute the statement
     sq3_result = sqlite3_step(sq3_statement);
     // Finalize the statement
@@ -869,7 +849,7 @@ void Project::add_data_checkpoint(SAC::SacStream& sac, int data_id, bool process
 //------------------------------------------------------------------------
 // Add processing information
 //------------------------------------------------------------------------
-void Project::add_data_processing(sqlite3* connection, int data_id, std::string processing_comment)
+void Project::add_data_processing(sqlite3* connection, int data_id, const std::string& processing_comment)
 {
     std::ostringstream oss{};
     oss << "INSERT INTO processing_" << data_id << " (";
@@ -956,10 +936,7 @@ std::vector<int> Project::get_checkpoint_ids()
     sqlite3_stmt* sq3_statement{};
     sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
     std::vector<int> checkpoint_ids{};
-    while (sqlite3_step(sq3_statement) == SQLITE_ROW)
-    {
-        checkpoint_ids.push_back(sqlite3_column_int(sq3_statement, 0));
-    }
+    while (sqlite3_step(sq3_statement) == SQLITE_ROW) { checkpoint_ids.push_back(sqlite3_column_int(sq3_statement, 0)); }
     return checkpoint_ids;
 }
 //------------------------------------------------------------------------
@@ -974,11 +951,7 @@ int Project::get_latest_checkpoint_id()
     std::vector<int> checkpoint_ids{get_checkpoint_ids()};
     // Default is 0.
     int checkpoint_id{0};
-    if (checkpoint_ids.size() > 0)
-    {
-        // Get the last element
-        checkpoint_id = checkpoint_ids.back();
-    }
+    if (!checkpoint_ids.empty()) { checkpoint_id = checkpoint_ids.back(); }
     return checkpoint_id;
 }
 //------------------------------------------------------------------------
@@ -994,10 +967,7 @@ std::vector<int> Project::get_data_ids()
     sqlite3_stmt* sq3_statement{};
     sq3_result = sqlite3_prepare_v2(sq3_connection_file, sq3_string.c_str(), -1, &sq3_statement, nullptr);
     std::vector<int> data_ids{};
-    while (sqlite3_step(sq3_statement) == SQLITE_ROW)
-    {
-        data_ids.push_back(sqlite3_column_int(sq3_statement, 0));
-    }
+    while (sqlite3_step(sq3_statement) == SQLITE_ROW) { data_ids.push_back(sqlite3_column_int(sq3_statement, 0)); }
     return data_ids;
 }
 //------------------------------------------------------------------------
@@ -1080,44 +1050,44 @@ SAC::SacStream Project::load_sacstream_from_checkpoint(int data_id, int checkpoi
     if (sqlite3_column_type(sq3_statement, 14) != SQLITE_NULL) { sac.t8 = sqlite3_column_double(sq3_statement, 14); }
     if (sqlite3_column_type(sq3_statement, 15) != SQLITE_NULL) { sac.t9 = sqlite3_column_double(sq3_statement, 15); }
     if (sqlite3_column_type(sq3_statement, 16) != SQLITE_NULL) { sac.f = sqlite3_column_double(sq3_statement, 16); }
-    if (sqlite3_column_type(sq3_statement, 17) != SQLITE_NULL) { sac.resp0 = sqlite3_column_double(sq3_statement, 17); }
-    if (sqlite3_column_type(sq3_statement, 18) != SQLITE_NULL) { sac.resp1 = sqlite3_column_double(sq3_statement, 18); }
-    if (sqlite3_column_type(sq3_statement, 19) != SQLITE_NULL) { sac.resp2 = sqlite3_column_double(sq3_statement, 19); }
-    if (sqlite3_column_type(sq3_statement, 20) != SQLITE_NULL) { sac.resp3 = sqlite3_column_double(sq3_statement, 20); }
-    if (sqlite3_column_type(sq3_statement, 21) != SQLITE_NULL) { sac.resp4 = sqlite3_column_double(sq3_statement, 21); }
-    if (sqlite3_column_type(sq3_statement, 22) != SQLITE_NULL) { sac.resp5 = sqlite3_column_double(sq3_statement, 22); }
-    if (sqlite3_column_type(sq3_statement, 23) != SQLITE_NULL) { sac.resp6 = sqlite3_column_double(sq3_statement, 23); }
-    if (sqlite3_column_type(sq3_statement, 24) != SQLITE_NULL) { sac.resp7 = sqlite3_column_double(sq3_statement, 24); }
-    if (sqlite3_column_type(sq3_statement, 25) != SQLITE_NULL) { sac.resp8 = sqlite3_column_double(sq3_statement, 25); }
-    if (sqlite3_column_type(sq3_statement, 26) != SQLITE_NULL) { sac.resp9 = sqlite3_column_double(sq3_statement, 26); }
+    if (sqlite3_column_type(sq3_statement, 17) != SQLITE_NULL) { sac.resp0 = static_cast<float>(sqlite3_column_double(sq3_statement, 17)); }
+    if (sqlite3_column_type(sq3_statement, 18) != SQLITE_NULL) { sac.resp1 = static_cast<float>(sqlite3_column_double(sq3_statement, 18)); }
+    if (sqlite3_column_type(sq3_statement, 19) != SQLITE_NULL) { sac.resp2 = static_cast<float>(sqlite3_column_double(sq3_statement, 19)); }
+    if (sqlite3_column_type(sq3_statement, 20) != SQLITE_NULL) { sac.resp3 = static_cast<float>(sqlite3_column_double(sq3_statement, 20)); }
+    if (sqlite3_column_type(sq3_statement, 21) != SQLITE_NULL) { sac.resp4 = static_cast<float>(sqlite3_column_double(sq3_statement, 21)); }
+    if (sqlite3_column_type(sq3_statement, 22) != SQLITE_NULL) { sac.resp5 = static_cast<float>(sqlite3_column_double(sq3_statement, 22)); }
+    if (sqlite3_column_type(sq3_statement, 23) != SQLITE_NULL) { sac.resp6 = static_cast<float>(sqlite3_column_double(sq3_statement, 23)); }
+    if (sqlite3_column_type(sq3_statement, 24) != SQLITE_NULL) { sac.resp7 = static_cast<float>(sqlite3_column_double(sq3_statement, 24)); }
+    if (sqlite3_column_type(sq3_statement, 25) != SQLITE_NULL) { sac.resp8 = static_cast<float>(sqlite3_column_double(sq3_statement, 25)); }
+    if (sqlite3_column_type(sq3_statement, 26) != SQLITE_NULL) { sac.resp9 = static_cast<float>(sqlite3_column_double(sq3_statement, 26)); }
     if (sqlite3_column_type(sq3_statement, 27) != SQLITE_NULL) { sac.stla = sqlite3_column_double(sq3_statement, 27); }
     if (sqlite3_column_type(sq3_statement, 28) != SQLITE_NULL) { sac.stlo = sqlite3_column_double(sq3_statement, 28); }
-    if (sqlite3_column_type(sq3_statement, 29) != SQLITE_NULL) { sac.stel = sqlite3_column_double(sq3_statement, 29); }
-    if (sqlite3_column_type(sq3_statement, 30) != SQLITE_NULL) { sac.stdp = sqlite3_column_double(sq3_statement, 30); }
+    if (sqlite3_column_type(sq3_statement, 29) != SQLITE_NULL) { sac.stel = static_cast<float>(sqlite3_column_double(sq3_statement, 29)); }
+    if (sqlite3_column_type(sq3_statement, 30) != SQLITE_NULL) { sac.stdp = static_cast<float>(sqlite3_column_double(sq3_statement, 30)); }
     if (sqlite3_column_type(sq3_statement, 31) != SQLITE_NULL) { sac.evla = sqlite3_column_double(sq3_statement, 31); }
     if (sqlite3_column_type(sq3_statement, 32) != SQLITE_NULL) { sac.evlo = sqlite3_column_double(sq3_statement, 32); }
-    if (sqlite3_column_type(sq3_statement, 33) != SQLITE_NULL) { sac.evel = sqlite3_column_double(sq3_statement, 33); }
-    if (sqlite3_column_type(sq3_statement, 34) != SQLITE_NULL) { sac.evdp = sqlite3_column_double(sq3_statement, 34); }
-    if (sqlite3_column_type(sq3_statement, 35) != SQLITE_NULL) { sac.mag = sqlite3_column_double(sq3_statement, 35); }
-    if (sqlite3_column_type(sq3_statement, 36) != SQLITE_NULL) { sac.user0 = sqlite3_column_double(sq3_statement, 36); }
-    if (sqlite3_column_type(sq3_statement, 37) != SQLITE_NULL) { sac.user1 = sqlite3_column_double(sq3_statement, 37); }
-    if (sqlite3_column_type(sq3_statement, 38) != SQLITE_NULL) { sac.user2 = sqlite3_column_double(sq3_statement, 38); }
-    if (sqlite3_column_type(sq3_statement, 39) != SQLITE_NULL) { sac.user3 = sqlite3_column_double(sq3_statement, 39); }
-    if (sqlite3_column_type(sq3_statement, 40) != SQLITE_NULL) { sac.user4 = sqlite3_column_double(sq3_statement, 40); }
-    if (sqlite3_column_type(sq3_statement, 41) != SQLITE_NULL) { sac.user5 = sqlite3_column_double(sq3_statement, 41); }
-    if (sqlite3_column_type(sq3_statement, 42) != SQLITE_NULL) { sac.user6 = sqlite3_column_double(sq3_statement, 42); }
-    if (sqlite3_column_type(sq3_statement, 43) != SQLITE_NULL) { sac.user7 = sqlite3_column_double(sq3_statement, 43); }
-    if (sqlite3_column_type(sq3_statement, 44) != SQLITE_NULL) { sac.user8 = sqlite3_column_double(sq3_statement, 44); }
-    if (sqlite3_column_type(sq3_statement, 45) != SQLITE_NULL) { sac.user9 = sqlite3_column_double(sq3_statement, 45); }
-    if (sqlite3_column_type(sq3_statement, 46) != SQLITE_NULL) { sac.dist = sqlite3_column_double(sq3_statement, 46); }
-    if (sqlite3_column_type(sq3_statement, 47) != SQLITE_NULL) { sac.az = sqlite3_column_double(sq3_statement, 47); }
-    if (sqlite3_column_type(sq3_statement, 48) != SQLITE_NULL) { sac.baz = sqlite3_column_double(sq3_statement, 48); }
-    if (sqlite3_column_type(sq3_statement, 49) != SQLITE_NULL) { sac.gcarc = sqlite3_column_double(sq3_statement, 49); }
-    if (sqlite3_column_type(sq3_statement, 50) != SQLITE_NULL) { sac.depmin = sqlite3_column_double(sq3_statement, 50); }
-    if (sqlite3_column_type(sq3_statement, 51) != SQLITE_NULL) { sac.depmen = sqlite3_column_double(sq3_statement, 51); }
-    if (sqlite3_column_type(sq3_statement, 52) != SQLITE_NULL) { sac.depmax = sqlite3_column_double(sq3_statement, 52); }
-    if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.cmpaz = sqlite3_column_double(sq3_statement, 53); }
-    if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpinc = sqlite3_column_double(sq3_statement, 54); }
+    if (sqlite3_column_type(sq3_statement, 33) != SQLITE_NULL) { sac.evel = static_cast<float>(sqlite3_column_double(sq3_statement, 33)); }
+    if (sqlite3_column_type(sq3_statement, 34) != SQLITE_NULL) { sac.evdp = static_cast<float>(sqlite3_column_double(sq3_statement, 34)); }
+    if (sqlite3_column_type(sq3_statement, 35) != SQLITE_NULL) { sac.mag = static_cast<float>(sqlite3_column_double(sq3_statement, 35)); }
+    if (sqlite3_column_type(sq3_statement, 36) != SQLITE_NULL) { sac.user0 = static_cast<float>(sqlite3_column_double(sq3_statement, 36)); }
+    if (sqlite3_column_type(sq3_statement, 37) != SQLITE_NULL) { sac.user1 = static_cast<float>(sqlite3_column_double(sq3_statement, 37)); }
+    if (sqlite3_column_type(sq3_statement, 38) != SQLITE_NULL) { sac.user2 = static_cast<float>(sqlite3_column_double(sq3_statement, 38)); }
+    if (sqlite3_column_type(sq3_statement, 39) != SQLITE_NULL) { sac.user3 = static_cast<float>(sqlite3_column_double(sq3_statement, 39)); }
+    if (sqlite3_column_type(sq3_statement, 40) != SQLITE_NULL) { sac.user4 = static_cast<float>(sqlite3_column_double(sq3_statement, 40)); }
+    if (sqlite3_column_type(sq3_statement, 41) != SQLITE_NULL) { sac.user5 = static_cast<float>(sqlite3_column_double(sq3_statement, 41)); }
+    if (sqlite3_column_type(sq3_statement, 42) != SQLITE_NULL) { sac.user6 = static_cast<float>(sqlite3_column_double(sq3_statement, 42)); }
+    if (sqlite3_column_type(sq3_statement, 43) != SQLITE_NULL) { sac.user7 = static_cast<float>(sqlite3_column_double(sq3_statement, 43)); }
+    if (sqlite3_column_type(sq3_statement, 44) != SQLITE_NULL) { sac.user8 = static_cast<float>(sqlite3_column_double(sq3_statement, 44)); }
+    if (sqlite3_column_type(sq3_statement, 45) != SQLITE_NULL) { sac.user9 = static_cast<float>(sqlite3_column_double(sq3_statement, 45)); }
+    if (sqlite3_column_type(sq3_statement, 46) != SQLITE_NULL) { sac.dist = static_cast<float>(sqlite3_column_double(sq3_statement, 46)); }
+    if (sqlite3_column_type(sq3_statement, 47) != SQLITE_NULL) { sac.az = static_cast<float>(sqlite3_column_double(sq3_statement, 47)); }
+    if (sqlite3_column_type(sq3_statement, 48) != SQLITE_NULL) { sac.baz = static_cast<float>(sqlite3_column_double(sq3_statement, 48)); }
+    if (sqlite3_column_type(sq3_statement, 49) != SQLITE_NULL) { sac.gcarc = static_cast<float>(sqlite3_column_double(sq3_statement, 49)); }
+    if (sqlite3_column_type(sq3_statement, 50) != SQLITE_NULL) { sac.depmin = static_cast<float>(sqlite3_column_double(sq3_statement, 50)); }
+    if (sqlite3_column_type(sq3_statement, 51) != SQLITE_NULL) { sac.depmen = static_cast<float>(sqlite3_column_double(sq3_statement, 51)); }
+    if (sqlite3_column_type(sq3_statement, 52) != SQLITE_NULL) { sac.depmax = static_cast<float>(sqlite3_column_double(sq3_statement, 52)); }
+    if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.cmpaz = static_cast<float>(sqlite3_column_double(sq3_statement, 53)); }
+    if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpinc = static_cast<float>(sqlite3_column_double(sq3_statement, 54)); }
     // Need a way to handle 56, reference time (text) since it is multiple headers and needs string tokenizing
     if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 55)), sac); }
     if (sqlite3_column_type(sq3_statement, 56) != SQLITE_NULL) { sac.norid = sqlite3_column_int(sq3_statement, 56); }
@@ -1172,7 +1142,6 @@ SAC::SacStream Project::load_sacstream_from_checkpoint(int data_id, int checkpoi
     // Cleanup the statement
     sqlite3_finalize(sq3_statement);
     // Add a table in memory for this sacstream
-    //(sq3_connection_memory, data_id);
     return sac;
 }
 //------------------------------------------------------------------------
@@ -1221,44 +1190,44 @@ SAC::SacStream Project::load_sacstream_from_temporary(const int data_id, const i
         if (sqlite3_column_type(sq3_statement, 15) != SQLITE_NULL) { sac.t8 = sqlite3_column_double(sq3_statement, 15); }
         if (sqlite3_column_type(sq3_statement, 16) != SQLITE_NULL) { sac.t9 = sqlite3_column_double(sq3_statement, 16); }
         if (sqlite3_column_type(sq3_statement, 17) != SQLITE_NULL) { sac.f = sqlite3_column_double(sq3_statement, 17); }
-        if (sqlite3_column_type(sq3_statement, 18) != SQLITE_NULL) { sac.resp0 = sqlite3_column_double(sq3_statement, 18); }
-        if (sqlite3_column_type(sq3_statement, 19) != SQLITE_NULL) { sac.resp1 = sqlite3_column_double(sq3_statement, 19); }
-        if (sqlite3_column_type(sq3_statement, 20) != SQLITE_NULL) { sac.resp2 = sqlite3_column_double(sq3_statement, 20); }
-        if (sqlite3_column_type(sq3_statement, 21) != SQLITE_NULL) { sac.resp3 = sqlite3_column_double(sq3_statement, 21); }
-        if (sqlite3_column_type(sq3_statement, 22) != SQLITE_NULL) { sac.resp4 = sqlite3_column_double(sq3_statement, 22); }
-        if (sqlite3_column_type(sq3_statement, 23) != SQLITE_NULL) { sac.resp5 = sqlite3_column_double(sq3_statement, 23); }
-        if (sqlite3_column_type(sq3_statement, 24) != SQLITE_NULL) { sac.resp6 = sqlite3_column_double(sq3_statement, 24); }
-        if (sqlite3_column_type(sq3_statement, 25) != SQLITE_NULL) { sac.resp7 = sqlite3_column_double(sq3_statement, 25); }
-        if (sqlite3_column_type(sq3_statement, 26) != SQLITE_NULL) { sac.resp8 = sqlite3_column_double(sq3_statement, 26); }
-        if (sqlite3_column_type(sq3_statement, 27) != SQLITE_NULL) { sac.resp9 = sqlite3_column_double(sq3_statement, 27); }
+        if (sqlite3_column_type(sq3_statement, 18) != SQLITE_NULL) { sac.resp0 = static_cast<float>(sqlite3_column_double(sq3_statement, 18)); }
+        if (sqlite3_column_type(sq3_statement, 19) != SQLITE_NULL) { sac.resp1 = static_cast<float>(sqlite3_column_double(sq3_statement, 19)); }
+        if (sqlite3_column_type(sq3_statement, 20) != SQLITE_NULL) { sac.resp2 = static_cast<float>(sqlite3_column_double(sq3_statement, 20)); }
+        if (sqlite3_column_type(sq3_statement, 21) != SQLITE_NULL) { sac.resp3 = static_cast<float>(sqlite3_column_double(sq3_statement, 21)); }
+        if (sqlite3_column_type(sq3_statement, 22) != SQLITE_NULL) { sac.resp4 = static_cast<float>(sqlite3_column_double(sq3_statement, 22)); }
+        if (sqlite3_column_type(sq3_statement, 23) != SQLITE_NULL) { sac.resp5 = static_cast<float>(sqlite3_column_double(sq3_statement, 23)); }
+        if (sqlite3_column_type(sq3_statement, 24) != SQLITE_NULL) { sac.resp6 = static_cast<float>(sqlite3_column_double(sq3_statement, 24)); }
+        if (sqlite3_column_type(sq3_statement, 25) != SQLITE_NULL) { sac.resp7 = static_cast<float>(sqlite3_column_double(sq3_statement, 25)); }
+        if (sqlite3_column_type(sq3_statement, 26) != SQLITE_NULL) { sac.resp8 = static_cast<float>(sqlite3_column_double(sq3_statement, 26)); }
+        if (sqlite3_column_type(sq3_statement, 27) != SQLITE_NULL) { sac.resp9 = static_cast<float>(sqlite3_column_double(sq3_statement, 27)); }
         if (sqlite3_column_type(sq3_statement, 28) != SQLITE_NULL) { sac.stla = sqlite3_column_double(sq3_statement, 28); }
         if (sqlite3_column_type(sq3_statement, 29) != SQLITE_NULL) { sac.stlo = sqlite3_column_double(sq3_statement, 29); }
-        if (sqlite3_column_type(sq3_statement, 30) != SQLITE_NULL) { sac.stel = sqlite3_column_double(sq3_statement, 30); }
-        if (sqlite3_column_type(sq3_statement, 31) != SQLITE_NULL) { sac.stdp = sqlite3_column_double(sq3_statement, 31); }
+        if (sqlite3_column_type(sq3_statement, 30) != SQLITE_NULL) { sac.stel = static_cast<float>(sqlite3_column_double(sq3_statement, 30)); }
+        if (sqlite3_column_type(sq3_statement, 31) != SQLITE_NULL) { sac.stdp = static_cast<float>(sqlite3_column_double(sq3_statement, 31)); }
         if (sqlite3_column_type(sq3_statement, 32) != SQLITE_NULL) { sac.evla = sqlite3_column_double(sq3_statement, 32); }
         if (sqlite3_column_type(sq3_statement, 33) != SQLITE_NULL) { sac.evlo = sqlite3_column_double(sq3_statement, 33); }
-        if (sqlite3_column_type(sq3_statement, 34) != SQLITE_NULL) { sac.evel = sqlite3_column_double(sq3_statement, 34); }
-        if (sqlite3_column_type(sq3_statement, 35) != SQLITE_NULL) { sac.evdp = sqlite3_column_double(sq3_statement, 35); }
-        if (sqlite3_column_type(sq3_statement, 36) != SQLITE_NULL) { sac.mag = sqlite3_column_double(sq3_statement, 36); }
-        if (sqlite3_column_type(sq3_statement, 37) != SQLITE_NULL) { sac.user0 = sqlite3_column_double(sq3_statement, 37); }
-        if (sqlite3_column_type(sq3_statement, 38) != SQLITE_NULL) { sac.user1 = sqlite3_column_double(sq3_statement, 38); }
-        if (sqlite3_column_type(sq3_statement, 39) != SQLITE_NULL) { sac.user2 = sqlite3_column_double(sq3_statement, 39); }
-        if (sqlite3_column_type(sq3_statement, 40) != SQLITE_NULL) { sac.user3 = sqlite3_column_double(sq3_statement, 40); }
-        if (sqlite3_column_type(sq3_statement, 41) != SQLITE_NULL) { sac.user4 = sqlite3_column_double(sq3_statement, 41); }
-        if (sqlite3_column_type(sq3_statement, 42) != SQLITE_NULL) { sac.user5 = sqlite3_column_double(sq3_statement, 42); }
-        if (sqlite3_column_type(sq3_statement, 43) != SQLITE_NULL) { sac.user6 = sqlite3_column_double(sq3_statement, 43); }
-        if (sqlite3_column_type(sq3_statement, 44) != SQLITE_NULL) { sac.user7 = sqlite3_column_double(sq3_statement, 44); }
-        if (sqlite3_column_type(sq3_statement, 45) != SQLITE_NULL) { sac.user8 = sqlite3_column_double(sq3_statement, 45); }
-        if (sqlite3_column_type(sq3_statement, 46) != SQLITE_NULL) { sac.user9 = sqlite3_column_double(sq3_statement, 46); }
-        if (sqlite3_column_type(sq3_statement, 47) != SQLITE_NULL) { sac.dist = sqlite3_column_double(sq3_statement, 47); }
-        if (sqlite3_column_type(sq3_statement, 48) != SQLITE_NULL) { sac.az = sqlite3_column_double(sq3_statement, 48); }
-        if (sqlite3_column_type(sq3_statement, 49) != SQLITE_NULL) { sac.baz = sqlite3_column_double(sq3_statement, 49); }
-        if (sqlite3_column_type(sq3_statement, 50) != SQLITE_NULL) { sac.gcarc = sqlite3_column_double(sq3_statement, 50); }
-        if (sqlite3_column_type(sq3_statement, 51) != SQLITE_NULL) { sac.depmin = sqlite3_column_double(sq3_statement, 51); }
-        if (sqlite3_column_type(sq3_statement, 52) != SQLITE_NULL) { sac.depmen = sqlite3_column_double(sq3_statement, 52); }
-        if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.depmax = sqlite3_column_double(sq3_statement, 53); }
-        if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpaz = sqlite3_column_double(sq3_statement, 54); }
-        if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { sac.cmpinc = sqlite3_column_double(sq3_statement, 55); }
+        if (sqlite3_column_type(sq3_statement, 34) != SQLITE_NULL) { sac.evel = static_cast<float>(sqlite3_column_double(sq3_statement, 34)); }
+        if (sqlite3_column_type(sq3_statement, 35) != SQLITE_NULL) { sac.evdp = static_cast<float>(sqlite3_column_double(sq3_statement, 35)); }
+        if (sqlite3_column_type(sq3_statement, 36) != SQLITE_NULL) { sac.mag = static_cast<float>(sqlite3_column_double(sq3_statement, 36)); }
+        if (sqlite3_column_type(sq3_statement, 37) != SQLITE_NULL) { sac.user0 = static_cast<float>(sqlite3_column_double(sq3_statement, 37)); }
+        if (sqlite3_column_type(sq3_statement, 38) != SQLITE_NULL) { sac.user1 = static_cast<float>(sqlite3_column_double(sq3_statement, 38)); }
+        if (sqlite3_column_type(sq3_statement, 39) != SQLITE_NULL) { sac.user2 = static_cast<float>(sqlite3_column_double(sq3_statement, 39)); }
+        if (sqlite3_column_type(sq3_statement, 40) != SQLITE_NULL) { sac.user3 = static_cast<float>(sqlite3_column_double(sq3_statement, 40)); }
+        if (sqlite3_column_type(sq3_statement, 41) != SQLITE_NULL) { sac.user4 = static_cast<float>(sqlite3_column_double(sq3_statement, 41)); }
+        if (sqlite3_column_type(sq3_statement, 42) != SQLITE_NULL) { sac.user5 = static_cast<float>(sqlite3_column_double(sq3_statement, 42)); }
+        if (sqlite3_column_type(sq3_statement, 43) != SQLITE_NULL) { sac.user6 = static_cast<float>(sqlite3_column_double(sq3_statement, 43)); }
+        if (sqlite3_column_type(sq3_statement, 44) != SQLITE_NULL) { sac.user7 = static_cast<float>(sqlite3_column_double(sq3_statement, 44)); }
+        if (sqlite3_column_type(sq3_statement, 45) != SQLITE_NULL) { sac.user8 = static_cast<float>(sqlite3_column_double(sq3_statement, 45)); }
+        if (sqlite3_column_type(sq3_statement, 46) != SQLITE_NULL) { sac.user9 = static_cast<float>(sqlite3_column_double(sq3_statement, 46)); }
+        if (sqlite3_column_type(sq3_statement, 47) != SQLITE_NULL) { sac.dist = static_cast<float>(sqlite3_column_double(sq3_statement, 47)); }
+        if (sqlite3_column_type(sq3_statement, 48) != SQLITE_NULL) { sac.az = static_cast<float>(sqlite3_column_double(sq3_statement, 48)); }
+        if (sqlite3_column_type(sq3_statement, 49) != SQLITE_NULL) { sac.baz = static_cast<float>(sqlite3_column_double(sq3_statement, 49)); }
+        if (sqlite3_column_type(sq3_statement, 50) != SQLITE_NULL) { sac.gcarc = static_cast<float>(sqlite3_column_double(sq3_statement, 50)); }
+        if (sqlite3_column_type(sq3_statement, 51) != SQLITE_NULL) { sac.depmin = static_cast<float>(sqlite3_column_double(sq3_statement, 51)); }
+        if (sqlite3_column_type(sq3_statement, 52) != SQLITE_NULL) { sac.depmen = static_cast<float>(sqlite3_column_double(sq3_statement, 52)); }
+        if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.depmax = static_cast<float>(sqlite3_column_double(sq3_statement, 53)); }
+        if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpaz = static_cast<float>(sqlite3_column_double(sq3_statement, 54)); }
+        if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { sac.cmpinc = static_cast<float>(sqlite3_column_double(sq3_statement, 55)); }
         // Need a way to handle 56, reference time (text) since it is multiple headers and needs string tokenizing
         if (sqlite3_column_type(sq3_statement, 56) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 56)), sac); }
         if (sqlite3_column_type(sq3_statement, 57) != SQLITE_NULL) { sac.norid = sqlite3_column_int(sq3_statement, 57); }
@@ -1341,7 +1310,7 @@ SAC::SacStream Project::load_temporary_sacstream(const int data_id, const int ch
 {
     SAC::SacStream sac{};
     if (!from_checkpoint) { sac = load_sacstream_from_temporary(data_id, checkpoint_id); } else { sac = load_sacstream_from_checkpoint(data_id, checkpoint_id); }
-    if (!from_checkpoint && sac.data1.size() == 0) { sac = load_sacstream_from_checkpoint(data_id, checkpoint_id); }
+    if (!from_checkpoint && sac.data1.empty()) { sac = load_sacstream_from_checkpoint(data_id, checkpoint_id); }
     return sac;
 }
 //------------------------------------------------------------------------
@@ -1372,10 +1341,7 @@ std::string Project::get_source(int data_id)
 //------------------------------------------------------------------------
 // Checkpoint_id setter
 //------------------------------------------------------------------------
-void Project::set_checkpoint_id(int checkpoint_id)
-{
-    checkpoint_id_ = checkpoint_id;
-}
+void Project::set_checkpoint_id(int checkpoint_id) { checkpoint_id_ = checkpoint_id; }
 //------------------------------------------------------------------------
 // End Checkpoint_id setter
 //------------------------------------------------------------------------
@@ -1383,10 +1349,7 @@ void Project::set_checkpoint_id(int checkpoint_id)
 //------------------------------------------------------------------------
 // Path getter
 //------------------------------------------------------------------------
-std::filesystem::path Project::get_path()
-{
-    return path_;
-}
+std::filesystem::path Project::get_path() { return path_; }
 //------------------------------------------------------------------------
 // End Path getter
 //------------------------------------------------------------------------
@@ -1429,10 +1392,7 @@ void Project::delete_data_id_checkpoint(int data_id, int checkpoint_id)
 //------------------------------------------------------------------------
 // Issue VACUUM command to database
 //------------------------------------------------------------------------
-void Project::vacuum()
-{
-    sq3_result = sqlite3_exec(sq3_connection_file, "VACUUM;", nullptr, nullptr, nullptr);
-}
+void Project::vacuum() { sq3_result = sqlite3_exec(sq3_connection_file, "VACUUM;", nullptr, nullptr, nullptr); }
 //------------------------------------------------------------------------
 // End Issue VACUUM command to database
 //------------------------------------------------------------------------
@@ -1465,9 +1425,7 @@ std::unordered_map<std::string, std::string> Project::get_checkpoint_metadata(in
 // Get checkpoint meta-data of current checkpoint
 //------------------------------------------------------------------------
 std::unordered_map<std::string, std::string> Project::get_current_checkpoint_metadata()
-{
-    return get_checkpoint_metadata(checkpoint_id_);
-}
+{ return get_checkpoint_metadata(checkpoint_id_); }
 //------------------------------------------------------------------------
 // End Get checkpoint meta-data of current checkpoint
 //------------------------------------------------------------------------
@@ -1547,9 +1505,7 @@ std::string Project::get_processing_history(int data_id, int checkpoint_id)
 // Get data_id current checkpoint history
 //------------------------------------------------------------------------
 std::string Project::get_current_processing_history(int data_id)
-{
-    return get_processing_history(data_id, checkpoint_id_);
-}
+{ return get_processing_history(data_id, checkpoint_id_); }
 //------------------------------------------------------------------------
 // End Get data_id current checkpoint history
 //------------------------------------------------------------------------
@@ -1821,8 +1777,8 @@ void Project::store_in_temporary_data(SAC::SacStream& sac, int data_id)
     boost::algorithm::trim(sac.kinst);
     if (sac.kinst == trim_unset_word) { sq3_result = sqlite3_bind_null(sq3_statement, 97); } else { sq3_result = sqlite3_bind_text(sq3_statement, 97, sac.kinst.c_str(), -1, SQLITE_STATIC); }
     // Data vectors
-    if (sac.data1.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data1.data(), sac.data1.size() * sizeof(double), SQLITE_STATIC); }
-    if (sac.data2.size() == 0) { sq3_result = sqlite3_bind_null(sq3_statement, 99); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 99, sac.data2.data(), sac.data2.size() * sizeof(double), SQLITE_STATIC); }
+    if (sac.data1.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 98); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 98, sac.data1.data(), static_cast<int>(sac.data1.size()) * sizeof(double), SQLITE_STATIC); }
+    if (sac.data2.empty()) { sq3_result = sqlite3_bind_null(sq3_statement, 99); } else { sq3_result = sqlite3_bind_blob(sq3_statement, 99, sac.data2.data(), static_cast<int>(sac.data2.size()) * sizeof(double), SQLITE_STATIC); }
     // Execute the statement
     sq3_result = sqlite3_step(sq3_statement);
     // Finalize the statement

@@ -103,7 +103,8 @@ class Project
         // Both
         void connect();
         // Disconnect from a sqlite3 connection
-        void disconnect(sqlite3* connection);
+        // Move outside of project, too general to be kept here
+        static void disconnect(sqlite3* connection);
         // Disconnect from both the file and memory connections
         void disconnect();
         // Create fresh tables for a brand new project
@@ -132,13 +133,13 @@ class Project
         std::atomic<bool> updated{false};
         std::shared_mutex mutex{};
         // Empty constructor
-        Project() {};
+        Project() = default;
         // Parameterized constructor
-        Project(std::string name, std::filesystem::path base_path);
+        Project(const std::string& name, const std::filesystem::path& base_path);
         // Connect to an existing project database
-        void connect_2_existing(std::filesystem::path full_path);
+        void connect_2_existing(const std::filesystem::path& full_path);
         // Setter to modify the project object
-        void new_project(std::string name, std::filesystem::path base_path);
+        void new_project(const std::string& name, const std::filesystem::path& base_path);
         // Unload project
         void unload_project();
         // Destructor
@@ -157,7 +158,7 @@ class Project
         // If the user performs a checkpoint, we'll append this to the table on file and clear memory
         // If the user loads a checkpoint, we'll clear memory
         // If the user unloads a project, we'll clear memory
-        void add_data_processing(sqlite3* connection, int data_id, std::string processing_comment);
+        void add_data_processing(sqlite3* connection, int data_id, const std::string& processing_comment);
         // Clear in-memory processing meta-data
         void clear_processing_memory(int data_id);
         // Append in-memory processing meta-data to appropriate on-disk tables

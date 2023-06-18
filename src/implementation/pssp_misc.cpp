@@ -40,8 +40,8 @@ void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& sp
 double calc_mean(const std::vector<double>& data_vector)
 {
     double mean{0};
-    for (double value : data_vector)
-    { mean += value; }
+    // Clang apparently doesn't have std::accumulate yet...
+    for (double value : data_vector) { mean += value; }
     mean /= static_cast<double>(data_vector.size());
     return mean;
 }
