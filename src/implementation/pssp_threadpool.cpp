@@ -9,7 +9,7 @@ namespace pssp
 //------------------------------------------------------------------------
 // Parameterized constructor
 //------------------------------------------------------------------------
-ThreadPool::ThreadPool(std::size_t n_threads) : n_threads_(n_threads), n_busy_threads_{0}, stop_{false}
+ThreadPool::ThreadPool(std::size_t n_threads) : n_threads_(n_threads)
 {
     // Using bind to create a forwarding call operator
     // &ThreadPool::worker_thread is the callable object (memory location
@@ -17,7 +17,9 @@ ThreadPool::ThreadPool(std::size_t n_threads) : n_threads_(n_threads), n_busy_th
     // We're binding it to the ThreadPool (this)
     // It ensures the worker_thread has access to components of ThreadPool
     // (the task-queue and the condition variable)
-    for (std::size_t i = 0; i < n_threads; ++i) { threads_.emplace_back(std::bind(&ThreadPool::worker_thread, this)); }
+    //for (std::size_t i = 0; i < n_threads; ++i) { threads_.emplace_back(std::bind(&ThreadPool::worker_thread, this)); }
+    // SolarLint S5995 bind_front safer than bind
+    for (std::size_t i{0}; i < n_threads; ++i) { threads_.emplace_back(std::bind_front(&ThreadPool::worker_thread, this)); }
 }
 //------------------------------------------------------------------------
 // End Parameterized constructor
@@ -33,12 +35,13 @@ ThreadPool::~ThreadPool()
     // The unique_lock goes out of scope at the end of the sub-block
     // (prevents the need to use raw mutex.lock()/mutex.unlock())
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         stop_ = true;
     }
     // Tell everyone we need to stop
     condition_.notify_all();
     // Wait until we can join all the threads
+    // Ignoring SolarLint S6168 because clang++ does not support jthreads yet.
     for (auto& thread : threads_) { thread.join(); }
 }
 //------------------------------------------------------------------------
@@ -54,11 +57,7 @@ std::size_t ThreadPool::n_busy_threads() const { return n_busy_threads_.load(); 
 
 std::size_t ThreadPool::n_idle_threads() const { return n_threads_ - n_busy_threads_.load(); }
 
-std::size_t ThreadPool::n_tasks()
-{
-    std::unique_lock<std::mutex> lock(mutex_);
-    return tasks_.size();
-}
+std::size_t ThreadPool::n_tasks() { std::unique_lock lock(mutex_); return tasks_.size(); }
 //------------------------------------------------------------------------
 // End Getters
 //------------------------------------------------------------------------
@@ -80,7 +79,7 @@ void ThreadPool::worker_thread()
     // its wheels looking for work (if there were none)
     while (true)
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         // We use this to freeze the thread
         // It only unfreezes if the task queue is non-empty and it gets notified
         // Or if it is told to stop and gets notified

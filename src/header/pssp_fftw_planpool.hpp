@@ -38,7 +38,7 @@ class FFTWPlanPool
 {
     public:
         // Empty constructor
-        FFTWPlanPool() {}
+        FFTWPlanPool() = default;
         // Empty plan pool
         void empty_pool();
         // Deconstructor

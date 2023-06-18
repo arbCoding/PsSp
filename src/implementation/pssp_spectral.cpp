@@ -8,12 +8,12 @@ namespace pssp
 std::vector<std::complex<double>> fft_time_series(FFTWPlanPool& plan_pool, const std::vector<double>& time_series, bool renormalize)
 {
     const std::size_t n{time_series.size()};
-    double* signal = (double*) fftw_malloc(sizeof(double) * n);
+    auto* signal = (double*) fftw_malloc(sizeof(double) * n);
     // Copy into the new double
     for (std::size_t i{0}; i < n; ++i) { signal[i] = time_series[i]; }
     // We'll do full size as it isn't a huge time savings to do only half
     // Can changed later if it becomes an issue
-    fftw_complex* fftw_spectrum = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * n);
+    auto* fftw_spectrum = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * n);
     // Get the plan
     fftw_plan plan = plan_pool.acquire_fft_plan(n);
     // Execute the plan
@@ -46,10 +46,10 @@ std::vector<std::complex<double>> fft_time_series(FFTWPlanPool& plan_pool, const
 std::vector<double> ifft_spectrum(FFTWPlanPool& plan_pool, const std::vector<std::complex<double>>& spectrum, bool renormalize)
 {
     const std::size_t n{spectrum.size()};
-    fftw_complex* fftw_spectrum = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * n);
+    auto* fftw_spectrum = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * n);
     // Copy into the new fftw_complex
     for (std::size_t i{0}; i < n; ++i) { fftw_spectrum[i][0] = spectrum[i].real(); fftw_spectrum[i][1] = spectrum[i].imag(); }
-    double* signal = (double*) fftw_malloc(sizeof(double) * n);
+    auto* signal = (double*) fftw_malloc(sizeof(double) * n);
     // Get the plan
     fftw_plan plan = plan_pool.acquire_ifft_plan(n);
     // Execute the plan

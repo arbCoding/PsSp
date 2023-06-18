@@ -18,7 +18,7 @@ int ymd_2_doy(int year, int month, int day);
 // Day of year to year, month, day
 std::string doy_2_ymd(int year, int doy);
 // Datetime string from sac header
-std::string sac_reference_time(SAC::SacStream& sac);
+std::string sac_reference_time(const SAC::SacStream& sac);
 // Datetime string to sac header
 void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& sac);
 }

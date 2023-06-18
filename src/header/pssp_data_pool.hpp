@@ -67,6 +67,8 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // sac_1c struct
 //-----------------------------------------------------------------------------
+// Ignoring SonarLint S4963 in this case, we need to have operator= and copy constructor
+// to deal with having a mutex
 struct sac_1c
 {
     std::string file_name{};
@@ -74,15 +76,12 @@ struct sac_1c
     std::shared_mutex mutex_{};
     int data_id{};
 
-    sac_1c() : file_name(), sac(), mutex_(), data_id() {}
+    // Default constructor
+    sac_1c() = default;
     // Copy constructor
-    sac_1c(const sac_1c& other)
-    {
-        file_name = other.file_name;
-        sac = other.sac;
-        data_id = other.data_id;
-        // Don't copy the mutex
-    }
+    sac_1c(const sac_1c& other) : file_name(other.file_name), sac(other.sac), data_id(other.data_id) {}
+    // Destructor
+    ~sac_1c() = default;
     // Assignment operator
     sac_1c& operator=(const sac_1c& other)
     {
@@ -103,6 +102,8 @@ struct sac_1c
 //-----------------------------------------------------------------------------
 // DataPool class
 //-----------------------------------------------------------------------------
+// Ignoring SonarLint S5414, I might change everything to be public
+// but I think mixing private and public is not that big of a problem
 class DataPool
 {
 public:
@@ -123,20 +124,19 @@ public:
     // we should decrease max-size
     // But, max size must never go below the number of threads
     // in the thread-pool
-    DataPool(std::size_t max_data_ = 1000) : max_data(max_data_) {}
+    explicit DataPool(std::size_t max_data_ = 10) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // How much data is in the pool
     std::size_t n_data() const;
     // Fully empty the pool
     void empty_pool();
-    void remove_data(Project& project, int data_id);
+    void remove_data(const Project& project, int data_id);
     std::size_t max_data{};
     // Add data to the pool
     void add_data(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // Function for returning data to data-pool
-    void return_ptr(Project& project, std::shared_ptr<sac_1c>& sac_ptr);
-    //std::vector<int> get_iter(const std::vector<int>& input_ids);
+    void return_ptr(Project& project, const std::shared_ptr<sac_1c>& sac_ptr);
     std::vector<int> get_iter(Project& project);
 private:
     std::mutex mutex_{};

@@ -264,17 +264,17 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // If the project has been updated then we need to copy the data_ids
             if (program_status.project.updated)
             {
-                std::shared_lock<std::shared_mutex> lock_project(program_status.project.mutex);
+                std::shared_lock lock_project(program_status.project.mutex);
                 data_ids = program_status.project.current_data_ids;
                 // Sort the data_ids
-                std::sort(data_ids.begin(), data_ids.end());
+                std::ranges::sort(data_ids);
                 // Flag the update has been dealt with
                 program_status.project.updated = false;
                 // Try to get a deep copy of the original object
                 std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_)};
                 if (sac_ptr)
                 {
-                    std::lock_guard<std::shared_mutex> lock_sac{sac_ptr->mutex_};
+                    std::scoped_lock lock_sac{sac_ptr->mutex_};
                     visual_sac = *sac_ptr;
                 }
             }
@@ -283,7 +283,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // Any window can be shown
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
-            if (data_ids.size() > 0)
+            if (!data_ids.empty())
             {
                 // Windows
                 current_settings.window_settings.header.state = show;
@@ -344,7 +344,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             {
                 current_settings.menu_allowed.open_1c = true;
                 current_settings.menu_allowed.open_dir = true;
-                if (data_ids.size() > 0) { current_settings.menu_allowed.save_1c = true; } else { current_settings.menu_allowed.save_1c = false; }
+                if (!data_ids.empty()) { current_settings.menu_allowed.save_1c = true; } else { current_settings.menu_allowed.save_1c = false; }
                 current_settings.menu_allowed.new_project = false;
                 current_settings.menu_allowed.load_project = false;
                 current_settings.menu_allowed.unload_project = true;
@@ -423,7 +423,7 @@ int main(int arg_count, char* arg_array[])
     // Setup the GLFW window
     GLFWwindow* window = glfwCreateWindow(1024, 720, "Passive-source Seismic-processing", nullptr, nullptr);
     // Start the graphics backends and create the ImGui and ImPlot contexts
-    ImGuiIO& io = pssp::start_graphics(window, glsl_version, program_path);
+    ImGuiIO const& io = pssp::start_graphics(window, glsl_version, program_path);
     //---------------------------------------------------------------------------
     // End Initialization
     //---------------------------------------------------------------------------
@@ -432,7 +432,7 @@ int main(int arg_count, char* arg_array[])
     // Misc Draw loop variables
     //---------------------------------------------------------------------------
     // Default color for clearing the screen
-    ImVec4 clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
+    auto clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
     pssp::ProgramSettings current_settings{};
     // IT WORKS! THAT TOOK WAY TOO LONG!
     // Testing making a new proto-project
