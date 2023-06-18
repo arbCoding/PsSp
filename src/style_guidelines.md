@@ -1,7 +1,6 @@
 # Style-Guidelines
 
 ## Purpose
----
 
 The purpose of this document is to define the stylistic choices for coding in this repository.
 
@@ -9,7 +8,6 @@ This is likely to be an incomplete document that will evolve as the style evolve
 as soon as I am aware.
 
 ## Styles
----
 
 ### Banners
 ---

@@ -9,17 +9,22 @@ namespace pssp
 //------------------------------------------------------------------------
 // BLOB to std::vector<double>
 //------------------------------------------------------------------------
-std::vector<double> Project::blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index)
+std::vector<double> Project::blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index) const
 {
     if (sqlite3_column_type(blob_statement, column_index) == SQLITE_NULL) { return std::vector<double>(); }
 
     const void* blob_data{sqlite3_column_blob(blob_statement, column_index)};
     int blob_size{sqlite3_column_bytes(blob_statement, column_index)};
-    std::vector<unsigned char> blob_vector_char(blob_size);
-    std::memcpy(blob_vector_char.data(), blob_data, blob_size);
-    std::vector<double> blob_vector_double(blob_size / sizeof(double));
-    std::memcpy(blob_vector_double.data(), blob_vector_char.data(), blob_size);
-    return blob_vector_double;
+    // This handles the issue of preventing buffer overflow
+    if (blob_size % sizeof(double) != 0) { return std::vector<double>(); }
+    else 
+    {
+        std::vector<unsigned char> blob_vector_char(blob_size);
+        std::memcpy(blob_vector_char.data(), blob_data, blob_size);
+        std::vector<double> blob_vector_double(blob_size / sizeof(double));
+        std::memcpy(blob_vector_double.data(), blob_vector_char.data(), blob_size);
+        return blob_vector_double;
+    }
 }
 //------------------------------------------------------------------------
 // End BLOB to std::vector<double>
@@ -522,6 +527,7 @@ void Project::unload_project()
 // I'm just going to get rid of the removal for now, not really needed
 Project::~Project() 
 {
+    // Ignoring SonarLint S1048 because this function doesn't throw any exceptions
     unload_project();
 }
 //------------------------------------------------------------------------
@@ -1089,6 +1095,11 @@ SAC::SacStream Project::load_sacstream_from_checkpoint(int data_id, int checkpoi
     if (sqlite3_column_type(sq3_statement, 53) != SQLITE_NULL) { sac.cmpaz = static_cast<float>(sqlite3_column_double(sq3_statement, 53)); }
     if (sqlite3_column_type(sq3_statement, 54) != SQLITE_NULL) { sac.cmpinc = static_cast<float>(sqlite3_column_double(sq3_statement, 54)); }
     // Need a way to handle 56, reference time (text) since it is multiple headers and needs string tokenizing
+    //=========================================================================
+    // On the use of reinterpret_cast: SQLite3 is a C library, that does things in an old-fashioned way (for historic reasons)
+    // sqlite3_column_text returns a const unsigned char*; I cannot convert that into a const char* via static_cast, dynamic_cast, or const_cast
+    // reinterpret_cast is my only option in this case. All warnings related to reinterpret_cast on sqlite3_column_text are being ignored
+    //=========================================================================
     if (sqlite3_column_type(sq3_statement, 55) != SQLITE_NULL) { timestamp_to_reference_headers(reinterpret_cast<const char*>(sqlite3_column_text(sq3_statement, 55)), sac); }
     if (sqlite3_column_type(sq3_statement, 56) != SQLITE_NULL) { sac.norid = sqlite3_column_int(sq3_statement, 56); }
     if (sqlite3_column_type(sq3_statement, 57) != SQLITE_NULL) { sac.nevid = sqlite3_column_int(sq3_statement, 57); }

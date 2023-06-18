@@ -2,9 +2,7 @@
 
 ![PsSp Main Window](screenshots/pssp_main_window_16June2023.png)
 
-The purpose of this is to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
-
----
+PsSp aims to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
 
 ## Why does this exist?
 ### Summary
@@ -44,7 +42,6 @@ with their analysis. I hope this will also make entry into seismology easier (un
 will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow and
 the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
 
----
 ## Current status
 
 This is extremely early in development.
@@ -60,13 +57,9 @@ To that end, the focus will be on implementing [unit testing](https://en.wikiped
 All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented
 a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory (*currently static, needs to be adjustable via a menu*). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
----
-
 ## ToDo
 
 See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on what is currently going-on/planned for the future as well as the above discussion on the project focus.
-
----
 
 ## Dependencies
 
@@ -75,7 +68,6 @@ or manually. For those other packages I provide installation guidance for MacOS 
 
 * [Catch2](https://github.com/catchorg/Catch2)
    * This will provide the unit/integration testing framework
-   * Git submodule
    * **Not yet integrated, this is planned.**
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
    * This provides the OS-independent GUI.
@@ -104,19 +96,16 @@ or manually. For those other packages I provide installation guidance for MacOS 
    * Projects are implemented as internal sqlite3 databases.
    * We are able to maintain data provenance information, processing checkpoints, and so on via a serverless relational database.
 
----
-
 ## Compilation instructions
 
 I test this on M1 MacOS (Ventura 13.4)), as well as on x86_64 Linux (Specifically Ubuntu 22.04).
 
 **Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [MSYS2](https://www.msys2.org/), [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), [Cygwin](https://www.cygwin.com/), or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to setup your compilation environment on Windows.
 
----
 ### MacOS
 Using [Homebrew](https://brew.sh/)
 ```shell
-brew install fftw glfw msgpack-cxx sqlite boost
+brew install fftw glfw msgpack-cxx sqlite boost catch2
 ```
 
 **NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
@@ -126,7 +115,7 @@ additional requirements. Please see the [additional instructions](#special-macos
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
----
+
 Next you need to clone this project and initialize the [submodules](submodules)
 ```shell
 git clone https://github.com/arbCoding/PsSp.git
@@ -149,19 +138,11 @@ make
 ```
 To make PsSp, which will be inside the ./bin/ directory.
 
----
-### Tests
-To make the test programs (test programs will go inside the ./bin/test/ directory) run
-```shell
-make tests
-```
----
 ### Cleanup
 To cleanup (including removing the compiled programs), run:
 ```shell
 make clean
 ```
----
 
 ## Special MacOS Application
 
@@ -192,5 +173,5 @@ dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d .
 Of course, this is implemented automatically in the [Makefile](Makefile), assuming you also used Homebrew to install the other packages (non-Git submodules).
 
 ---
+
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.
----

@@ -212,6 +212,15 @@ endif
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Catch2
+#------------------------------------------------------------------------------
+# Works for MacOS, unsure on Linux yet, have not installed there
+catch2_params = `pkg-config --cflags --libs catch2`
+#------------------------------------------------------------------------------
+# End Catch2
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Include my headers
 #------------------------------------------------------------------------------
 # Compilation command with inclusion of my headers
@@ -301,7 +310,7 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 # PsSp
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(imgui_dir)misc/cpp/imgui_stdlib.cpp $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
-pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params) 
+pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params) $(catch2_params)
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"

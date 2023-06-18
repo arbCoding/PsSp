@@ -1,18 +1,15 @@
 # Development Tools
 
 ## Purpose
----
 
 The purpose of this document is to provide a list of the tools that are being used in the development of PsSp as well as some information on why they are being used. This is an evolving document that will likely grow as I include more and more tools into the workflow.
 
 ## Compilers
----
 
 1) [g++](https://gcc.gnu.org/) - This is the C++ compiler from the GNU Compiler Collection (GCC). I use it to compile on Linux (in particular, g++-12).
 2) [clang++](https://clang.llvm.org/) - This is C++ compiler from the Low-Level Virtual Machine (LLVM) compiler infrastructure. I use it to compile on MacOS.
 
 ## Integrated Development Environment (IDE)
----
 
 1) [VSCodium](https://vscodium.com/) - This is essentially [VSCode](https://code.visualstudio.com/), with the monitoring/telemetry from Microsoft removed.
 
@@ -59,7 +56,6 @@ The purpose of this document is to provide a list of the tools that are being us
 6) [SonarLint](https://open-vsx.org/extension/SonarSource/sonarlint-vscode) - Additional static analysis tool.
 
 ## Static Analysis
----
 
 1) [clangd](https://clangd.llvm.org/)
 2) [CppCheck](https://cppcheck.sourceforge.io/)
@@ -68,15 +64,12 @@ The purpose of this document is to provide a list of the tools that are being us
 5) [SonarLint](https://docs.sonarcloud.io/improving/sonarlint/)
 
 ## Dynamic Analysis
----
 
 ## Testing
----
 
 1) [Catch2](https://github.com/catchorg/Catch2)
 
 ## C++ References
----
 
 1) [cppreference.com](https://en.cppreference.com/w/)
 2) [isocpp.org](https://isocpp.org/)

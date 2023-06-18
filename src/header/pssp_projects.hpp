@@ -67,7 +67,7 @@ class Project
         // Path to the database file
         std::filesystem::path path_{};
         // SQLite3 BLOB (Binary Large OBject) to std::vector<double>
-        std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index);
+        std::vector<double> blob_to_vector_double(sqlite3_stmt* blob_statement, int column_index) const;
         // Create provenance table
         // This only gets called upon creating a NEW project
         // This is ONLY in the on-disk database file
