@@ -264,7 +264,7 @@ macos: PsSp.app
 exp: tree_exp
 
 # Tests
-tests: test1
+tests: sacstream_tests
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -373,12 +373,14 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 #------------------------------------------------------------------------------
 # Test1.cpp
 #------------------------------------------------------------------------------
-test1: $(test_prefix)test1.cpp $(sf_obj)
+sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
 	$(catch2_cxx) -o $(test_bin_prefix)$@ $< -I$(hdr_prefix) -I$(sf_header) $(sf_obj)
 	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(test_bin_prefix)$@ --reporter compact --success
 #------------------------------------------------------------------------------
 # End Test1.cpp
 #------------------------------------------------------------------------------
