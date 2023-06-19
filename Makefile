@@ -35,10 +35,10 @@ common_debug = -Wextra -Werror -Wshadow -ggdb
 #
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
-  compiler = clang++
+  	compiler = clang++
 	debug_param = $(common_debug) -Wsign-conversion -Weffc++
 else
-  compiler = g++-12
+  	compiler = g++-13
 	debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
 endif
 

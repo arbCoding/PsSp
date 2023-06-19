@@ -1,4 +1,5 @@
 #include "pssp_misc.hpp"
+#include "sac_stream.hpp"
 #include <mutex>
 
 namespace pssp
@@ -245,13 +246,10 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_n
 {
     program_status.state.store(program_state::in);
     sac_1c sac{};
-    {
-        std::scoped_lock lock_sac(sac.mutex_);
-        sac.file_name = file_name;
-        sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
-    }
-    std::shared_lock lock_sac(sac.mutex_);
-    std::scoped_lock lock_pool(program_status.data_pool.mutex_);
+    std::scoped_lock lock_pool_sac(program_status.data_pool.mutex_, sac.mutex_);
+    sac.file_name = file_name;
+    sac.sac = SAC::SacStream(sac.file_name);
+    sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
     if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
     {
         program_status.data_pool.add_data(program_status.project, sac.data_id, program_status.project.checkpoint_id_);
