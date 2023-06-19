@@ -34,6 +34,9 @@ common_debug = -Wextra -Werror -Wshadow -ggdb
 #common_debug = -fsanitize=memory -fPIE -pie -fno-omit-frame-pointer -Wextra -Werror -Wshadow -ggdb
 #
 # Slightly different between MacOS and Linux
+# MacOS = Darwin (__APPLE__ and __MACH__)
+# Linux = Linux (__linux__)
+# Windows with MSYS2 = MSYS_NT (__MSYS2__) [unconfirmed] (soon!)
 ifeq ($(uname_s), Darwin)
   	compiler = clang++
 	debug_param = $(common_debug) -Wsign-conversion -Weffc++
