@@ -59,9 +59,8 @@ The purpose of this document is to provide a list of the tools that are being us
 
 1) [clangd](https://clangd.llvm.org/)
 2) [CppCheck](https://cppcheck.sourceforge.io/)
-3) [Lizard](https://github.com/terryyin/lizard)
-4) [FlawFinder](https://dwheeler.com/flawfinder/)
-5) [SonarLint](https://docs.sonarcloud.io/improving/sonarlint/)
+3) [FlawFinder](https://dwheeler.com/flawfinder/)
+4) [SonarLint](https://docs.sonarcloud.io/improving/sonarlint/)
 
 ## Dynamic Analysis
 

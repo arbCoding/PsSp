@@ -18,16 +18,12 @@ desired by the researcher is awesome, the need to do it is unfortunate as not ev
 ### Discussion
 
 The primary issues that I see today are:
-1) There are a lack of tools available to the seismologist that have a graphical user interface (GUI).
-2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)),
-but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed
-by different persons/groups, in order to perform a given research task.
+1) There is a lack of available tools with a modern graphical user interface (GUI).
+2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)), but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed by different persons/groups, in order to perform a given research task.
 3) The additional complication of OS-exclusive software, locking users of the wrong operating system out from certain tools is really quite unfortunate.
 4) The tools are often not parallel at all.
 
-The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying
-assumptions, nor the limitations. Often, these tools were never designed to be shared and therefore are designed in a non-intuitive fashion, with virtually no
-comments in the actual code. These tools are often not documented (or under-documented, or even *incorrectly documented*), they tend to be assumed as just plain *obvious*, despite that being entirely dependent upon a very specific (and undocumented) workflow by someone who simply does not care about UI/UX.
+The problem is magnified when you consider that often the end-user doesn't necessarily know how to use the tool, nor the underlying assumptions, nor the limitations. Often, these tools were never designed to be shared and therefore are designed in a non-intuitive fashion, with virtually no comments in the actual code. These tools are often not documented (or under-documented, or even *incorrectly documented*), they tend to be assumed as just plain *obvious*, despite that being entirely dependent upon a very specific (and undocumented) workflow by someone who simply does not care about UI/UX.
 
 The disconnected nature of the typical seismic workflow leads to reproducibility issues. A researcher must keep track of every step taken in the analysis manually, without error. This is easy when a research task is a straight line. However, when there is back-tracking, iterative analysis with minor tweaks, abandoned lines of exploration, and so on, it becomes exceedingly difficult to be able to provide an accurate account of the actual processing steps necessary to consistently reproduce presented/published results. In this age of modern computing, it is simply **absurd** that the seismologist has no other choice than to work with this *severe tool-deficit*.
 
@@ -35,12 +31,7 @@ The researcher shouldn't need to expend immense amounts of time/energy/mental-ba
 
 ### Purpose
 
-PsSp is being developed to solve these problems; to empower the seismologist with tools that are easy to use and foster exploration.
-By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually I hope to allow the end-user to improve their
-intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed
-with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and
-will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow and
-the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
+PsSp is being developed to solve these problems; to empower the seismologist with tools that are easy to use and foster exploration. By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually I hope to allow the end-user to improve their intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow an  the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
 
 ## Current status
 
@@ -48,14 +39,12 @@ This is extremely early in development.
 
 ### Current Focus: Unit and Integration Testing for Improved Stability
 
-This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem via distraction
-with a new, different, and annoying problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult to freshly introduce to the workflow. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause the analyst headaches due to being unstable.
+This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem via distraction with a new, different, and annoying problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult to freshly introduce to the workflow. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause the analyst headaches due to being unstable.
 
 To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
 
 ### Last Focus: Memory Management
-All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented
-a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory (*currently static, needs to be adjustable via a menu*). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
+All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory (*currently static, needs to be adjustable via a menu*). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
 ## ToDo
 
@@ -63,12 +52,12 @@ See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on wha
 
 ## Dependencies
 
-Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice
-or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
+Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
 
-* [Catch2](https://github.com/catchorg/Catch2)
+* [Catch2](https://github.com/catchorg/Catch2) v3.2.2
    * This will provide the unit/integration testing framework
-   * **Not yet integrated, this is planned.**
+   * Git submodule.
+   * Currently using the `almagamated` hpp and cpp for the tests. This results in slower compilation times of tests and is not considered the actively developed portion anymore (though still gets updated). This is because I do not use CMake and I have yet to figure out how to use their multi-header version yet (more important to start testing first).
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
    * This provides the OS-independent GUI.
    * Git submodule.
@@ -105,7 +94,7 @@ I test this on M1 MacOS (Ventura 13.4)), as well as on x86_64 Linux (Specificall
 ### MacOS
 Using [Homebrew](https://brew.sh/)
 ```shell
-brew install fftw glfw msgpack-cxx sqlite boost catch2
+brew install fftw glfw msgpack-cxx sqlite boost
 ```
 
 **NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
@@ -123,8 +112,7 @@ cd PsSp
 git submodule update --init
 ```
 
-That will download the appropriate submodule dependencies, with the correct commit version, automatically, from their respective GitHub repositories.
-You can confirm that by examining them inside the submodules directory (they will be empty before you initialize them and populate afterward).
+That will download the appropriate submodule dependencies, with the correct commit version, automatically, from their respective GitHub repositories. You can confirm that by examining them inside the submodules directory (they will be empty before you initialize them and populate afterward).
 
 **NOTE** if a submodule is not the correct version (detached head, but submodule was updated)
 From the base git dir (PsSp) run
@@ -150,9 +138,7 @@ If you want a stand-alone MacOS application file, then there are additional step
 
 I do not take credit for figuring this out, I found this [blog post](https://newbedev.com/building-osx-app-bundle) on the topic.
 
-First, I use [dylibbundler](https://github.com/auriamg/macdylibbundler/) to handle rebinding
-the links for the non-standard dynamically linked libraries. The application bundle requires that they
-be included in the application (such that the end-user doesn't need to install them).
+First, I use [dylibbundler](https://github.com/auriamg/macdylibbundler/) to handle rebinding the links for the non-standard dynamically linked libraries. The application bundle requires that they be included in the application (such that the end-user doesn't need to install them).
 
 This can be installed via Homebrew
 ```shell

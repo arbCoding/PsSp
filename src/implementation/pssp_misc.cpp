@@ -659,12 +659,10 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
 {
     project.delete_checkpoint_from_list(checkpoint_id);
     std::vector<int> data_ids{project.get_data_ids()};
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.state.store(program_state::out);
-        program_status.total_tasks = static_cast<int>(data_ids.size());
-        program_status.tasks_completed = 0;
-    }
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::out);
+    program_status.total_tasks = static_cast<int>(data_ids.size());
+    program_status.tasks_completed = 0;
     // Clear the actual data values
     for (int data_id : data_ids)
     {

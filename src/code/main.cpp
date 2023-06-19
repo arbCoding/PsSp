@@ -38,6 +38,15 @@
 //-----------------------------------------------------------------------------
 // Current Focus
 //-----------------------------------------------------------------------------
+// Overarching focus: Testing and Stability
+//=============================================================================
+// Main focus 1: Stability
+// This cannot be a buggy mess that is randomly crashing if the user manages to
+// select menu options at just the right time. Data races need to be prevented.
+// Part of this is in `Quick focus 2` below, but this is a bigger goal than
+// just speed. To be most useful, stability must triumph over speed.
+//=============================================================================
+// Main focus 2: Testing
 // I think we would really benefit from introducing unit testing
 // into the mix, to make this easier in the future (it is hard to remember
 // to test everything after every bug-fix).
@@ -50,6 +59,32 @@
 // up time of introducing it into the mix that will slow developement of new
 // features. But it will make life infinitely easier in the future as this
 // grows.
+//
+//=============================================================================
+// Quick focus 1: std::vector<int> => std::set<int>
+// Why? Set is automatically sorted and unique, with insert O(logn) and find O(logn)
+//
+// Vector is not sorted nor unique by default (additional overhead on my end).
+// insert/remove on end is O(1), internal insert/remove is O(n). Find is O(n)
+// plus the additional work of sorting them.
+//
+// I tend to use std::vector<int> for data_ids, but data_ids must be unique
+// and having them sorted makes finding fast
+//
+// That means std::set<int> would be better in this scenario. Especially for
+// large datasets.
+//-----------------------------------------------------------------------------
+// Quick focus 2: Revised locking scheme.
+// Currently, to prevent data races I have a very tight locking-scheme.
+// Unfortunately, this is slowing things down quite dramatically.
+//
+// I need to think of a better way, ideally I want locks to be held for the minimum
+// amount of time possible, I also need to avoid "lock-inversion" to help minimize
+// the chance of deadlock.
+// Obviously being slow is better than getting deadlocked, but it was quite stable
+// prior to fixing the data races found by the thread sanitizer. It was a lot faster
+// too. That leads me to believe that the locks are being given too much time (out of
+// poor design on my part).
 //-----------------------------------------------------------------------------
 // End Current Focus
 //-----------------------------------------------------------------------------

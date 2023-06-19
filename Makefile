@@ -94,6 +94,10 @@ code_prefix = $(base_prefix)code/
 exp_prefix = $(code_prefix)experiment/
 # Where experimental programs will go
 exp_bin_prefix = $(bin_prefix)experiment/
+# Where test code lives
+test_prefix = $(base_prefix)tests/
+# Where the test programs will go
+test_bin_prefix = $(bin_prefix)tests/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -155,7 +159,6 @@ else
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
-#imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 imgui_cxx = $(compiler) $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End Dear ImGui
@@ -223,7 +226,9 @@ endif
 # Catch2
 #------------------------------------------------------------------------------
 # Works for MacOS, unsure on Linux yet, have not installed there
-catch2_params = `pkg-config --cflags --libs catch2`
+catch2_dir = $(submod_prefix)catch2/extras/
+catch2_params = -I$(catch2_dir) $(catch2_dir)catch_amalgamated.cpp
+catch2_cxx = $(compiler) $(params_imgui) $(catch2_params)
 #------------------------------------------------------------------------------
 # End Catch2
 #------------------------------------------------------------------------------
@@ -257,6 +262,9 @@ macos: PsSp.app
 
 # Experimental programs
 exp: tree_exp
+
+# Tests
+tests: test1
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -318,7 +326,7 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 # PsSp
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(imgui_dir)misc/cpp/imgui_stdlib.cpp $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
-pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params) $(catch2_params)
+pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params)
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
@@ -360,6 +368,19 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 	@echo -e "Build finish: $$(date)\n"
 #------------------------------------------------------------------------------
 # End NTreeNode experimentation
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# Test1.cpp
+#------------------------------------------------------------------------------
+test1: $(test_prefix)test1.cpp $(sf_obj)
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(catch2_cxx) -o $(test_bin_prefix)$@ $< -I$(hdr_prefix) -I$(sf_header) $(sf_obj)
+	@echo -e "Build finish: $$(date)\n"
+#------------------------------------------------------------------------------
+# End Test1.cpp
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
