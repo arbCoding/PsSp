@@ -20,14 +20,19 @@ debug = true
 # Param is always used
 param = -std=c++20 -pedantic-errors -Wall
 # Common debug params regardless of clang++ or g++
+# Most basic, no dynamic analysis
+common_debug = -Wextra -Werror -Wshadow -ggdb
 #
-# This uses the thread-sanitizer, useful for finding data-races
-# though it also flags many false positives (better than missing
-# real positives)
+# This uses the ThreadSanitizer, useful for finding data-races
 #common_debug = -fsanitize=thread -pthread -Wextra -Werror -Wshadow -ggdb
 #
-# This does not use the thread-sanitizer (no pthreads needed either)
-common_debug = -Wextra -Werror -Wshadow -ggdb
+# This uses AddressSanitizer, useful for finding memory errors
+#common_debug = -fsanitize=address -fno-omit-frame-pointer -Wextra -Werror -Wshadow -ggdb
+#
+# Cannot use on M1 MacOS (doesn't support arm64-apple-darwin22.5.0)
+# This uses MemorySanitizer, useful for finding memory errors
+#common_debug = -fsanitize=memory -fPIE -pie -fno-omit-frame-pointer -Wextra -Werror -Wshadow -ggdb
+#
 # Slightly different between MacOS and Linux
 ifeq ($(uname_s), Darwin)
   compiler = clang++

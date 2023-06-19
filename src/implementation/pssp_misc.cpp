@@ -1,4 +1,5 @@
 #include "pssp_misc.hpp"
+#include <mutex>
 
 namespace pssp
 {
@@ -247,10 +248,10 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_n
     {
         std::scoped_lock lock_sac(sac.mutex_);
         sac.file_name = file_name;
-        sac.sac = SAC::SacStream(sac.file_name);
         sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
     }
     std::shared_lock lock_sac(sac.mutex_);
+    std::scoped_lock lock_pool(program_status.data_pool.mutex_);
     if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
     {
         program_status.data_pool.add_data(program_status.project, sac.data_id, program_status.project.checkpoint_id_);
@@ -449,12 +450,18 @@ void checkpoint_data(ProgramStatus& program_status, const int data_id, const int
 //------------------------------------------------------------------------
 // Unload data from memory
 //------------------------------------------------------------------------
+// This works fine inside of load_data
+// I think because the program state instantly goes back to idle
+// as there are not tasks being checked off, adding
 void unload_data(ProgramStatus& program_status)
 {
+    program_status.total_tasks += 2;
     program_status.state.store(program_state::in);
     // Remove the SQLite3 connections and the file paths
     program_status.project.unload_project();
+    ++program_status.tasks_completed;
     program_status.data_pool.empty_pool();
+    ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
 // End Unload data from memory
@@ -465,6 +472,7 @@ void unload_data(ProgramStatus& program_status)
 //------------------------------------------------------------------------
 void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 {
+    std::scoped_lock lock_pool(program_status.data_pool.mutex_);
     program_status.data_pool.add_data(program_status.project, data_id, program_status.project.checkpoint_id_, true);
     ++program_status.tasks_completed;
 }
@@ -477,14 +485,15 @@ void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 //------------------------------------------------------------------------
 void load_data(ProgramStatus& program_status, const std::filesystem::path& project_file, int checkpoint_id)
 {
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.state.store(program_state::in);
-        program_status.tasks_completed = 0;
-        program_status.total_tasks = 4;
-    }
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::in);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = 4;
     // First make sure we unload the present project
     unload_data(program_status);
+    // Ignoring SonarLint S5524 because unload_data uses a scoped_lock on the project as well
+    // and hence I cannot merge this with the above lock_program
+    std::scoped_lock lock_project(program_status.project.mutex);
     ++program_status.tasks_completed;
     // Connection to the project file
     program_status.project.connect_2_existing(project_file);
@@ -492,8 +501,8 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path& proje
     // Set the checkpoint id to the latest checkpoint
     program_status.project.set_checkpoint_id(checkpoint_id);
     // Clear the temporary data if it is there
-    program_status.project.clear_temporary_data();
-    ++program_status.tasks_completed;
+    //program_status.project.clear_temporary_data();
+    //++program_status.tasks_completed;
     // Get the data-ids to load
     program_status.project.current_data_ids = program_status.project.get_data_ids_for_current_checkpoint();
     program_status.project.updated = true;
@@ -508,12 +517,9 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path& proje
     {
         to_load = total_ids;
     }
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.total_tasks = static_cast<int>(to_load);
-        program_status.tasks_completed = 0;
-        program_status.state.store(program_state::in);
-    }
+    program_status.total_tasks = static_cast<int>(to_load);
+    program_status.tasks_completed = 0;
+    program_status.state.store(program_state::in);
     // If we have space to load more data
     for (std::size_t i{0}; i < to_load; ++i)
     {

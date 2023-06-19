@@ -1,4 +1,5 @@
 #include "pssp_projects.hpp"
+#include <mutex>
 
 namespace pssp
 {
@@ -539,16 +540,20 @@ Project::~Project()
 //------------------------------------------------------------------------
 int Project::add_sac(SAC::SacStream& sac, const std::string& source)
 {
-    // Lock the project to minimize issues
-    std::scoped_lock lock_project(mutex);
-    int data_id{add_data_provenance(source)};
-    create_data_checkpoint_table(data_id);
-    add_data_checkpoint(sac, data_id);
-    create_data_processing_table(data_id);
+    int data_id{};
+    {
+        // Lock the project to minimize issues
+        std::scoped_lock lock_project(mutex);
+        data_id = add_data_provenance(source);
+        create_data_checkpoint_table(data_id);
+        add_data_checkpoint(sac, data_id);
+        create_data_processing_table(data_id);
+        current_data_ids.push_back(data_id);
+        // Flag that we've been updated
+        updated = true;
+    }
+    // This locks the project separately
     add_data_processing(sq3_connection_file, data_id, "ADD");
-    current_data_ids.push_back(data_id);
-    // Flag that we've been updated
-    updated = true;
     return data_id;
 }
 //------------------------------------------------------------------------
@@ -857,6 +862,7 @@ void Project::add_data_checkpoint(SAC::SacStream& sac, int data_id, bool process
 //------------------------------------------------------------------------
 void Project::add_data_processing(sqlite3* connection, int data_id, const std::string& processing_comment)
 {
+    // I think that this is not working with the memory upon loading a project
     std::ostringstream oss{};
     oss << "INSERT INTO processing_" << data_id << " (";
     oss << "checkpoint_id, "; // 1
@@ -864,6 +870,8 @@ void Project::add_data_processing(sqlite3* connection, int data_id, const std::s
     oss << " VALUES (?, ?);";
     std::string sq3_string{oss.str()};
     sqlite3_stmt* sq3_statement{};
+    // Lock the project to minimize issues
+    std::scoped_lock lock_project(mutex);
     sq3_result = sqlite3_prepare_v2(connection, sq3_string.c_str(), -1, &sq3_statement, nullptr);
     sq3_result = sqlite3_bind_int(sq3_statement, 1, checkpoint_id_);
     sq3_result = sqlite3_bind_text(sq3_statement, 2, processing_comment.c_str(), -1, SQLITE_STATIC);

@@ -65,6 +65,10 @@ The purpose of this document is to provide a list of the tools that are being us
 
 ## Dynamic Analysis
 
+1) [Thread Sanitizer](https://github.com/google/sanitizers/wiki/ThreadSanitizerCppManual) - Check for data races
+2) [Address Sanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer) - Check for memory errors
+3) [Memory Sanitizer](https://github.com/google/sanitizers/wiki/MemorySanitizer) - Check for memory errors
+
 ## Testing
 
 1) [Catch2](https://github.com/catchorg/Catch2)

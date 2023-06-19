@@ -1,4 +1,5 @@
 #include "pssp_windows.hpp"
+#include <mutex>
 
 namespace pssp
 {
@@ -203,7 +204,12 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
 #endif
 
     ImGui::BeginMainMenuBar();
-    std::vector<int> data_ids{program_status.project.current_data_ids};
+    std::vector<int> data_ids{};
+    {
+        // Trying to prevent data-race on the current_data_ids
+        std::unique_lock lock_project(program_status.project.mutex, std::try_to_lock);
+        if (lock_project.owns_lock()) { data_ids = program_status.project.current_data_ids; }
+    }
     // File menu
     if (ImGui::BeginMenu("File##", menu_allowed.file_menu))
     {

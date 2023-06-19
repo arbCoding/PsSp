@@ -1,4 +1,6 @@
 #include "pssp_data_pool.hpp"
+#include "pssp_misc.hpp"
+#include <mutex>
 
 namespace pssp
 {
@@ -25,6 +27,8 @@ void DataPool::add_data(Project& project, const int data_id, const int checkpoin
 {
     if (data_id == -1 || !project.is_project) { return; }
     sac_1c sac{};
+    // Prevent data race
+    std::scoped_lock lock_project(project.mutex);
     sac.file_name = project.get_source(data_id);
     sac.sac = project.load_temporary_sacstream(data_id, checkpoint_id, from_checkpoint);
     sac.data_id = data_id;
@@ -108,7 +112,8 @@ void DataPool::remove_unused_once(Project& project, std::size_t& removed)
             std::unique_lock lock_sac(sac_ptr->mutex_, std::try_to_lock);
             if (lock_sac.owns_lock())
             {
-                success = true; 
+                success = true;
+                std::scoped_lock lock_project(project.mutex);
                 project.store_in_temporary_data(sac_ptr->sac, sac_ptr->data_id);
             }
         }
@@ -156,6 +161,7 @@ void DataPool::return_ptr(Project& project, const std::shared_ptr<sac_1c>& sac_p
         if (current_data == sac_ptr) { return; }
     }
     // It was not in the data-pool
+    std::scoped_lock lock_project(project.mutex);
     project.store_in_temporary_data(sac_ptr->sac, sac_ptr->data_id);
 }
 

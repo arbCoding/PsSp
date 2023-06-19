@@ -138,8 +138,8 @@ public:
     // Function for returning data to data-pool
     void return_ptr(Project& project, const std::shared_ptr<sac_1c>& sac_ptr);
     std::vector<int> get_iter(Project& project);
-private:
     std::mutex mutex_{};
+private:
     std::map<int, std::shared_ptr<sac_1c>> data_pool_{};
     // Add and return a new raw pointer
     std::shared_ptr<sac_1c> get_new_pointer(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
