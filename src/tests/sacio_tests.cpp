@@ -170,18 +170,14 @@ TEST_CASE("Binary Conversion")
             SECTION("Empty")
             {
                 const std::string test_str{""};
-                const std::string result_str{"        "};
-                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)) == result_str);
-                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)).substr(0, 0) == test_str);
+                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)) == test_str);
                 BENCHMARK("String->Binary->String Empty")
                 { return SAC::binary_to_string(SAC::string_to_binary(test_str)); };
             }
             SECTION("Small")
             {
                 const std::string test_str{"0123"};
-                const std::string result_str{"0123    "};
-                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)) == result_str);
-                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)).substr(0, 4) == test_str);
+                REQUIRE(SAC::binary_to_string(SAC::string_to_binary(test_str)) == test_str);
                 BENCHMARK("String->Binary->String Half")
                 { return SAC::binary_to_string(SAC::string_to_binary(test_str)); };
             }
@@ -208,18 +204,14 @@ TEST_CASE("Binary Conversion")
             SECTION("Empty")
             {
                 const std::string test_str{""};
-                const std::string result_str{"                "};
-                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)) == result_str);
-                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)).substr(0, 0) == test_str);
+                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)) == test_str);
                 BENCHMARK("String->Binary->String Empty")
                 { return SAC::binary_to_string(SAC::string_to_binary(test_str)); };
             }
             SECTION("Small")
             {
                 const std::string test_str{"01234567"};
-                const std::string result_str{"01234567        "};
-                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)) == result_str);
-                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)).substr(0, 8) == test_str);
+                REQUIRE(SAC::binary_to_long_string(SAC::long_string_to_binary(test_str)) == test_str);
                 BENCHMARK("String->Binary->String Half")
                 { return SAC::binary_to_string(SAC::string_to_binary(test_str)); };
             }

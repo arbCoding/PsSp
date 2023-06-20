@@ -5,6 +5,7 @@
 // Catch2 Amalgamated header
 #include <catch_amalgamated.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <filesystem>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -14,11 +15,7 @@ TEST_CASE("Empty SAC::SacStream")
 {
     SECTION("Building an empty SAC::SacStream")
     {
-        BENCHMARK("Construct and Destruct")
-        {
-            SAC::SacStream tmp_sac{};
-            return;
-        };
+        BENCHMARK("Construct and Destruct") { SAC::SacStream tmp_sac{}; return; };
     }
     SAC::SacStream test_sac{};
     // Might seem silly, but you never know!
@@ -95,7 +92,7 @@ TEST_CASE("Empty SAC::SacStream")
         REQUIRE(test_sac.nzmin == SAC::unset_int);
         REQUIRE(test_sac.nzsec == SAC::unset_int);
         REQUIRE(test_sac.nzmsec == SAC::unset_int);
-        REQUIRE(test_sac.nvhdr == SAC::unset_int);
+        REQUIRE(test_sac.nvhdr == 7);
         REQUIRE(test_sac.norid == SAC::unset_int);
         REQUIRE(test_sac.nevid == SAC::unset_int);
         REQUIRE(test_sac.npts == SAC::unset_int);
@@ -182,5 +179,37 @@ TEST_CASE("Empty SAC::SacStream")
         REQUIRE(test_sac.stla == SAC::unset_double);
         REQUIRE(test_sac.sb == SAC::unset_double);
         REQUIRE(test_sac.sdelta == SAC::unset_double);
+    }
+}
+
+TEST_CASE("Input/Output")
+{
+    SAC::SacStream test_sac{};
+    std::filesystem::path test_dir{std::filesystem::temp_directory_path()};
+    std::filesystem::path test_file{test_dir / "test.SAC"};
+    std::cout << "Test file: " << test_file << '\n';
+    SECTION("Empty SAC::SacStream")
+    {
+        SECTION("Out")
+        {
+            BENCHMARK("Writing") { test_sac.write(test_file); return; };
+            std::filesystem::remove(test_file);
+        }
+        SECTION("In")
+        {
+            test_sac.write(test_file);
+            BENCHMARK("Reading") { SAC::SacStream in_sac = SAC::SacStream(test_file.string()); };
+            std::filesystem::remove(test_file);
+        }
+        SECTION("Comparison Between Out and In")
+        {
+            test_sac.write(test_file);
+            SAC::SacStream in_sac = SAC::SacStream(test_file.string());
+            std::cout << test_sac.kstnm << ',' << in_sac.kstnm << '\n';
+            std::cout << in_sac.kstnm << ',' << test_sac.kstnm << '\n';
+            std::cout << test_sac.kstnm.size() << ',' << in_sac.kstnm.size() << '\n';
+            REQUIRE(in_sac == test_sac);
+            std::filesystem::remove(test_file);
+        }
     }
 }
