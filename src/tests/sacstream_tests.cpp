@@ -12,6 +12,14 @@
 // Test an empty sacstream
 TEST_CASE("Empty SAC::SacStream")
 {
+    SECTION("Building an empty SAC::SacStream")
+    {
+        BENCHMARK("Construct and Destruct")
+        {
+            SAC::SacStream tmp_sac{};
+            return;
+        };
+    }
     SAC::SacStream test_sac{};
     // Might seem silly, but you never know!
     SECTION("Unset Floats are equal to SAC::unset_float (-12345.0f)")
