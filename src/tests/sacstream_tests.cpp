@@ -182,6 +182,17 @@ TEST_CASE("Empty SAC::SacStream")
     }
 }
 
+// For debugging
+void print_control_characters(const std::string& str)
+{
+    for (char c : str)
+    {
+        if (std::iscntrl(static_cast<unsigned char>(c))) { std::cout << "\\x" << std::hex << static_cast<int>(c); }
+        else { std::cout << c; }
+    }
+    std::cout << '\n';
+}
+
 TEST_CASE("Input/Output")
 {
     SAC::SacStream test_sac{};
@@ -205,9 +216,6 @@ TEST_CASE("Input/Output")
         {
             test_sac.write(test_file);
             SAC::SacStream in_sac = SAC::SacStream(test_file.string());
-            std::cout << test_sac.kstnm << ',' << in_sac.kstnm << '\n';
-            std::cout << in_sac.kstnm << ',' << test_sac.kstnm << '\n';
-            std::cout << test_sac.kstnm.size() << ',' << in_sac.kstnm.size() << '\n';
             REQUIRE(in_sac == test_sac);
             std::filesystem::remove(test_file);
         }
