@@ -228,7 +228,6 @@ endif
 # Works for MacOS, unsure on Linux yet, have not installed there
 catch2_dir = $(submod_prefix)catch2/extras/
 catch2_params = -I$(catch2_dir) $(catch2_dir)catch_amalgamated.cpp
-catch2_cxx = $(compiler) $(params_imgui) $(catch2_params)
 #------------------------------------------------------------------------------
 # End Catch2
 #------------------------------------------------------------------------------
@@ -264,7 +263,7 @@ macos: PsSp.app
 exp: tree_exp
 
 # Tests
-tests: sacstream_tests
+tests: sacio_tests sacstream_tests
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -370,19 +369,43 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 # End NTreeNode experimentation
 #------------------------------------------------------------------------------
 
+# Catch2 Compilation setup
+catch2_cxx = $(compiler) $(params_imgui) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) $(sf_obj)
+
+# Nice and compact
+#test_options = --reporter compact --success
+# A bit verbose
+test_options = --success
+
 #------------------------------------------------------------------------------
-# Test1.cpp
+# SacIO Tests
+#------------------------------------------------------------------------------
+sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj)
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(catch2_cxx) -o $(test_bin_prefix)$@ $<
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(test_bin_prefix)$@ $(test_options)
+
+#------------------------------------------------------------------------------
+# End SacIO Tests
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# SacStream Tests
 #------------------------------------------------------------------------------
 sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(catch2_cxx) -o $(test_bin_prefix)$@ $< -I$(hdr_prefix) -I$(sf_header) $(sf_obj)
+	$(catch2_cxx) -o $(test_bin_prefix)$@ $<
 	@echo -e "Build finish: $$(date)\n"
 	@echo -e "Running test $@\n"
-	$(test_bin_prefix)$@ --reporter compact --success
+	$(test_bin_prefix)$@ $(test_options)
 #------------------------------------------------------------------------------
-# End Test1.cpp
+# End SacStream Tests
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------

@@ -158,6 +158,17 @@ dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d .
 
 Of course, this is implemented automatically in the [Makefile](Makefile), assuming you also used Homebrew to install the other packages (non-Git submodules).
 
+## Testing
+
+To run the tests you'll need to have Catch2 (Git Submodule, if you followed [my compilation instructions](#compilation-instructions) you're good to go).
+
+The tests will compile and run automatically after you execute the following command
+```shell
+make tests
+```
+
+Note that because I do not use CMake, I use the amalgamated hpp/cpp version of Catch2 from their extras folder. This takes longer to compile and isn't considered an official priority anymore, but it does get updated and I find it easier to use.
+
 ---
 
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.

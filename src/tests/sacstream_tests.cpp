@@ -1,6 +1,13 @@
-#include "sac_io.hpp"
-#include <sac_stream.hpp>
+//-----------------------------------------------------------------------------
+// Include statements
+//-----------------------------------------------------------------------------
+#include "sac_stream.hpp"
+// Catch2 Amalgamated header
 #include <catch_amalgamated.hpp>
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+//-----------------------------------------------------------------------------
+// End Include statements
+//-----------------------------------------------------------------------------
 
 // Test an empty sacstream
 TEST_CASE("Empty SAC::SacStream")
