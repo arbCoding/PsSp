@@ -18,6 +18,7 @@
 #include "pssp_spectral.hpp"
 // pssp::ThreadPool
 #include "pssp_threadpool.hpp"
+#include <sac_stream.hpp>
 // GLFW graphical backend
 #include <GLFW/glfw3.h>
 // Dear ImGui and Graphical Backends

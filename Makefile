@@ -161,7 +161,8 @@ ifeq ($(uname_s), Darwin)
 else ifeq ($(uname_s), Linux)
 	imgui_libs += -lGL
 else
-	imgui_libs += -lGl /entry:mainCRTStartu
+	#imgui_libs += -lGl /entry:mainCRTStartu
+	imgui_libs += -lgdi32 -lopengl32 -limm32
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)

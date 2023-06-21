@@ -7,6 +7,7 @@
 #include "pssp_projects.hpp"
 #include <sac_stream.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <filesystem>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -71,7 +72,8 @@ namespace pssp
 // to deal with having a mutex
 struct sac_1c
 {
-    std::string file_name{};
+    //std::string file_name{};
+    std::filesystem::path file_name{};
     SAC::SacStream sac{};
     std::shared_mutex mutex_{};
     int data_id{};

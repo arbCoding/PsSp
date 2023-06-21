@@ -1,8 +1,16 @@
 #include "pssp_projects.hpp"
-#include <mutex>
 
 namespace pssp
 {
+#if defined(__MINGW32__)
+//-----------------------------------------------------------------------------
+// Custom wstring converter
+//-----------------------------------------------------------------------------
+std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+//-----------------------------------------------------------------------------
+// End Custom wstring converter
+//-----------------------------------------------------------------------------
+#endif
 //-----------------------------------------------------------------------------
 // Private stuff
 //-----------------------------------------------------------------------------
@@ -376,7 +384,13 @@ int Project::add_data_provenance(const std::string& source)
 void Project::connect_file()
 {
     // Create a new connection
+    
+#if defined(__MINGW32__)
+    std::string narrow_path{converter.to_bytes(path_.wstring())};
+    sq3_result = sqlite3_open_v2(narrow_path.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+#else
     sq3_result = sqlite3_open_v2(path_.c_str(), &sq3_connection_file, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+#endif
     // Set the journal mode to WAL
     sq3_result = sqlite3_exec(sq3_connection_file, "PRAGMA journal_mode=WAL", nullptr, nullptr, &sq3_error_message);
 }

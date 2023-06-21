@@ -72,6 +72,11 @@ The purpose of this document is to provide a list of the tools that are being us
 
 1) [Catch2](https://github.com/catchorg/Catch2)
 
+## Miscellaneous
+
+1) [Bear](https://github.com/rizsotto/Bear) - Used to generate compile_commands.json on Linux/MacOS
+2) [compilelib](https://github.com/nickdiego/compiledb) - Used to generate compile_commands.json on Windows (Not working...)
+
 ## C++ References
 
 1) [cppreference.com](https://en.cppreference.com/w/)
@@ -82,3 +87,4 @@ The purpose of this document is to provide a list of the tools that are being us
 6) [LibC++20 Status](https://libcxx.llvm.org/Status/Cxx20.html)
 7) [Incomplete List of Static Analysis Tools](https://github.com/analysis-tools-dev/static-analysis#cpp)
 8) [Incomplete List of Dynamic Analysis Tools](https://github.com/analysis-tools-dev/dynamic-analysis#cpp)
+9) [Making portable executables for Windows](https://stackoverflow.com/questions/31449769/distribute-a-program-compiled-with-mingw-g)

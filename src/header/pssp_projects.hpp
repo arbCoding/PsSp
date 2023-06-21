@@ -15,10 +15,15 @@
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <algorithm>
 #include <atomic>
+#if defined(__MINGW32__)
+// CodeCvt is needed to allow converting between std::wstring (Windows) and std::string (Linux/Mac)
+#include <codecvt>
+#endif
 #include <filesystem>
 #include <ios>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <sstream>
 #include <thread>
