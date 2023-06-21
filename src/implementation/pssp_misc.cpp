@@ -275,7 +275,7 @@ void scan_and_read_dir(ProgramStatus& program_status, const std::filesystem::pat
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(file_names.size());
     // Queue them up!
-    for (std::string file_name : file_names)
+    for (const std::filesystem::path& file_name : file_names)
     {
         program_status.thread_pool.enqueue(read_sac, std::ref(program_status), file_name);
     }

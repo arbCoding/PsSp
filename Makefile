@@ -10,7 +10,7 @@
 # Use the correct shell for bash scripts
 # seemed to default to /bin/sh when I use /bin/bash
 SHELL := /bin/bash
-# Linux or mac
+# Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release mode
 debug = true
@@ -36,13 +36,16 @@ common_debug = -Wextra -Werror -Wshadow -ggdb
 # Slightly different between MacOS and Linux
 # MacOS = Darwin (__APPLE__ and __MACH__)
 # Linux = Linux (__linux__)
-# Windows with MSYS2 = MSYS_NT (__MSYS2__) [unconfirmed] (soon!)
+# Windows with MSYS2 = MSYS_NT-10.0-22621 (__MINGW32__)
 ifeq ($(uname_s), Darwin)
   	compiler = clang++
 	debug_param = $(common_debug) -Wsign-conversion -Weffc++
-else
+else ifeq ($(uname_s), Linux)
   	compiler = g++-13
 	debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
+else
+	compiler = g++
+	debug_param = $(common_debu) -fanalyzer -Wsign-conversion -Weffc++
 endif
 
 # Specific to Dear ImGui
@@ -152,10 +155,13 @@ imgui_flags = `pkg-config --cflags glfw3`
 imgui_libs = `pkg-config --static --libs glfw3`
 
 # Slightly different between MacOS and Linux
+# I have no idea what it should be on Windows
 ifeq ($(uname_s), Darwin)
 	imgui_libs += -framework OpenGL
-else
+else ifeq ($(uname_s), Linux)
 	imgui_libs += -lGL
+else
+	imgui_libs += -lGl /entry:mainCRTStartu
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
@@ -186,7 +192,8 @@ implot_dir = $(submod_prefix)implot/
 # That way we're only confirming for out code
 # If this is an issue later, we can include it normally to track down
 # IT WORKS
-imgui_cxx += -isystem$(implot_dir)
+#imgui_cxx += -isystem$(implot_dir)
+imgui_cxx += -I$(implot_dir)
 #------------------------------------------------------------------------------
 # End ImPlot
 #------------------------------------------------------------------------------

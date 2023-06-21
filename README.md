@@ -52,7 +52,7 @@ See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on wha
 
 ## Dependencies
 
-Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice or manually. For those other packages I provide installation guidance for MacOS and Linux systems [here](#compilation-instructions).
+Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice or manually. For those other packages I provide installation guidance for MacOS, Linux, and Windows systems [here](#compilation-instructions).
 
 * [Catch2](https://github.com/catchorg/Catch2) v3.2.2
    * This will provide the unit/integration testing framework
@@ -87,9 +87,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 ## Compilation instructions
 
-I test this on M1 MacOS (Ventura 13.4)), as well as on x86_64 Linux (Specifically Ubuntu 23.04).
-
-**Note** I do not, currently, have a Windows system to test on. I suspect you'll want to use something along the lines of (in no particular order) [MSYS2](https://www.msys2.org/), [WinGet](https://github.com/microsoft/winget-cli), [Scoop](https://scoop.sh/), [vcpkg](https://vcpkg.io/), [Chocolatey](https://chocolatey.org/), [Cygwin](https://www.cygwin.com/), or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to setup your compilation environment on Windows.
+I test this on M1 MacOS (Ventura 13.4), x86_64 Linux (Specifically Ubuntu 23.04), and x86_64 Windows (Windows 11).
 
 ### MacOS
 Using [Homebrew](https://brew.sh/)
@@ -104,6 +102,29 @@ additional requirements. Please see the [additional instructions](#special-macos
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
+### Windows (Windows 11)
+Setup in Windows is a tiny bit more complicated (at least to me) so I'm going to be a little more detailed here. I use a combination of [MSYS2](https://www.msys2.org/) and [Chocolatey](https://chocolatey.org/) to setup my development environment.
+
+---
+**Installed Via MSYS2**
+Additional information about the different compilers in MSYS2 [here](https://stackoverflow.com/questions/68607245/usage-of-msys2-environments)
+
+*Note on UCRT* do not use the UCRT versions. Use Mingw
+1) [GCC](https://packages.msys2.org/package/mingw-w64-ucrt-x86_64-gcc?repo=ucrt64)
+2) [CPPCheck](https://packages.msys2.org/package/mingw-w64-x86_64-cppcheck?repo=mingw64)
+3) [GLFW](https://packages.msys2.org/package/mingw-w64-x86_64-glfw?repo=mingw64)
+4) [Clang](https://packages.msys2.org/package/mingw-w64-x86_64-clang-tools-extra)
+5) [FFTW3](https://packages.msys2.org/package/mingw-w64-x86_64-fftw?repo=mingw64)
+6) [SQLite3](https://packages.msys2.org/package/mingw-w64-x86_64-sqlite3?repo=mingw64)
+7) [Boost](https://packages.msys2.org/package/mingw-w64-x86_64-boost?repo=mingw64)
+8) [MessagePack](https://packages.msys2.org/package/mingw-w64-x86_64-msgpack-c?repo=mingw64)
+9) [Mingw Toolchain](https://packages.msys2.org/groups/mingw-w64-x86_64-toolchain)
+
+---
+**Installed via Chocolatey**
+1) [VS Codium](https://community.chocolatey.org/packages/vscodium)
+2) [AdoptOpenJDK](https://community.chocolatey.org/packages/adoptopenjdk) (used by SolarLint)
+
 
 Next you need to clone this project and initialize the [submodules](submodules)
 ```shell

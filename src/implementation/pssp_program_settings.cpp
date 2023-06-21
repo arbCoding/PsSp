@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 namespace pssp
 {
+/* MSGPack having issues in windows, still want to test.
 void ProgramSettings::create_new_project(std::filesystem::path new_base_dir)
 {
     // Always the same named file, in the direc tory
@@ -51,6 +52,7 @@ void ProgramSettings::load_project(std::filesystem::path md_full_path)
     oh.get().convert(tmp);
     base_dir = std::filesystem::path(tmp);
 }
+*/
 };
 //-----------------------------------------------------------------------------
 // End pssp namespace
