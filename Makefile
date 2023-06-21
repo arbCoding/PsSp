@@ -200,6 +200,14 @@ imgui_cxx += -I$(implot_dir)
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Xoshiro-cpp
+#------------------------------------------------------------------------------
+xoshiro_dir = $(submod_prefix)Xoshiro-cpp/
+#------------------------------------------------------------------------------
+# End Xoshiro-cpp
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Boost
 #------------------------------------------------------------------------------
 ifeq ($(uname_s), Darwin)
@@ -378,7 +386,7 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 #------------------------------------------------------------------------------
 
 # Catch2 Compilation setup
-catch2_cxx = $(compiler) $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) $(sf_obj)
+catch2_cxx = $(compiler) $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) -I$(xoshiro_dir) $(sf_obj)
 
 # Nice and compact
 #test_options = --reporter compact --success

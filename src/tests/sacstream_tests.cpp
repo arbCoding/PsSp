@@ -4,10 +4,59 @@
 #include "sac_stream.hpp"
 // Catch2 Amalgamated header
 #include <catch_amalgamated.hpp>
+// Good and fast random number generation
+#include <XoshiroCpp.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <chrono>
 #include <filesystem>
+// needed by Xoshiro to seed the png and to create the uniform distribution
+// Xoshiro then randomly samples that distribution
+#include <random>
 //-----------------------------------------------------------------------------
 // End Include statements
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Random number generation
+//-----------------------------------------------------------------------------
+namespace pssp
+{
+// Self-seeding
+XoshiroCpp::Xoshiro256Plus init()
+{
+    // Random device for seeding
+    std::random_device rd{};
+    // Two runtime constants of current time
+    const uint64_t t1{static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count())};
+    const uint64_t t2{static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count())};
+    // Seed the initial state
+    const XoshiroCpp::Xoshiro256Plus::state_type initial_state =
+    {
+        XoshiroCpp::SplitMix64{t1}(),
+        XoshiroCpp::SplitMix64{rd()}(),
+        XoshiroCpp::SplitMix64{t2}(),
+        XoshiroCpp::SplitMix64{rd()}()
+    };
+    return XoshiroCpp::Xoshiro256Plus{initial_state};
+}
+
+// build the PRNG
+inline XoshiroCpp::Xoshiro256Plus xos{init()};
+
+// give us the random double within the bounds [min, max] (inclusive)
+inline double get(double min, double max) { std::uniform_real_distribution<> die{min, max}; return die(xos); }
+
+void random_vector(std::vector<double>& data, const double minimum = -1.0, const double maximum = 1.0)
+{
+    std::uniform_real_distribution<> die{minimum, maximum};
+    for (std::size_t i{0}; i < data.size(); ++i)
+    {
+        data[i] = die(pssp::xos);
+    }
+}
+}
+//-----------------------------------------------------------------------------
+// Random number generation
 //-----------------------------------------------------------------------------
 
 // Test an empty sacstream
@@ -383,11 +432,25 @@ TEST_CASE("Input/Output")
             BENCHMARK("Reading") { SAC::SacStream in_sac = SAC::SacStream(test_file.string()); };
             std::filesystem::remove(test_file);
         }
-        SECTION("Comparison Between Out and In")
+        SECTION("Comparison Between Out and In Zeros")
         {
             test_sac.write(test_file);
             SAC::SacStream in_sac = SAC::SacStream(test_file.string());
-            //REQUIRE(in_sac == test_sac);
+            REQUIRE(test_sac == in_sac);
+            std::filesystem::remove(test_file);
+        }
+        SECTION("Randomizing data")
+        {
+            BENCHMARK("Random vector generation.") { pssp::random_vector(test_sac.data1); };
+        }
+        SECTION("Comparison Between Out and In Random")
+        {
+            pssp::random_vector(test_sac.data1);
+            if (test_sac.leven == false || test_sac.iftype > 1) { pssp::random_vector(test_sac.data2); }
+            test_sac.write(test_file);
+            SAC::SacStream in_sac = SAC::SacStream(test_file.string());
+            // Note that this equality tests to equality within tolerance of what can be handled via a float
+            // this is because binary SAC files use floats for the data values, not doubles
             REQUIRE(test_sac == in_sac);
             std::filesystem::remove(test_file);
         }

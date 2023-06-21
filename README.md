@@ -54,8 +54,13 @@ See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on wha
 
 Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice or manually. For those other packages I provide installation guidance for MacOS, Linux, and Windows systems [here](#compilation-instructions).
 
+* [Xoshiro-cpp](https://github.com/Reputeless/Xoshiro-cpp)
+   * This provides good and fast pseudo-random number generation
+   * Currently only used to generate random data for unit tests
+   * Will be implemented in PsSp for use eventually (to generate random noise, generate random perturbations in an inversion, etc.)
+   * Git submodule.
 * [Catch2](https://github.com/catchorg/Catch2) v3.2.2
-   * This will provide the unit/integration testing framework
+   * This provides the unit/integration testing framework
    * Git submodule.
    * Currently using the `almagamated` hpp and cpp for the tests. This results in slower compilation times of tests and is not considered the actively developed portion anymore (though still gets updated). This is because I do not use CMake and I have yet to figure out how to use their multi-header version yet (more important to start testing first).
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
