@@ -13,7 +13,7 @@ SHELL := /bin/bash
 # Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = false
+debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ catch2_build := $(catch2_dir)build/
 catch2_lib := $(catch2_build)src/
 catch2_inc := $(catch2_dir)src/
 catch2_user_inc := $(catch2_build)/generated-includes/
-catch2_params := -L$(catch2_lib) -lCatch2 -lCatch2Main -I$(catch2_inc) -I$(catch2_user_inc)
+catch2_params := -I$(catch2_inc) -I$(catch2_user_inc) -L$(catch2_lib) -lCatch2Main -lCatch2
 #------------------------------------------------------------------------------
 # End Catch2
 #------------------------------------------------------------------------------
@@ -397,7 +397,7 @@ catch2:
 #------------------------------------------------------------------------------
 
 # Catch2 Compilation setup
-catch2_cxx = $(compiler) $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) -I$(xoshiro_dir) $(sf_obj)
+catch2_full_params = $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) -I$(xoshiro_dir) $(sf_obj)
 
 # Nice and compact
 #test_options = --reporter compact --success
@@ -411,7 +411,7 @@ sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj) catch2
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(catch2_cxx) -o $(test_bin_prefix)$@ $<
+	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params)
 	@echo -e "Build finish: $$(date)\n"
 	@echo -e "Running test $@\n"
 	$(test_bin_prefix)$@ $(test_options)
@@ -427,7 +427,7 @@ sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
-	$(catch2_cxx) -o $(test_bin_prefix)$@ $<
+	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params)
 	@echo -e "Build finish: $$(date)\n"
 	@echo -e "Running test $@\n"
 	$(test_bin_prefix)$@ $(test_options)

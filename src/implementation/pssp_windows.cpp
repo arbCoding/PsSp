@@ -642,13 +642,6 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac)
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
             ImPlot::PlotLine("", &visual_sac.sac.data1[0], static_cast<int>(visual_sac.sac.data1.size()), visual_sac.sac.delta);
-            // Just checking to see if I can plot the first 10 values, on Windows the full size is beyond what
-            // ImGui allows (16-bit indices, need to downsample seismograms for plotting [was a ToDo item anyway...])
-            //ImPlot::PlotLine("", &visual_sac.sac.data1[0], 10, visual_sac.sac.delta);
-            // See imgui.cpp lines 4707-4721 (can search for this string: `Too many vertices in ImDrawList using 16-bit indices. Read comment above`)
-            // This allows us to add a separate context menu inside the plot area that appears upon double left-clicking
-            // Right-clicking is reserved for the built in context menu (have not figured out how to add to it without
-            // directly modifying ImPlot, which I don't want to do)
             if (ImPlotContext const* plot_ctx{ImPlot::GetCurrentContext()}; plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             { ImGui::OpenPopup("CustomPlotOptions##"); }
             
