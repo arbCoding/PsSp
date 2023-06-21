@@ -2,8 +2,9 @@
 // Include statements
 //-----------------------------------------------------------------------------
 #include "sac_stream.hpp"
-// Catch2 Amalgamated header
-#include <catch_amalgamated.hpp>
+// Catch2 Standard headers
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
 // Good and fast random number generation
 #include <XoshiroCpp.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library

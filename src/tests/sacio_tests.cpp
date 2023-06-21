@@ -2,12 +2,14 @@
 // Include statements
 //-----------------------------------------------------------------------------
 #include "sac_io.hpp"
-// Catch2 Amalgamated header
-#include <catch_amalgamated.hpp>
+// Catch2 Standard headers
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <bitset>
 #include <iomanip>
 #include <limits>
+#include <sstream>
 //-----------------------------------------------------------------------------
 // End Include statements
 //-----------------------------------------------------------------------------
@@ -85,7 +87,7 @@ TEST_CASE("Binary Conversion")
             BENCHMARK("Float->Binary->Float std::numeric_limits<float>::lowest()")
             { return SAC::binary_to_float(SAC::float_to_binary(std::numeric_limits<float>::lowest())); };
             float neg_epsilon{-std::numeric_limits<float>::epsilon()};
-            std::ostringstream oss;
+            std::ostringstream oss{};
             oss << std::setprecision(std::numeric_limits<float>::max_digits10) << neg_epsilon;
             std::string s_neg_epsilon{oss.str()};
             CAPTURE(s_neg_epsilon);

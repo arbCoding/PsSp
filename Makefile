@@ -188,12 +188,6 @@ imgui_file_cxx = $(compiler) $(param) $(release_param) -I$(imgui_dir) -I$(imgui_
 # ImPlot
 #------------------------------------------------------------------------------
 implot_dir = $(submod_prefix)implot/
-# This library triggers sign-conversion warnings. So we
-# should treat as a system header and ignore warnings
-# That way we're only confirming for out code
-# If this is an issue later, we can include it normally to track down
-# IT WORKS
-#imgui_cxx += -isystem$(implot_dir)
 imgui_cxx += -I$(implot_dir)
 #------------------------------------------------------------------------------
 # End ImPlot
@@ -241,9 +235,12 @@ endif
 #------------------------------------------------------------------------------
 # Catch2
 #------------------------------------------------------------------------------
-# Works for MacOS, unsure on Linux yet, have not installed there
-catch2_dir = $(submod_prefix)catch2/extras/
-catch2_params = -I$(catch2_dir) $(catch2_dir)catch_amalgamated.cpp
+catch2_dir := $(submod_prefix)catch2/
+catch2_build := $(catch2_dir)build/
+catch2_lib := $(catch2_build)src/
+catch2_inc := $(catch2_dir)src/
+catch2_user_inc := $(catch2_build)/generated-includes/
+catch2_params := -L$(catch2_lib) -lCatch2 -lCatch2Main -I$(catch2_inc) -I$(catch2_user_inc)
 #------------------------------------------------------------------------------
 # End Catch2
 #------------------------------------------------------------------------------
@@ -385,6 +382,20 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 # End NTreeNode experimentation
 #------------------------------------------------------------------------------
 
+#------------------------------------------------------------------------------
+# Catch2
+#------------------------------------------------------------------------------
+# Trying to migrate to their more modern usage...
+catch2:
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(catch2_build) || mkdir $(catch2_build) && cd $(catch2_build) && cmake ../ && cmake --build .
+	@echo -e "Build finish: $$(date)\n"
+
+#------------------------------------------------------------------------------
+# End Catch2
+#------------------------------------------------------------------------------
+
 # Catch2 Compilation setup
 catch2_cxx = $(compiler) $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) -I$(xoshiro_dir) $(sf_obj)
 
@@ -396,7 +407,7 @@ test_options = --success
 #------------------------------------------------------------------------------
 # SacIO Tests
 #------------------------------------------------------------------------------
-sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj)
+sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj) catch2
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
@@ -412,7 +423,7 @@ sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj)
 #------------------------------------------------------------------------------
 # SacStream Tests
 #------------------------------------------------------------------------------
-sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj)
+sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
@@ -434,6 +445,8 @@ sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj)
 clean:
 	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
+	echo $(catch2_build)
+	rm -rf $(catch2_build)
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------

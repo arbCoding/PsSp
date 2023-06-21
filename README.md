@@ -62,7 +62,6 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 * [Catch2](https://github.com/catchorg/Catch2) v3.2.2
    * This provides the unit/integration testing framework
    * Git submodule.
-   * Currently using the `almagamated` hpp and cpp for the tests. This results in slower compilation times of tests and is not considered the actively developed portion anymore (though still gets updated). This is because I do not use CMake and I have yet to figure out how to use their multi-header version yet (more important to start testing first).
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
    * This provides the OS-independent GUI.
    * Git submodule.
@@ -125,8 +124,8 @@ If it is not uncommented PsSp will likely crash upon plotting seismic data. Bein
 **Installed Via MSYS2**
 Additional information about the different compilers in MSYS2 [here](https://stackoverflow.com/questions/68607245/usage-of-msys2-environments)
 
-*Note on UCRT* do not use the UCRT versions. Use Mingw
-1) [GCC](https://packages.msys2.org/package/mingw-w64-ucrt-x86_64-gcc?repo=ucrt64)
+*Note on UCRT* do not use the UCRT (Universal C RunTime) versions. Use Mingw versions since most libraries don't have UCRT versions.
+1) [GCC](https://packages.msys2.org/package/mingw-w64-x86_64-gcc?repo=mingw64)
 2) [CPPCheck](https://packages.msys2.org/package/mingw-w64-x86_64-cppcheck?repo=mingw64)
 3) [GLFW](https://packages.msys2.org/package/mingw-w64-x86_64-glfw?repo=mingw64)
 4) [Clang](https://packages.msys2.org/package/mingw-w64-x86_64-clang-tools-extra)
