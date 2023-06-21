@@ -220,11 +220,13 @@ TEST_CASE("Input/Output")
             std::filesystem::remove(test_file);
         }
     }
+
     SECTION("Non-Empty SAC::SacStream")
     {
         // Building a SacStream manually because why not!
         // None of these values have any meaning in this context
         // The only requirement is that the `f_var` versions match their `var` counterparts
+        // And that npts corresponds to the size of data1 (and data2 if appropriate)
         SAC::SacStream test_sac{};
         test_sac.f_delta = 0.025f;
         test_sac.delta = 0.025;
@@ -316,7 +318,7 @@ TEST_CASE("Input/Output")
         test_sac.nvhdr = 7;
         test_sac.norid = 1;
         test_sac.nevid = 2;
-        //test_sac.npts = 100000;
+        test_sac.npts = 100000;
         test_sac.nsnpts = 50000;
         test_sac.nwfid = 3;
         test_sac.nxsize = 35;
@@ -339,9 +341,9 @@ TEST_CASE("Input/Output")
         test_sac.lcalda = true;
         test_sac.kstnm = "Test1";
         test_sac.kevnm = "Fake Quake";
-        //test_sac.khole = "AB";
-        //test_sac.ko = "Hi";
-        //test_sac.ka = "Yup";
+        test_sac.khole = "AB";
+        test_sac.ko = "Hi";
+        test_sac.ka = "Yup";
         test_sac.kt0 = "Zero 0";
         test_sac.kt1 = "One 1";
         test_sac.kt2 = "Two 2";
@@ -352,20 +354,20 @@ TEST_CASE("Input/Output")
         test_sac.kt7 = "Seven 7";
         test_sac.kt8 = "Eight 8";
         test_sac.kt9 = "Nine 9";
-        //test_sac.kf = "Fini";
+        test_sac.kf = "Fini";
         test_sac.kuser0 = "User0 Ze";
         test_sac.kuser1 = "User1 On";
         test_sac.kuser2 = "User2 Tw";
-        // good
-        //test_sac.kcmpnm = "HHZ";
-        //test_sac.knetwk = "ZZ";
-        //test_sac.kdatrd = "None";
+        test_sac.kcmpnm = "HHZ";
+        test_sac.knetwk = "ZZ";
+        test_sac.kdatrd = "None";
         test_sac.kinst = "Not Real";
-        /*
         // Resize data vectors to new size, zero-filled by default
-        test_sac.data1.resize(test_sac.npts, 0.0);
-        test_sac.data2.resize(test_sac.npts, 0.0);
-        */
+        if (test_sac.npts > 0)
+        {
+            test_sac.data1.resize(test_sac.npts, 0.0);
+            if (test_sac.leven == false || test_sac.iftype > 1) { test_sac.data2.resize(test_sac.npts, 0.0); }
+        }
         // Done building
         std::filesystem::path test_dir{std::filesystem::temp_directory_path()};
         std::filesystem::path test_file{test_dir / "test.SAC"};
@@ -385,10 +387,8 @@ TEST_CASE("Input/Output")
         {
             test_sac.write(test_file);
             SAC::SacStream in_sac = SAC::SacStream(test_file.string());
-            std::cout << test_sac.npts << ',' << in_sac.npts << '\n';
-            std::cout << (test_sac.npts == in_sac.npts) << '\n';
-            std::cout << (test_sac.npts != in_sac.npts) << '\n';
-            REQUIRE(in_sac == test_sac);
+            //REQUIRE(in_sac == test_sac);
+            REQUIRE(test_sac == in_sac);
             std::filesystem::remove(test_file);
         }
     }
