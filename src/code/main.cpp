@@ -469,11 +469,12 @@ int main(int arg_count, char* arg_array[])
     // Default color for clearing the screen
     auto clear_color = ImVec4(0.4f, 0.4f, 0.4f, 1.f);
     pssp::ProgramSettings current_settings{};
-    // IT WORKS! THAT TOOK WAY TOO LONG!
+    // pssp_program_settings.cpp does not work in Windows.
+    // Honestly I may dump it as it doesn't have much use anymore
     // Testing making a new proto-project
-    current_settings.create_new_project(std::filesystem::current_path());
+    //current_settings.create_new_project(std::filesystem::current_path());
     // Testing loading a new proto-project
-    current_settings.load_project(std::filesystem::current_path() / current_settings.md_file);
+    //current_settings.load_project(std::filesystem::current_path() / current_settings.md_file);
     pssp::fps_info fps_tracker{};
     std::string_view welcome_message{"Welcome to Passive-source Seismic-processing (PsSP)!"};
     pssp::AllFilterOptions af_settings{};
