@@ -110,6 +110,17 @@ sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsq
 ### Windows (Windows 11)
 Setup in Windows is a tiny bit more complicated (at least to me) so I'm going to be a little more detailed here. I use a combination of [MSYS2](https://www.msys2.org/) and [Chocolatey](https://chocolatey.org/) to setup my development environment.
 
+**NOTE** for Windows, at present you must uncomment (remove `//`) a line in imconfig.h to allow for 32-bit integers in the rendering backend.
+```c++
+//---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.
+// Your renderer backend will need to support it (most example renderer backends support both 16/32-bit indices).
+// Another way to allow large meshes while keeping 16-bit indices is to handle ImDrawCmd::VtxOffset in your renderer.
+// Read about ImGuiBackendFlags_RendererHasVtxOffset for details.
+#define ImDrawIdx unsigned int
+```
+
+If it is not uncommented PsSp will likely crash upon plotting seismic data. Being 16-bit allows only ~56k vertices for the entire program and while I'm not sure the ratio of vertices to the number of points (npts) of a SAC-file, I do know it is not 1:1. As I've written in te ToDo.md file I want to deal with this by downsampling the data (I think it would improve plotting performance in general). Until that is implemented the work-around solution is to take the performance hit from using 32-bit ImDraw indices.
+
 ---
 **Installed Via MSYS2**
 Additional information about the different compilers in MSYS2 [here](https://stackoverflow.com/questions/68607245/usage-of-msys2-environments)
