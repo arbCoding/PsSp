@@ -1,10 +1,42 @@
 # Passive-source Seismic-processing (PsSp)
 
-![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
-
-![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
-
 PsSp aims to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
+
+## Screenshots
+
+
+### MacOS 13.4 - 16 June 2023
+<div align="left">
+   <a href="screenshots/pssp_main_window_16June2023.png">
+      <img src="screenshots/pssp_main_window_16June2023.png", alt="PsSp Main Window on MacOs 13.4", width = "400px"/>
+   </a>
+</div>
+
+<!---
+![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
+--->
+
+### Windows 11 - 22 June 2023
+<div align="left">
+   <a href="screenshots/pssp_main_window_22June2023_Windows11.png">
+      <img src="screenshots/pssp_main_window_22June2023_Windows11.png", alt="PsSp Main Window on Windows 11", width = "400px"/>
+   </a>
+</div>
+
+<!---
+![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
+--->
+
+### Ubuntu 23.04 - 22 June 2023
+<div align="left">
+   <a href="screenshots/pssp_main_window_22June2023_Ubuntu2304.png">
+      <img src="screenshots/pssp_main_window_22June2023_Ubuntu2304.png", alt="PsSp Main Window on Ubuntu 23.04", width = "400px"/>
+   </a>
+</div>
+
+<!---
+![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
+--->
 
 ## Why does this exist?
 ### Summary
