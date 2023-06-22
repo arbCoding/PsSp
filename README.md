@@ -119,7 +119,7 @@ additional requirements. Please see the [additional instructions](#special-macos
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
 ### Windows (Windows 11)
-I use [MSYS2](https://www.msys2.org/) to provide the compilation environment.
+Using [MSYS2](https://www.msys2.org/) to provide the compilation environment.
 
 ```shell
 pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-fftw mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-boost mingw-w64-x86_64-msgpack-c
@@ -146,7 +146,30 @@ Then it is a simple as running
 ```shell
 make
 ```
-To make PsSp, which will be inside the ./bin/ directory.
+
+The above command will make an executable inside the ./bin/ directory. **Note** that on Linux/MacOS this will be a file simply named `PsSp` and on Windows it will instead be `PsSp.exe`.
+
+To run it on Linux/MacOS use
+```shell
+./bin/PsSp
+```
+
+The above command is used to start PsSp from the command line. On Linux you can also double click the executable to start it. On MacOS you must first make an `Application` (instructions to make `PsSp.app` are below).
+
+**MacOS `Application`**
+To make `PsSp.app` run
+```shell
+make macos
+```
+
+`PsSp.app` can be run by double-clicking on the application file.
+
+On Windows you can start it from the command line (MSYS2 knows to switch the `/` around to a `\` automatically).
+```shell
+./bin/PsSp.exe
+```
+
+Or by double-clicking on the executable.
 
 ### Cleanup
 To cleanup (including removing the compiled programs), run:
