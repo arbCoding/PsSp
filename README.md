@@ -8,11 +8,9 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 ![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
 
 ### Windows 11 - 22 June 2023
-
 ![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
 
 ### Ubuntu 23.04 - 22 June 2023
-
 ![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
 
 ## Why does this exist?
@@ -52,7 +50,7 @@ This is extremely early in development.
 
 This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem via distraction with a new, different, and annoying problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult to freshly introduce to the workflow. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause the analyst headaches due to being unstable.
 
-To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
+To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon. I'm also looking into using [Valgrind](https://valgrind.org/) to incorporate some more advanced dynamic analysis tools into the development workflow.
 
 ### Last Focus: Memory Management
 All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory and the user can change that amount (currently limited to a minimum of `n_threads` to prevent deadlock and a maximum of INT_MAX, which is simply absurd and should be updated in the future). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
@@ -65,40 +63,43 @@ See the Todo list at the top of the [ToDo.md](ToDo.md) file for more info on wha
 
 Dependencies that are marked as 'Git submodule' are handled automatically. Other packages must be installed via your package manager of choice or manually. For those other packages I provide installation guidance for MacOS, Linux, and Windows systems [here](#compilation-instructions).
 
-* [Xoshiro-cpp](https://github.com/Reputeless/Xoshiro-cpp)
-   * This provides good and fast pseudo-random number generation
-   * Currently only used to generate random data for unit tests
-   * Will be implemented in PsSp for use eventually (to generate random noise, generate random perturbations in an inversion, etc.)
-   * Git submodule.
-* [Catch2](https://github.com/catchorg/Catch2) v3.2.2
-   * This provides the unit/integration testing framework
-   * Git submodule.
+### Necessary
+
+* [Boost](https://www.boost.org/)
+   * Provides some convenient string manipulation operations.
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
    * This provides the OS-independent GUI.
    * Git submodule.
+* [FFTW3](https://www.fftw.org/)
+   * This is necessary for spectral functionality (FFT, IFFT).
+   * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
+* [GLFW3](https://www.glfw.org/)
+   * This is a graphical backend for the GUI.
 * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
    * This adds OS-independent File Dialogs to Dear ImGui.
    * Git submodule.
 * [ImPlot](https://github.com/epezent/implot).
    * This adds OS-independent plotting functionality to Dear ImGui.
    * Git submodule.
+* [MessagePack](https://msgpack.org/)
+   * Provides data-serialization, used to serialize/deserialize program settings from a binary file.
 * [sac-format](https://github.com/arbCoding/sac-format)
    * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
    * Git submodule.
-* [OpenGL3](https://www.opengl.org/)
-   * This is a graphical backend for the GUI.
-* [GLFW3](https://www.glfw.org/)
-   * This is a graphical backend for the GUI.
-* [FFTW3](https://www.fftw.org/)
-   * This is necessary for spectral functionality (FFT, IFFT).
-   * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
-* [MessagePack](https://msgpack.org/)
-   * Provides data-serialization, used to program settings.
-* [Boost](https://www.boost.org/)
-   * Required by MessagePack
 * [SQLite3](https://sqlite.org/)
    * Projects are implemented as internal sqlite3 databases.
    * We are able to maintain data provenance information, processing checkpoints, and so on via a serverless relational database.
+
+### Optional
+
+* [Catch2](https://github.com/catchorg/Catch2) v3.2.2
+   * This provides the unit/integration testing framework
+   * Git submodule.
+* [Xoshiro-cpp](https://github.com/Reputeless/Xoshiro-cpp)
+   * This provides good and fast pseudo-random number generation
+   * Currently only used to generate random data for unit tests
+   * Will be implemented in PsSp for use eventually (to generate random noise, generate random perturbations in an inversion, etc.)
+   * Git submodule.
 
 ## Compilation instructions
 
@@ -118,25 +119,13 @@ additional requirements. Please see the [additional instructions](#special-macos
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
 ### Windows (Windows 11)
-Setup in Windows is a tiny bit more complicated (at least to me) so I'm going to be a little more detailed here. I use [MSYS2](https://www.msys2.org/) to provide the compilation environment.
-
-**Installed Via MSYS2**
-Additional information about the different compilers in MSYS2 [here](https://stackoverflow.com/questions/68607245/usage-of-msys2-environments)
-
-*Note on UCRT* do not use the UCRT (Universal C RunTime) versions. Use Mingw versions since most libraries don't have UCRT versions.
-1) [GCC](https://packages.msys2.org/package/mingw-w64-x86_64-gcc?repo=mingw64)
-3) [GLFW](https://packages.msys2.org/package/mingw-w64-x86_64-glfw?repo=mingw64)
-5) [FFTW3](https://packages.msys2.org/package/mingw-w64-x86_64-fftw?repo=mingw64)
-6) [SQLite3](https://packages.msys2.org/package/mingw-w64-x86_64-sqlite3?repo=mingw64)
-7) [Boost](https://packages.msys2.org/package/mingw-w64-x86_64-boost?repo=mingw64)
-8) [MessagePack](https://packages.msys2.org/package/mingw-w64-x86_64-msgpack-c?repo=mingw64) (currently disabled because Windows version is apparently incompatible with my code from Linux/MacOS)
-9) [Mingw Toolchain](https://packages.msys2.org/groups/mingw-w64-x86_64-toolchain)
+I use [MSYS2](https://www.msys2.org/) to provide the compilation environment.
 
 ```shell
 pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-fftw mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-boost mingw-w64-x86_64-msgpack-c
 ```
 
-### Clone this repository and initialze the submodules
+### Clone and Initialze
 
 Next you need to clone this project and initialize the [submodules](submodules)
 ```shell
@@ -165,7 +154,7 @@ To cleanup (including removing the compiled programs), run:
 make clean
 ```
 
-### Compiling the tests
+### Testing
 To compile and run the tests:
 ```shell
 make tests
@@ -196,17 +185,6 @@ dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d .
 ```
 
 Of course, this is implemented automatically in the [Makefile](Makefile), assuming you also used Homebrew to install the other packages (non-Git submodules).
-
-## Testing
-
-To run the tests you'll need to have Catch2 (Git Submodule, if you followed [my compilation instructions](#compilation-instructions) you're good to go).
-
-The tests will compile and run automatically after you execute the following command
-```shell
-make tests
-```
-
-Note that because I do not use CMake, I use the amalgamated hpp/cpp version of Catch2 from their extras folder. This takes longer to compile and isn't considered an official priority anymore, but it does get updated and I find it easier to use.
 
 ---
 
