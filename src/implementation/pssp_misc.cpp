@@ -526,6 +526,8 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path& proje
 // End load a project from a project file
 //------------------------------------------------------------------------
 
+void reduce_data_pool(ProgramStatus& program_status) { program_status.data_pool.safe_clear_chunk(program_status.project); }
+
 //-----------------------------------------------------------------------------
 // Shitty Butterworth lowpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------

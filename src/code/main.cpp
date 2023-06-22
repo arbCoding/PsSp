@@ -168,7 +168,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
-            current_settings.menu_allowed.data_pool_options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = false;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -223,7 +223,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
-            current_settings.menu_allowed.data_pool_options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = false;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -278,7 +278,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
-            current_settings.menu_allowed.data_pool_options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = false;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -321,6 +321,8 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             }
             // Empty the FFTW plan_pool, no need to keep it pre-filled.
             if (program_status.fftw_planpool.n_plans() != 0) { program_status.fftw_planpool.empty_pool(); }
+            if (program_status.data_pool.n_data() > program_status.data_pool.max_data)
+            { program_status.thread_pool.enqueue(reduce_data_pool, std::ref(program_status)); }
             // Any window can be shown
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;

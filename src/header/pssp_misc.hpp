@@ -201,6 +201,8 @@ void unload_data(ProgramStatus& program_status);
 void load_2_data_pool(ProgramStatus& program_status, const int data_id);
 // Load an existing project
 void load_data(ProgramStatus& program_status, const std::filesystem::path& project_file, int checkpoint_id);
+// Safely reduce the size of the data pool
+void reduce_data_pool(ProgramStatus& program_status);
 // Shitty lowpass for testing
 void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
 // Shitty highpass for testing

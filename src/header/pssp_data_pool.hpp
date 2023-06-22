@@ -133,6 +133,8 @@ public:
     std::size_t n_data() const;
     // Fully empty the pool
     void empty_pool();
+    // Clear a chunk safely
+    void safe_clear_chunk(Project& project);
     void remove_data(const Project& project, int data_id);
     std::size_t max_data{};
     // Add data to the pool

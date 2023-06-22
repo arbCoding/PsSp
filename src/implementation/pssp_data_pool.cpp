@@ -76,6 +76,13 @@ void DataPool::empty_pool()
     data_pool_.clear();
 }
 
+// This calls it's own mutex!
+void DataPool::safe_clear_chunk(Project& project)
+{
+    std::scoped_lock lock_pool(mutex_);
+    clear_chunk(project);
+}
+
 void DataPool::remove_data(const Project& project, int data_id)
 {
     if (data_id == -1 || !project.is_project) { return; }
