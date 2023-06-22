@@ -1,4 +1,3 @@
-<!-- PAGE BREAK -->
 # Passive-source Seismic-processing (PsSp)
 
 PsSp aims to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
@@ -15,9 +14,7 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 ![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
 
 ## Why does this exist?
-<!-- PAGE BREAK -->
 ### Summary
-<!-- PAGE BREAK -->
 
 The purpose of this project is to **extend the productivity suite of the passive-source seismologist**. There exist great tools for writing manuscripts (e.g. MS Word, LibreOffice, LaTeX, ...). There exist great tools for creating presentations (e.g. MS Powerpoint, Impress Presentation, ...). There exist great tools for communicating with each other across the world (Outlook, Thunderbird, Zoom, MS Teams, ...). What tools exist for doing seismic analysis? Far too often, it is whatever the analyst manages to cludge together, provided it *seems* to do the job.
 
