@@ -177,8 +177,8 @@ imgui_cxx = $(compiler) $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 # ImGuiFileDialog adds a Filesystem Acess GUI that is OS-independent and works
 # great with Dear ImGui
 im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
-imgui_params += -I$(im_file_diag_dir)
-#imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
+#imgui_params += -I$(im_file_diag_dir)
+imgui_params += -isystem$(im_file_diag_dir)
 imgui_file_cxx = $(compiler) $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End ImGuiFileDialog
