@@ -105,7 +105,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 I test this on M1 MacOS (Ventura 13.4.1), x86_64 Linux (Ubuntu 23.04), and x86_64 Windows (Windows 11, using MSYS2/Mingw).
 
-### [MacOS](creenshots/pssp_main_window_16June2023.png)
+### [MacOS](screenshots/pssp_main_window_16June2023.png)
 Using [Homebrew](https://brew.sh/)
 ```shell
 brew install fftw glfw msgpack-cxx sqlite boost
