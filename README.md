@@ -7,11 +7,11 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 ### MacOS 13.4 - 16 June 2023
 ![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
 
+### Ubuntu Linux 23.04 - 22 June 2023
+![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
+
 ### Windows 11 - 22 June 2023
 ![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
-
-### Ubuntu 23.04 - 22 June 2023
-![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
 
 ## Why does this exist?
 ### Summary
@@ -105,20 +105,20 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 I test this on M1 MacOS (Ventura 13.4.1), x86_64 Linux (Ubuntu 23.04), and x86_64 Windows (Windows 11, using MSYS2/Mingw).
 
-### MacOS
+### [MacOS](creenshots/pssp_main_window_16June2023.png)
 Using [Homebrew](https://brew.sh/)
 ```shell
 brew install fftw glfw msgpack-cxx sqlite boost
 ```
 
-**NOTE** For MacOS users, if you want a stand-alone Application (PsSp.app, no need to execute from the terminal) there are
+**NOTE** For MacOS users, if you want a stand-alone `Application` (PsSp.app, no need to execute from the terminal) there are
 additional requirements. Please see the [additional instructions](#special-macos-application) for more information.
 
-### Linux (Ubuntu 23.04/Debian based)
+### [Linux](screenshots/pssp_main_window_22June2023_Ubuntu2304.png) (Ubuntu 23.04/Debian based)
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
-### Windows (Windows 11)
+### [Windows](screenshots/pssp_main_window_22June2023_Windows11.png) (Windows 11)
 Using [MSYS2](https://www.msys2.org/) to provide the compilation environment.
 
 ```shell
@@ -183,7 +183,7 @@ To compile and run the tests:
 make tests
 ```
 
-## Special MacOS Application
+## Special MacOS `Application`
 
 If you want a stand-alone MacOS application file, then there are additional steps.
 
