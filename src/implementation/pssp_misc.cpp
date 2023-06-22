@@ -138,6 +138,11 @@ void batch_remove_trend(ProgramStatus& program_status)
 
 // For some reason these are not adding the processing notes after reloading
 // I wonder if the connection to the sq3 db in memory is getting lost/corrupted?
+// In the future I should add a checkbox to automaically downsample the seismogram such that the sample-rate
+// such that the Nyquist-Frequency matches the upper-corner frequency.
+// In the future I should allow a corner frequency that is above the Nyquist frequency in any filters.
+// Not to mention I still need to implement the proper forms of their transfer functions instead of
+// just using the gain (blows up the signal amplitudes)
 void apply_lowpass(ProgramStatus& program_status, int data_id, const FilterOptions& lowpass_options)
 {
     if (!program_status.project.is_project) { return; }
@@ -153,7 +158,6 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, const FilterOptio
     oss << lowpass_options.freq_low;
     oss << ";";
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
-    // It is dying in here
     lowpass(program_status.fftw_planpool, sac_ptr, lowpass_options.order, lowpass_options.freq_low);
     program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
