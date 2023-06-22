@@ -1,4 +1,5 @@
 #include "pssp_windows.hpp"
+#include "ImGuiFileDialog.h"
 #include <mutex>
 
 namespace pssp
@@ -635,13 +636,17 @@ void window_plot_sac(WindowSettings& window_settings, sac_1c& visual_sac)
             ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
             window_settings.is_set = true;
         }
-        
+
+        // Static internal sac for visualization purposes.
+        static sac_1c internal_sac{visual_sac};
+        // If we're different
+        if (internal_sac.data_id != visual_sac.data_id) { internal_sac = visual_sac; }
         ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
         
         if (ImPlot::BeginPlot("Seismogram##"))
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time (s)"); // Move this line here
-            ImPlot::PlotLine("", &visual_sac.sac.data1[0], static_cast<int>(visual_sac.sac.data1.size()), visual_sac.sac.delta);
+            ImPlot::PlotLine("", &internal_sac.sac.data1[0], static_cast<int>(internal_sac.sac.data1.size()), internal_sac.sac.delta);
             if (ImPlotContext const* plot_ctx{ImPlot::GetCurrentContext()}; plot_ctx && ImPlot::IsPlotHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             { ImGui::OpenPopup("CustomPlotOptions##"); }
             

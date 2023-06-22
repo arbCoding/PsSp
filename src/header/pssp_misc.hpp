@@ -215,6 +215,8 @@ void write_checkpoint(ProgramStatus& program_status, bool author, bool cull);
 void delete_data_id_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id, int data_id);
 // Delete a checkpoint
 void delete_checkpoint(ProgramStatus& program_status, Project& project, int checkpoint_id);
+// Downsample a vector for plotting
+void downsample_4_plotting(sac_1c& plotting_sac);
 //-----------------------------------------------------------------------------
 // End Misc function forward declarations
 //-----------------------------------------------------------------------------

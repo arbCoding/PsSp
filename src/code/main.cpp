@@ -490,6 +490,8 @@ int main(int arg_count, char* arg_array[])
     pssp::sac_1c spectrum{};
     // Will pass this by reference for the sake of plotting and what-not
     pssp::sac_1c time_series{};
+    // This is for calculating the spectrum which then gets down-sampled
+    pssp::sac_1c spectrum_time_series{};
     // Which sac-file is active
     int active_sac{};
     bool clear_sac{false};
@@ -536,8 +538,13 @@ int main(int arg_count, char* arg_array[])
           {
             program_status.data_id = data_ids[active_sac];
             update_spectrum = true;
-            time_series = *program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_);
+            std::shared_ptr<pssp::sac_1c> tmp_ptr = program_status.data_pool.get_ptr(program_status.project, program_status.data_id, program_status.project.checkpoint_id_);
+            // Attempting to make two separate deep copies
+            time_series = *tmp_ptr;
+            spectrum_time_series = *tmp_ptr;
           }
+          // I need a way to pass on information exclusively for plotting (otherwise window_sac_header shows incorrect information)
+          if (time_series.sac.npts > 1000) {  downsample_4_plotting(time_series); }
           window_sac_header(current_settings.window_settings.header, time_series);
           // Show processing history window is appropriate
           window_processing_history(current_settings.window_settings.processing_history, program_status.project, data_ids[active_sac]);
@@ -553,7 +560,8 @@ int main(int arg_count, char* arg_array[])
           if (current_settings.window_settings.spectrum_1c.show && update_spectrum)
           {
             // If they're not the same, then calculate the FFT
-            calc_spectrum(program_status, time_series, spectrum);
+            calc_spectrum(program_status, spectrum_time_series, spectrum);
+            if (spectrum.sac.npts > 1000) { downsample_4_plotting(spectrum); spectrum.sac.delta = spectrum_time_series.sac.delta; }
             update_spectrum = false;
           }
           // Finally plot the spectrum

@@ -673,6 +673,35 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
 // End Delete a checkpoint
 //-----------------------------------------------------------------------------
 
+// This is a terrible way to do down-sampling, it does nothing to prevent aliasing
+// it does nothing about the zoom-level of the plot
+// it pays no attention to the time-width of the plot (trimming beginning and end if appropriate)
+// it pays no attention to the size of the window
+// this is just quick and dirty to experiment
+void downsample_4_plotting(sac_1c& plotting_sac)
+{
+    std::size_t n_orig_data1{plotting_sac.sac.data1.size()};
+    // If it isn't empty, down sample it too
+    // size of data1 must equal size of data2 (should always be true)
+    const bool down_sample2{!plotting_sac.sac.data2.empty()};
+    std::vector<double> temp_data1(1000, 0.0);
+    // Size depends on whether we're downsampling or not
+    std::vector<double> temp_data2(1000 * (down_sample2 ? 1 : 0), 0.0);
+    std::size_t n_gap{n_orig_data1 / 1000};
+    for (std::size_t i{0}; i < 1000; ++i)
+    { 
+        temp_data1[i] = plotting_sac.sac.data1[i * n_gap];
+        if (down_sample2) { temp_data2[i] = plotting_sac.sac.data2[i * n_gap]; }
+    }
+    plotting_sac.sac.data1 = std::move(temp_data1);
+    if (down_sample2) { plotting_sac.sac.data2 = std::move(temp_data2); }
+    plotting_sac.sac.npts = 1000;
+    // This is not correct, but is an approximation
+    // This works for time-series
+    // but the spectrum results appear borked...
+    plotting_sac.sac.delta *= static_cast<double>(n_gap);
+}
+
 //-----------------------------------------------------------------------------
 // End Misc functions
 //-----------------------------------------------------------------------------
