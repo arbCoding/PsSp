@@ -119,14 +119,9 @@ public:
     // If I allow up to 6, it can experience deadlocks (not always so can be hard to track
     // down)
     //=========================================================================
-    // In the future I'd like to implement smart resizing of the data-pool
-    // if we're close to max-size and the system still has tons of memory
-    // left, we should increase max-size.
-    // If we're below max-size and the system is low on memory,
-    // we should decrease max-size
-    // But, max size must never go below the number of threads
-    // in the thread-pool
-    explicit DataPool(std::size_t max_data_ = 350) : max_data(max_data_) {}
+    // Would like smart resizing based upon resource consumption, for now a safe default
+    // plus the user can adjust it (they're not allowed to go below n_threads)
+    explicit DataPool(std::size_t max_data_ = 2000) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // How much data is in the pool
