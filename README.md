@@ -1,6 +1,8 @@
 # Passive-source Seismic-processing (PsSp)
 
-![PsSp Main Window](screenshots/pssp_main_window_16June2023.png)
+![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
+
+![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
 
 PsSp aims to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
 
