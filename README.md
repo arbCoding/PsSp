@@ -111,15 +111,16 @@ Using [Homebrew](https://brew.sh/)
 brew install fftw glfw msgpack-cxx sqlite boost
 ```
 
-**NOTE** For MacOS users, if you want a stand-alone `Application` (PsSp.app, no need to execute from the terminal) there are
-additional requirements. Please see the [additional instructions](#special-macos-application) for more information.
+**NOTE** For MacOS users, if you want a stand-alone `Application` (`PsSp.app`, no need to execute from the terminal) there are additional requirements. Please see the [additional instructions](#special-macos-application) for more information.
 
 ### [Linux](screenshots/pssp_main_window_22June2023_Ubuntu2304.png) (Ubuntu 23.04/Debian based)
+Using [apt](https://wiki.debian.org/Apt)
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
+
 ### [Windows](screenshots/pssp_main_window_22June2023_Windows11.png) (Windows 11)
-Using [MSYS2](https://www.msys2.org/) to provide the compilation environment.
+Using [MSYS2](https://www.msys2.org/)
 
 ```shell
 pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-fftw mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-boost mingw-w64-x86_64-msgpack-c
@@ -157,6 +158,7 @@ To run it on Linux/MacOS use
 The above command is used to start PsSp from the command line. On Linux you can also double click the executable to start it. On MacOS you must first make an `Application` (instructions to make `PsSp.app` are below).
 
 **MacOS `Application`**
+
 To make `PsSp.app` run
 ```shell
 make macos
@@ -182,6 +184,8 @@ To compile and run the tests:
 ```shell
 make tests
 ```
+
+**Note** that this will involve compiling [Catch2](https://github.com/catchorg/Catch2). This has been automatically integrated into the above command. The tests include verification of features as well as simple benchmarks of various operations performed by PsSp. Testing is currently part of the main development focus, as discussed in the [current status](#current-status) section.
 
 ## Special MacOS `Application`
 
