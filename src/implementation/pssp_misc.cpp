@@ -696,9 +696,7 @@ void downsample_4_plotting(sac_1c& plotting_sac)
     plotting_sac.sac.data1 = std::move(temp_data1);
     if (down_sample2) { plotting_sac.sac.data2 = std::move(temp_data2); }
     plotting_sac.sac.npts = 1000;
-    // This is not correct, but is an approximation
-    // This works for time-series
-    // but the spectrum results appear borked...
+    // This is not correct, but is an okay approximation if we assume n_orig_data is huge
     plotting_sac.sac.delta *= static_cast<double>(n_gap);
 }
 

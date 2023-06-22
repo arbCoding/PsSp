@@ -102,6 +102,9 @@ struct AllWindowSettings
     // Notes for current checkpoint
     WindowSettings notes_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Notes##"};
     WindowSettings processing_history{665, 573, 773, 234, false, false, ImGuiWindowFlags{}, "History##"};
+    // Data-pool options
+    WindowSettings data_pool_options{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "DataPool Options##"};
     //MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint, processing_history);
 };
 // Whether a certain menu is allow or not
@@ -125,6 +128,7 @@ struct MenuAllowed
     bool delete_checkpoint{true};
     // Options Menu
     bool options_menu{false};
+    bool data_pool_options_menu{false};
     // Window Menu
     bool window_menu{true};
     bool center_windows{false};

@@ -337,7 +337,12 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
     }
     // Options Menu
     // Changing fonts, their sizes, etc.
-    if (ImGui::BeginMenu("Options##", menu_allowed.options_menu)) { ImGui::EndMenu(); }
+    if (ImGui::BeginMenu("Options##", menu_allowed.options_menu))
+    {
+        if (ImGui::MenuItem("DataPool##", nullptr, nullptr, menu_allowed.data_pool_options_menu))
+        { allwindow_settings.data_pool_options.show = true; }
+        ImGui::EndMenu();
+    }
     // Window menu
     if (ImGui::BeginMenu("Window##", menu_allowed.window_menu))
     {
@@ -1043,5 +1048,48 @@ void window_processing_history(WindowSettings& window_settings, Project& project
 }
 //-----------------------------------------------------------------------------
 // End Processing history window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Edit data_pool settings
+//-----------------------------------------------------------------------------
+void window_data_pool_options(WindowSettings& window_settings, ProgramStatus& program_status)
+{
+    if (window_settings.show && window_settings.state != hide)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
+            window_settings.is_set = true;
+        }
+
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
+        
+        ImGui::SetNextItemWidth(130);
+
+        static int max_data{static_cast<int>(program_status.data_pool.max_data)};
+        
+        // Note, this is dangerous because I'm not imposing and upper-bound to the size of the data-pool.
+        // It might be useful to have a safe upper-bound and allow the user to opt-into releasing that bound
+        // (that way a power user could increase it if they want, at their own risk)
+        if (ImGui::InputInt("Datapool Size", &max_data, 1))
+        { max_data = std::max(static_cast<int>(program_status.thread_pool.n_threads_total()), max_data); }
+        
+        if (ImGui::Button("Ok##"))
+        {
+            std::scoped_lock lock_pool(program_status.data_pool.mutex_);
+            program_status.data_pool.max_data = max_data;
+            window_settings.show = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel##")) { window_settings.show = false; }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Edit data_pool settings
 //-----------------------------------------------------------------------------
 }

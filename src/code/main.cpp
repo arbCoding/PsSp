@@ -140,6 +140,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // So most windows are hidden
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
+            current_settings.window_settings.data_pool_options.state = hide;
             current_settings.window_settings.header.state = hide;
             current_settings.window_settings.plot_1c.state = hide;
             current_settings.window_settings.spectrum_1c.state = hide;
@@ -167,6 +168,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = true;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -193,6 +195,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // So some windows are hidden
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
+            current_settings.window_settings.data_pool_options.state = hide;
             current_settings.window_settings.header.state = show;
             current_settings.window_settings.plot_1c.state = show;
             current_settings.window_settings.spectrum_1c.state = show;
@@ -220,6 +223,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = true;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -246,6 +250,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // So most windows are hidden
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
+            current_settings.window_settings.data_pool_options.state = hide;
             current_settings.window_settings.header.state = hide;
             current_settings.window_settings.plot_1c.state = hide;
             current_settings.window_settings.spectrum_1c.state = hide;
@@ -273,6 +278,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.load_checkpoint = false;
             current_settings.menu_allowed.delete_checkpoint = false;
             current_settings.menu_allowed.options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = true;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -318,6 +324,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             // Any window can be shown
             current_settings.window_settings.welcome.state = show;
             current_settings.window_settings.fps.state = show;
+            current_settings.window_settings.data_pool_options.state = show;
             if (!data_ids.empty())
             {
                 // Windows
@@ -410,6 +417,7 @@ void handle_program_state(ProgramStatus& program_status, ProgramSettings& curren
             current_settings.menu_allowed.exit = true;
             current_settings.menu_allowed.project_menu = true;
             current_settings.menu_allowed.options_menu = true;
+            current_settings.menu_allowed.data_pool_options_menu = true;
             current_settings.menu_allowed.window_menu = true;
             current_settings.menu_allowed.center_windows = true;
             current_settings.menu_allowed.save_layout = true;
@@ -525,6 +533,8 @@ int main(int arg_count, char* arg_array[])
         update_fps(fps_tracker, io);
         // Show the FPS window if appropriate
         window_fps(fps_tracker, current_settings.window_settings.fps);
+        // Show the DataPool Options window if appropriate
+        window_data_pool_options(current_settings.window_settings.data_pool_options, program_status);
         // If we're idle and there is data to show, we can show it
         pssp::program_state current_state{program_status.state.load()};
         (void) current_state;

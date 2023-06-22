@@ -69,6 +69,8 @@ void window_name_checkpoint(WindowSettings& window_settings, ProgramStatus& prog
 void window_notes_checkpoint(WindowSettings& window_settings, Project& project);
 // Window to show processing history for the active_sac
 void window_processing_history(WindowSettings& window_settings, Project& project, int data_id);
+// Window to edit the size of the data pool
+void window_data_pool_options(WindowSettings& window_settings, ProgramStatus& program_status);
 //-----------------------------------------------------------------------------
 // End UI Windows
 //-----------------------------------------------------------------------------
