@@ -543,9 +543,8 @@ int main(int arg_count, char* arg_array[])
             time_series = *tmp_ptr;
             spectrum_time_series = *tmp_ptr;
           }
-          // I need a way to pass on information exclusively for plotting (otherwise window_sac_header shows incorrect information)
           if (time_series.sac.npts > 1000) {  downsample_4_plotting(time_series); }
-          window_sac_header(current_settings.window_settings.header, time_series);
+          window_sac_header(current_settings.window_settings.header, spectrum_time_series);
           // Show processing history window is appropriate
           window_processing_history(current_settings.window_settings.processing_history, program_status.project, data_ids[active_sac]);
           // Show the Sac Plot window if appropriate
