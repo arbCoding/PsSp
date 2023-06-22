@@ -31,7 +31,7 @@ The researcher shouldn't need to expend immense amounts of time/energy/mental-ba
 
 ### Purpose
 
-PsSp is being developed to solve these problems; to empower the seismologist with tools that are easy to use and foster exploration. By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually I hope to allow the end-user to improve their intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow an  the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
+PsSp is being developed to solve these problems; to empower the seismologist with tools that are easy to use and foster exploration. By enabling the scientist to do exploratory analysis quickly, easily, iteratively, and visually I hope to allow the end-user to improve their intuitive understanding of what they are doing with their data so that they can make an informed descision of how best to proceed with their analysis. I hope this will also make entry into seismology easier (undergrads, summer interns, new graduate students, etc.) and will make it easier for more-seasoned seismologists to use newer and more advanced tools, thus improving everyone's workflow and the quality of research that is accomplished while minimizing the amount of time (and frustration) devoted to simply trying to get a functional workflow.
 
 ## Current status
 
@@ -44,7 +44,7 @@ This project has gone too far without proper testing. Bugs are hard to find, the
 To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I suspect that I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon.
 
 ### Last Focus: Memory Management
-All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory (*currently static, needs to be adjustable via a menu*). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
+All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory and the user can change that amount (currently limited to a minimum of `n_threads` to prevent deadlock and a maximum of INT_MAX, which is simply absurd and should be updated in the future). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
 ## ToDo
 
@@ -91,7 +91,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 ## Compilation instructions
 
-I test this on M1 MacOS (Ventura 13.4), x86_64 Linux (Specifically Ubuntu 23.04), and x86_64 Windows (Windows 11).
+I test this on M1 MacOS (Ventura 13.4.1), x86_64 Linux (Ubuntu 23.04), and x86_64 Windows (Windows 11, using MSYS2/Mingw).
 
 ### MacOS
 Using [Homebrew](https://brew.sh/)
@@ -107,28 +107,25 @@ additional requirements. Please see the [additional instructions](#special-macos
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
 ### Windows (Windows 11)
-Setup in Windows is a tiny bit more complicated (at least to me) so I'm going to be a little more detailed here. I use a combination of [MSYS2](https://www.msys2.org/) and [Chocolatey](https://chocolatey.org/) to setup my development environment.
+Setup in Windows is a tiny bit more complicated (at least to me) so I'm going to be a little more detailed here. I use [MSYS2](https://www.msys2.org/) to provide the compilation environment.
 
----
 **Installed Via MSYS2**
 Additional information about the different compilers in MSYS2 [here](https://stackoverflow.com/questions/68607245/usage-of-msys2-environments)
 
 *Note on UCRT* do not use the UCRT (Universal C RunTime) versions. Use Mingw versions since most libraries don't have UCRT versions.
 1) [GCC](https://packages.msys2.org/package/mingw-w64-x86_64-gcc?repo=mingw64)
-2) [CPPCheck](https://packages.msys2.org/package/mingw-w64-x86_64-cppcheck?repo=mingw64)
 3) [GLFW](https://packages.msys2.org/package/mingw-w64-x86_64-glfw?repo=mingw64)
-4) [Clang](https://packages.msys2.org/package/mingw-w64-x86_64-clang-tools-extra)
 5) [FFTW3](https://packages.msys2.org/package/mingw-w64-x86_64-fftw?repo=mingw64)
 6) [SQLite3](https://packages.msys2.org/package/mingw-w64-x86_64-sqlite3?repo=mingw64)
 7) [Boost](https://packages.msys2.org/package/mingw-w64-x86_64-boost?repo=mingw64)
-8) [MessagePack](https://packages.msys2.org/package/mingw-w64-x86_64-msgpack-c?repo=mingw64)
+8) [MessagePack](https://packages.msys2.org/package/mingw-w64-x86_64-msgpack-c?repo=mingw64) (currently disabled because Windows version is apparently incompatible with my code from Linux/MacOS)
 9) [Mingw Toolchain](https://packages.msys2.org/groups/mingw-w64-x86_64-toolchain)
 
----
-**Installed via Chocolatey**
-1) [VS Codium](https://community.chocolatey.org/packages/vscodium)
-2) [AdoptOpenJDK](https://community.chocolatey.org/packages/adoptopenjdk) (used by SolarLint)
+```shell
+pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-fftw mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-boost mingw-w64-x86_64-msgpack-c
+```
 
+### Clone this repository and initialze the submodules
 
 Next you need to clone this project and initialize the [submodules](submodules)
 ```shell
@@ -155,6 +152,12 @@ To make PsSp, which will be inside the ./bin/ directory.
 To cleanup (including removing the compiled programs), run:
 ```shell
 make clean
+```
+
+### Compiling the tests
+To compile and run the tests:
+```shell
+make tests
 ```
 
 ## Special MacOS Application
