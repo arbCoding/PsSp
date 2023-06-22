@@ -438,6 +438,7 @@ TEST_CASE("Input/Output")
             test_sac.write(test_file);
             SAC::SacStream in_sac = SAC::SacStream(test_file.string());
             REQUIRE(test_sac == in_sac);
+            BENCHMARK("SacStream Comparison") { (void) (test_sac == in_sac); };
             std::filesystem::remove(test_file);
         }
         SECTION("Randomizing data")
@@ -453,6 +454,7 @@ TEST_CASE("Input/Output")
             // Note that this equality tests to equality within tolerance of what can be handled via a float
             // this is because binary SAC files use floats for the data values, not doubles
             REQUIRE(test_sac == in_sac);
+            BENCHMARK("SacStream Comparison") { (void) (test_sac == in_sac); };
             std::filesystem::remove(test_file);
         }
     }
