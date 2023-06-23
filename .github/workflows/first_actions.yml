@@ -20,4 +20,9 @@ jobs:
           git submodule update --init --remote submodules/
       - name: Build PsSp
         run: make macos
+      - name: Create PsSp Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: PsSp.app
+          path: bin/PsSp.app
       
