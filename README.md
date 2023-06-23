@@ -103,7 +103,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 ### Optional
 
-* [Catch2](https://github.com/catchorg/Catch2) v3.2.2
+* [Catch2](https://github.com/catchorg/Catch2) v3.3.2
   * This provides the unit/integration testing framework
   * Git submodule.
 * [Xoshiro-cpp](https://github.com/Reputeless/Xoshiro-cpp)

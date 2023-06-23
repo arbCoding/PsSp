@@ -40,6 +40,8 @@ TEST_CASE("Binary Conversion")
         REQUIRE(!SAC::unset_bool == true);
         REQUIRE(SAC::binary_to_bool(SAC::bool_to_binary(SAC::unset_bool)) == false);
         REQUIRE(SAC::binary_to_bool(SAC::bool_to_binary(!SAC::unset_bool)) == true);
+        BENCHMARK("Bool->Binary False") 
+        { return SAC::bool_to_binary(SAC::unset_bool); };
         BENCHMARK("Bool->Binary->Bool False")
         { return SAC::binary_to_bool(SAC::bool_to_binary(SAC::unset_bool)); };
     }
@@ -49,6 +51,7 @@ TEST_CASE("Binary Conversion")
         {
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(0)) == 0);
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(-0)) == 0);
+            BENCHMARK("Int->Binary 0") { return SAC::int_to_binary(0); };
             BENCHMARK("Int->Binary->Int 0")
             { return SAC::binary_to_int(SAC::int_to_binary(0)); };
         }
@@ -57,6 +60,7 @@ TEST_CASE("Binary Conversion")
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(-1)) == -1);
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(-10)) == -10);
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(INT_MIN)) == INT_MIN);
+            BENCHMARK("Int->Binary INT_MIN") { return SAC::int_to_binary(INT_MIN); };
             BENCHMARK("Int->Binary->Int INT_MIN")
             { return SAC::binary_to_int(SAC::int_to_binary(INT_MIN)); };
         }
@@ -65,7 +69,8 @@ TEST_CASE("Binary Conversion")
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(1)) == 1);
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(10)) == 10);
             REQUIRE(SAC::binary_to_int(SAC::int_to_binary(INT_MAX)) == INT_MAX);
-            BENCHMARK("Int->Binary->Int INT_MAX")
+            BENCHMARK("Int->Binary INT_MAX") { return SAC::int_to_binary(INT_MAX); };
+            BENCHMARK("Int->Binary->Int INT_MAX") 
             { return SAC::binary_to_int(SAC::int_to_binary(INT_MAX)); };
         }
     }
@@ -75,6 +80,7 @@ TEST_CASE("Binary Conversion")
         {
             REQUIRE(SAC::binary_to_float(SAC::float_to_binary(0.0f)) == 0.0f);
             REQUIRE(SAC::binary_to_float(SAC::float_to_binary(-0.0f)) == 0.0f);
+            BENCHMARK("Float->Binary 0.0f") { return SAC::float_to_binary(0.0f); };
             BENCHMARK("Float->Binary->Float 0.0f")
             { return SAC::binary_to_float(SAC::float_to_binary(0.0f)); };
         }
