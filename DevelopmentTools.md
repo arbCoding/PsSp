@@ -1,3 +1,8 @@
+---
+Author: "Alexander R. Blanchette"
+Email: "ARBCoding@gmail.com"
+---
+
 # Development Tools
 
 ## Purpose
@@ -18,42 +23,10 @@ The purpose of this document is to provide a list of the tools that are being us
 1) [C/C++ Advanced Lint](https://open-vsx.org/extension/jbenden/c-cpp-flylint) - This automatically runs most of the various [static analysis tools](#static-analysis) within VSCodium.
 2) [CodeLLDB](https://open-vsx.org/extension/vadimcn/vscode-lldb) - Debugger that integrates with VSCodium.
 3) [Git Extension Pack](https://open-vsx.org/extension/sugatoray/vscode-git-extension-pack) - Convenience package that provides git integration to VS Codium.
-
-    a) [GitLens - Git supercharged](https://open-vsx.org/extension/eamodio/gitlens)
-
-    b) [Git History](https://open-vsx.org/extension/donjayamanne/githistory)
-
-    c) [Git Graph](https://open-vsx.org/vscode/item?itemName=mhutchie.git-graph)
-
-    d) [Git File History](https://marketplace.visualstudio.com/items?itemName=pomber.git-file-history)
-
-    e) [gitignore](https://open-vsx.org/extension/codezombiech/gitignore)
-
-    f) [Git Blame](https://open-vsx.org/vscode/item?itemName=waderyan.gitblame)
-
-    g) [Git History Diff](https://marketplace.visualstudio.com/items?itemName=huizhou.githd)
-
-    h) [Commit Message Editor](https://open-vsx.org/extension/adam-bender/commit-message-editor)
-
-    i) [Conentional Commits](https://open-vsx.org/vscode/item?itemName=vivaxy.vscode-conventional-commits)
-
-    j) [GitHub Theme](https://open-vsx.org/extension/GitHub/github-vscode-theme)
-
-    k) [Git Cheatsheet](https://marketplace.visualstudio.com/items?itemName=dzhavat.git-cheatsheet)
-
 4) [Dark Github Markdown Pack](https://open-vsx.org/extension/sndst00m/markdown-github-dark-pack)
-
-    a) [Dark Github Markdown Preview](https://marketplace.visualstudio.com/items?itemName=ozaki.markdown-github-dark)
-
-    b) [Markdown Emoji](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-emoji)
-
-    c) [Markdown Checkboxes](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-checkbox)
-
-    d) [Markdown yaml Preamble](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-yaml-preamble)
-
 5) [clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd) - Provides auto-complete functionality for VSCodium (language server).
-
 6) [SonarLint](https://open-vsx.org/extension/SonarSource/sonarlint-vscode) - Additional static analysis tool.
+7) [Markdown Extension Pack](https://open-vsx.org/vscode/item?itemName=sugatoray.vscode-markdown-extension-pack)
 
 ## Static Analysis
 

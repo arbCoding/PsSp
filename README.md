@@ -1,3 +1,8 @@
+---
+Author: "Alexander R. Blanchette"
+Email: "ARBCoding@gmail.com"
+---
+
 # Passive-source Seismic-processing (PsSp)
 
 PsSp aims to provide an OS-independent, graphical, seismic-processing software package targeted at passive-source seismologists.
@@ -5,28 +10,33 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 ## Screenshots
 
 ### MacOS 13.4 - 16 June 2023
+
 ![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
 
 ### Ubuntu Linux 23.04 - 22 June 2023
+
 ![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
 
 ### Windows 11 - 22 June 2023
+
 ![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
 
 ## Why does this exist?
+
 ### Summary
 
 The purpose of this project is to **extend the productivity suite of the passive-source seismologist**. There exist great tools for writing manuscripts (e.g. MS Word, LibreOffice, LaTeX, ...). There exist great tools for creating presentations (e.g. MS Powerpoint, Impress Presentation, ...). There exist great tools for communicating with each other across the world (Outlook, Thunderbird, Zoom, MS Teams, ...). What tools exist for doing seismic analysis? Far too often, it is whatever the analyst manages to cludge together, provided it *seems* to do the job.
 
 ### Introduction
 
-Despite the various seismological tools that exist, and because of how they are designed, the seismologist will **most likely** need to code 
-their own tool(s) (as a shell script stitching programs together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if it is 
+Despite the various seismological tools that exist, and because of how they are designed, the seismologist will **most likely** need to code
+their own tool(s) (as a shell script stitching programs together, as a Python script using ObsPy, as a SAC macro, etc.). While the ability to do that if it is
 desired by the researcher is awesome, the need to do it is unfortunate as not everyone wants to (or knows how to) write their own codes. It gets worse when you consider the performance of these codes, or how the codes end up becoming obsolete after a short time (try using someone's old Python scripts, or Matlab codes, have them not work and be stuck trying to figure out what is wrong instead of making progress on your research).
 
 ### Discussion
 
 The primary issues that I see today are:
+
 1) There is a lack of available tools with a modern graphical user interface (GUI).
 2) Often tools only do one or a few jobs. This makes life easier for the developer (following the [KISS philosophy](https://en.wikipedia.org/wiki/KISS_principle)), but it makes life harder for the end-user. Often the end-user needs to stitch/cludge together different tools, developed by different persons/groups, in order to perform a given research task.
 3) The additional complication of OS-exclusive software, locking users of the wrong operating system out from certain tools is really quite unfortunate.
@@ -53,6 +63,7 @@ This project has gone too far without proper testing. Bugs are hard to find, the
 To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon. I'm also looking into using [Valgrind](https://valgrind.org/) to incorporate some more advanced dynamic analysis tools into the development workflow.
 
 ### Last Focus: Memory Management
+
 All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory and the user can change that amount (currently limited to a minimum of `n_threads` to prevent deadlock and a maximum of INT_MAX, which is simply absurd and should be updated in the future). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
 ## ToDo
@@ -66,47 +77,49 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 ### Necessary
 
 * [Boost](https://www.boost.org/)
-   * Provides some convenient string manipulation operations.
+  * Provides some convenient string manipulation operations.
 * [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
-   * This provides the OS-independent GUI.
-   * Git submodule.
+  * This provides the OS-independent GUI.
+  * Git submodule.
 * [FFTW3](https://www.fftw.org/)
-   * This is necessary for spectral functionality (FFT, IFFT).
-   * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
+  * This is necessary for spectral functionality (FFT, IFFT).
+  * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
 * [GLFW3](https://www.glfw.org/)
-   * This is a graphical backend for the GUI.
+  * This is a graphical backend for the GUI.
 * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
-   * This adds OS-independent File Dialogs to Dear ImGui.
-   * Git submodule.
+  * This adds OS-independent File Dialogs to Dear ImGui.
+  * Git submodule.
 * [ImPlot](https://github.com/epezent/implot)
-   * This adds OS-independent plotting functionality to Dear ImGui.
-   * Git submodule.
+  * This adds OS-independent plotting functionality to Dear ImGui.
+  * Git submodule.
 * [MessagePack](https://msgpack.org/)
-   * Provides data-serialization, used to serialize/deserialize program settings from a binary file.
+  * Provides data-serialization, used to serialize/deserialize program settings from a binary file.
 * [sac-format](https://github.com/arbCoding/sac-format)
-   * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
-   * Git submodule.
+  * This provides binary SAC-file (seismic) I/O, both low-level functions and the high-level SacStream class.
+  * Git submodule.
 * [SQLite3](https://sqlite.org/)
-   * Projects are implemented as internal sqlite3 databases.
-   * We are able to maintain data provenance information, processing checkpoints, and so on via a serverless relational database.
+  * Projects are implemented as internal sqlite3 databases.
+  * We are able to maintain data provenance information, processing checkpoints, and so on via a serverless relational database.
 
 ### Optional
 
 * [Catch2](https://github.com/catchorg/Catch2) v3.2.2
-   * This provides the unit/integration testing framework
-   * Git submodule.
+  * This provides the unit/integration testing framework
+  * Git submodule.
 * [Xoshiro-cpp](https://github.com/Reputeless/Xoshiro-cpp)
-   * This provides good and fast pseudo-random number generation
-   * Currently only used to generate random data for unit tests
-   * Will be implemented in PsSp for use eventually (to generate random noise, generate random perturbations in an inversion, etc.)
-   * Git submodule.
+  * This provides good and fast pseudo-random number generation
+  * Currently only used to generate random data for unit tests
+  * Will be implemented in PsSp for use eventually (to generate random noise, generate random perturbations in an inversion, etc.)
+  * Git submodule.
 
 ## Compilation instructions
 
 I test this on M1 MacOS (Ventura 13.4.1), x86_64 Linux (Ubuntu 23.04), and x86_64 Windows (Windows 11, using MSYS2/Mingw).
 
 ### [MacOS](screenshots/pssp_main_window_16June2023.png)
+
 Using [Homebrew](https://brew.sh/)
+
 ```shell
 brew install fftw glfw msgpack-cxx sqlite boost
 ```
@@ -114,12 +127,15 @@ brew install fftw glfw msgpack-cxx sqlite boost
 **NOTE** For MacOS users, if you want a stand-alone `Application` (`PsSp.app`, no need to execute from the terminal) there are additional requirements. Please see the [additional instructions](#special-macos-application) for more information.
 
 ### [Linux](screenshots/pssp_main_window_22June2023_Ubuntu2304.png) (Ubuntu 23.04/Debian based)
+
 Using [apt](https://wiki.debian.org/Apt)
+
 ```shell
 sudo apt install libfftw3-dev libglfw3-dev libboost-all-dev libmsgpack-dev libsqlite3-dev
 ```
 
 ### [Windows](screenshots/pssp_main_window_22June2023_Windows11.png) (Windows 11)
+
 Using [MSYS2](https://www.msys2.org/)
 
 ```shell
@@ -129,6 +145,7 @@ pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-fftw
 ### Clone and Initialze
 
 Next you need to clone this project and initialize the [submodules](submodules)
+
 ```shell
 git clone https://github.com/arbCoding/PsSp.git
 cd PsSp
@@ -139,11 +156,13 @@ That will download the appropriate submodule dependencies, with the correct comm
 
 **NOTE** if a submodule is not the correct version (detached head, but submodule was updated)
 From the base git dir (PsSp) run
+
 ```shell
 git submodule update --init --remote submodules/
 ```
 
 Then it is a simple as running
+
 ```shell
 make
 ```
@@ -151,6 +170,7 @@ make
 The above command will make an executable inside the ./bin/ directory. **Note** that on Linux/MacOS this will be a file simply named `PsSp` and on Windows it will instead be `PsSp.exe`.
 
 To run it on Linux/MacOS use
+
 ```shell
 ./bin/PsSp
 ```
@@ -160,6 +180,7 @@ The above command is used to start PsSp from the command line. On Linux you can 
 **MacOS `Application`**
 
 To make `PsSp.app` run
+
 ```shell
 make macos
 ```
@@ -167,6 +188,7 @@ make macos
 `PsSp.app` can be run by double-clicking on the application file.
 
 On Windows you can start it from the command line (MSYS2 knows to switch the `/` around to a `\` automatically).
+
 ```shell
 ./bin/PsSp.exe
 ```
@@ -174,13 +196,17 @@ On Windows you can start it from the command line (MSYS2 knows to switch the `/`
 Or by double-clicking on the executable.
 
 ### Cleanup
+
 To cleanup (including removing the compiled programs), run:
+
 ```shell
 make clean
 ```
 
 ### Testing
+
 To compile and run the tests:
+
 ```shell
 make tests
 ```
@@ -196,17 +222,20 @@ I do not take credit for figuring this out, I found this [blog post](https://new
 First, I use [dylibbundler](https://github.com/auriamg/macdylibbundler/) to handle rebinding the links for the non-standard dynamically linked libraries. The application bundle requires that they be included in the application (such that the end-user doesn't need to install them).
 
 This can be installed via Homebrew
+
 ```shell
 brew install dylibbundler
 ```
 
 You can see which dylib's will need to be modified via the `otool` command after the program is compiled:
+
 ```shell
 otool -L ./bin/PsSp
 ```
 
 Anything not listed in `/System/Libary/` or `/usr/lib` will need to be included with the application.
 Fortunately, **dylibbundler** can handle that for us.
+
 ```shell
 dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d ./PsSp.app/Contents/libs/
 ```

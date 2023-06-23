@@ -1,3 +1,8 @@
+---
+Author: "Alexander R. Blanchette"
+Email: "ARBCoding@gmail.com"
+---
+
 # Updated on 16 June 2023 (too lazy to renumber daily)
 
 ## Purpose
@@ -116,7 +121,7 @@ I would prefer to gray-out the window and make the options non-selectable during
 29) Functionality for stacking seismograms
 
     a) Standard-stack
-    
+
     b) Slant-stack
 
     c) H-k stack
@@ -124,20 +129,17 @@ I would prefer to gray-out the window and make the options non-selectable during
 30) Arrival time prediction from 1-d earth model (spherical)
 
     a) That requires ray-tracing through 1-d earth model
-    
+
     b) That requires definition of naming of phases
-        
+
     c) There are various definitions, but I want to be able to be completely explicit about a phases path
         Both source-side and receiver-side because there is ambiguity in the naming schemes
         As well as specifying depths of certain interactions (I want reflects off the Moho on the receiver-side, or from a theoretical reflection from an interface at a depth of 20-km beneath the receiver, but I don't care about making
-        that modification to the 1-D model also effect the source-side, I also don't care if there is no pre-defined reflection
-        from that depth, imagine it happend [treat reflection point as a source, can the specified wave get to the receiver?])
+        that modification to the 1-D model also effect the source-side, I also don't care if there is no pre-defined reflection from that depth, imagine it happend [treat reflection point as a source, can the specified wave get to the receiver?])
         *While non-standard, I think that would be most valuable for the end-user (even though it'll be a pain to implement)
-    
+
     d) To do this, I think ray-tracing needs to work from the end-points in to the "mid" point of the ray-path.
-        From the end-point to the next internal point, is it even possible? If no, then fail. If yes, then what conditions must be met. Then within those conditions, is it possible for this internal point to connect appropriately to the next, more-internal, point. Each end does this until either one fails-out, or they match-up and we're done with this check.
-        Of course, if there are multiple possible paths, we need to make sure to include them in our analysis (we take the path with least travel-time, but if paths have the same travel-time, we keep them together [like a hash function]).
-        We could even, in theory, define the set of points that falls within +/- tolerance of the minimum travel-time found, which would in the future lead to being able to deal with finite-frequency (finite bandwidth, instead of infinitesimal bandwidth) effects.
+        From the end-point to the next internal point, is it even possible? If no, then fail. If yes, then what conditions must be met. Then within those conditions, is it possible for this internal point to connect appropriately to the next, more-internal, point. Each end does this until either one fails-out, or they match-up and we're done with this check. Of course, if there are multiple possible paths, we need to make sure to include them in our analysis (we take the path with least travel-time, but if paths have the same travel-time, we keep them together [like a hash function]). We could even, in theory, define the set of points that falls within +/- tolerance of the minimum travel-time found, which would in the future lead to being able to deal with finite-frequency (finite bandwidth, instead of infinitesimal bandwidth) effects.
 
 31) I think that leads naturally to seismic body-wave travel-time inversion (hypocentral, or tomographic, or both).
 
