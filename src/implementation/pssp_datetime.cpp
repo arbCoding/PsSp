@@ -8,6 +8,7 @@ namespace pssp
 std::string left_pad_integers(int n, int width)
 {
     std::ostringstream oss{};
+    // Ignoring SolarLint S6495 because gcc-12 does not support <format> (gcc-13 does, but not on ubuntu 22.04)
     oss << std::setw(width) << std::setfill('0') << n;
     return oss.str();
 }
@@ -21,17 +22,9 @@ std::string left_pad_integers(int n, int width)
 int days_per_month(int year, int month)
 {
     // Standard days in month for non-leap years
-    constexpr int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    const std::vector<int> days_in_month{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     int days{days_in_month[month]};
-    if (month == 1)
-    {
-        // February, check if it is a leap year
-        if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
-        {
-            // Is a leap year
-            ++days;
-        }
-    }
+    if ((month == 1) && (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))) { ++days; }
     return days;   
 }
 //------------------------------------------------------------------------
@@ -44,10 +37,7 @@ int days_per_month(int year, int month)
 int ymd_2_doy(int year, int month, int day)
 {
     int doy{0};
-    for (int i{0}; i < month; ++i)
-    {
-        doy += days_per_month(year, i);
-    }
+    for (int i{0}; i < month; ++i) { doy += days_per_month(year, i); }
     doy += day;
     return doy;
 }
@@ -61,22 +51,12 @@ int ymd_2_doy(int year, int month, int day)
 std::string doy_2_ymd(int year, int doy)
 {
     int month{0};
-    int days{0};
     // Infinite loop if we don't break out of it
     while (true)
     {
-        days = days_per_month(year, month);
+        int days{days_per_month(year, month)};
         // Subtract whole month of days from the doy
-        if (doy >= days)
-        {
-            doy -= days;
-            ++month;
-        }
-        else 
-        {
-            // We're done removing months
-            break;
-        }
+        if (doy >= days) { doy -= days; ++month; } else { break; }
     }
     std::ostringstream oss{};
     oss << left_pad_integers(year, 4);
@@ -94,7 +74,7 @@ std::string doy_2_ymd(int year, int doy)
 //------------------------------------------------------------------------
 // Make datetime
 //------------------------------------------------------------------------
-std::string sac_reference_time(SAC::SacStream& sac)
+std::string sac_reference_time(const SAC::SacStream& sac)
 {
     std::ostringstream oss{};
     oss << doy_2_ymd(sac.nzyear, sac.nzjday);
@@ -120,13 +100,19 @@ void timestamp_to_reference_headers(const char* raw_timestamp, SAC::SacStream& s
     std::string timestamp{raw_timestamp};
     // Extracting components from timestamp string
     std::istringstream iss(timestamp);
-    std::string s_year{}, s_month{}, s_day{}, s_hour{}, s_minute{}, s_second{}, s_milliseconds{};
+    std::string s_year{};
     std::getline(iss, s_year, '-');
+    std::string s_month{};
     std::getline(iss, s_month, '-');
+    std::string s_day{};
     std::getline(iss, s_day, ' ');
+    std::string s_hour{};
     std::getline(iss, s_hour, ':');
+    std::string s_minute{};
     std::getline(iss, s_minute, ':');
+    std::string s_second{};
     std::getline(iss, s_second, '.');
+    std::string s_milliseconds{};
     std::getline(iss, s_milliseconds);
     if (!s_year.empty()) { sac.nzyear = std::stoi(s_year); }
     int month{std::stoi(s_month)};

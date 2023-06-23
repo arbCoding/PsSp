@@ -1,18 +1,18 @@
+---
+Author: "Alexander R. Blanchette"
+Email: "ARBCoding@gmail.com"
+---
+
 # Style-Guidelines
 
 ## Purpose
----
 
 The purpose of this document is to define the stylistic choices for coding in this repository.
 
 This is likely to be an incomplete document that will evolve as the style evolves. Any information that is incorrect is purely by mistake and will be corrected
 as soon as I am aware.
 
-## Styles
----
-
-### Banners
----
+## Banners
 
 I define a **banner** to refer to a structure formed by a multi-line comment.
 
@@ -51,6 +51,7 @@ the **{}** characters, including when tabulation is not entirely consistent, see
 When layering wrapped-banners, internal layers can be reduced by 4 to 5 characters, depending on context.
 
 e.g.
+
 ```c++
 //-----------------------------------------------------------------------------
 // Some function
@@ -87,6 +88,7 @@ The second set of internal wrapped banners, only go out to character 75 (truncat
 For extra-emphasis, you may use a heavy banner, otherwise called an equal banner (because it uses equal signs).
 
 e.g.
+
 ```c++
 //=============================================================================
 // Extra emphasis
@@ -97,6 +99,7 @@ Natural code structures should be surrounded by appropriate wrapped banners. The
 on otherwise easy to miss boundaries.
 
 e.g. (Bad)
+
 ```c++
 namespace somename
 {
@@ -117,6 +120,7 @@ very difficult to quickly distinguish where exactly you are in the code. Banners
 a powerful tool to quickly and visually separate chunks.
 
 e.g. (Good)
+
 ```c++
 //-----------------------------------------------------------------------------
 // My namespace somename
@@ -132,10 +136,7 @@ Class some_class
     //--------------------------------------------------------------------
     // some_function, takes no parameters, returns nothing
     //--------------------------------------------------------------------
-    void some_function()
-    {
-        return;
-    }
+    void some_function() { return; }
     //--------------------------------------------------------------------
     // End some_function, takes no parameters, returns nothing
     //--------------------------------------------------------------------
@@ -153,12 +154,12 @@ This will make files longer, but the visual structure will help when others read
 at some future date and need to quickly recall what is going on. This has no impact on the size of the binary, so
 use these banner structures where they seem most useful/natural.
 
-### Comments
----
+## Comments
 
 Comments should be quick an intuitive, and should always use single-line '//' (even if multi-line)
 
 e.g. (Good)
+
 ```c++
 // This is a comment that is designed to take multiple lines.
 // I'm doing this purely for show, I like to keep lines down to a single sentence or-so.
@@ -169,6 +170,7 @@ e.g. (Good)
 ```
 
 e.g. (Bad)
+
 ```c++
 /*
 This is a comment that is designed to take multiple lines.
@@ -185,12 +187,12 @@ Why is the `/**/` multi-line comment not used?
 I chose to reserve it for debugging purposes (to quickly comment out a section of code as needed). It isn't that hard to type `//` on a new-line
 and many modern IDEs/editor will automatically add it for you. I also just think that it looks better.
 
-### Namespaces
----
+## Namespaces
 
 When defining functions/classes/etc inside a namespace, do not give an initial indentation to the definitions.
 
 e.g. (Correct)
+
 ```c++
 namespace pssp
 {
@@ -200,6 +202,7 @@ void some_other_function();
 ```
 
 And not (Incorrect)
+
 ```c++
 namespace pssp
 {
@@ -212,10 +215,9 @@ This reduces line-shrinkage. If we want to maintain relatively short lines of co
 it is silly to immediately lose 4 characters of line-space, just because we're inside of a namespace. **Especially**
 because we will **ALWAYS** be inside a namespace, for the sake of safety.
 
-### Interfaces and Implementations
----
+## Interfaces and Implementations
 
-I follow the practice of separating interfaces from implementations, that is having separate header files (*.hpp files) and their corresponding *.cpp files.
+I follow the practice of separating interfaces from implementations, that is having separate header files (*.hpp files) and their corresponding*.cpp files.
 
 I have chosen the naming convention of .hpp for a C++ header file because my editor kept mistaking *.h files for C, even though they can also be for C++. No deeper reason than that.
 
@@ -236,6 +238,7 @@ Interfaces go in the header file and get automatically included in the build. Im
 Always user header-guards for your interfaces and keep all include statements in the interface (the only include statement inside of an implementation should be for its respective interface).
 
 e.g. (interface.hpp)
+
 ```c++
 #ifndef PSSP_INTERFACE_HPP_20230610
 #define PSSP_INTERFACE_HPP_20230610
@@ -245,16 +248,17 @@ e.g. (interface.hpp)
 ```
 
 e.g. (interface.cpp)
+
 ```c++
 #include "interface.hpp"
 ```
 
-### Header-Guards
----
+## Header-Guards
 
 Header-guard names are in full-caps, prefaced by the namespace (or program), then the actual header followed by the extension (HPP) and then the date the header guard was added/modified in YYYYMMDD format. These subsections of the header-guard are separate by and underscore character (_). Previously the date addition was not included, it has been tacked on to the format for extra internal safety.
 
 e.g. (Good)
+
 ```c++
 #ifndef PSSP_INTERFACE_HPP_20230610
 #define PSSP_INTERFACE_HPP_20230610
@@ -266,6 +270,7 @@ e.g. (Good)
 ```
 
 e.g. (Bad)
+
 ```c++
 #ifndef pssp
 #define pssp
@@ -280,14 +285,14 @@ Why? For organization and safety. By prefacing with the namespace or program-nam
 
 Why not use `pragma once`? Because it is not a standard component of the C++ language, while many compilers do support it, it is compiler specific. Header-guards, while a controversial solution, are a commonly accepted one.
 
-### Multi-line statements
----
+## Multi-line statements
 
 In general, if a statement is short, it should be a single-line statement and if it is long it should be a multi-line statement.
 
 This comes up very commonly for `if` statements.
 
 e.g. (Good)
+
 ```c++
 if (statment) { return; }
 
@@ -300,15 +305,13 @@ if (statement)
 {
     do_something();
     do_something_else();
-    for (int i{0}; i < 10; ++i)
-    {
-        do_even_more_stuff(i);
-    }
+    for (int i{0}; i < 10; ++i) { do_even_more_stuff(i); }
 }
 else { do_something_else(); }
 ```
 
 e.g. (Bad)
+
 ```c++
 if (statment)
     return;
@@ -345,13 +348,14 @@ else
 ```
 
 Why? For a couple of reasons:
+
 1) Excluding the curly-brackets (*{}*) risks weird bugs later on if the statement gets changed. All you need to do is forget to add the curly-brackets before/during/after the process of making the modification and enjoy the ensueing weirdness.
 2) I don't want an if statement that needs to only take 1 line to end up taking 4-lines. It just unnecessarily inflates the length of your code (which we're already inflating with the infinitely more-valuable comments and wrapped banners!).
 
-### Include Statements
----
+## Include Statements
 
 Inclusion order is as follows:
+
 1) Our interfaces
 2) External, non-standard libraries
 3) Standard library stuff

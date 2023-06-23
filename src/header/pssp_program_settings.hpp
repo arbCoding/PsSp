@@ -7,7 +7,10 @@
 // Dear ImGui header
 #include <imgui.h>
 // MessagePack, https://msgpack.org/
-#include <msgpack.hpp>
+// Linux and MacOS
+//#include <msgpack.hpp>
+// Windows
+//#include <msgpack.h>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 // Filesystem stuff
 #include <filesystem>
@@ -60,7 +63,7 @@ struct WindowSettings
     // State enum for the window (default stable = don't update information)
     window_state state{hide};
     // To allow msgpack to handle the components.
-    MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title)
+    //MSGPACK_DEFINE(pos_x, pos_y, width, height, show, is_set, img_flags, title)
 };
 // Settings for all windows (except main menu bar and status bar)
 struct AllWindowSettings
@@ -99,7 +102,10 @@ struct AllWindowSettings
     // Notes for current checkpoint
     WindowSettings notes_checkpoint{508, 297, 276, 148, false, false, ImGuiWindowFlags_AlwaysAutoResize, "Checkpoint Notes##"};
     WindowSettings processing_history{665, 573, 773, 234, false, false, ImGuiWindowFlags{}, "History##"};
-    MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint, processing_history)
+    // Data-pool options
+    WindowSettings data_pool_options{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
+    | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "DataPool Options##"};
+    //MSGPACK_DEFINE(welcome, fps, header, plot_1c, spectrum_1c, sac_files, lowpass, highpass, bandpass, bandreject, file_dialog, name_checkpoint, notes_checkpoint, processing_history);
 };
 // Whether a certain menu is allow or not
 struct MenuAllowed
@@ -122,6 +128,7 @@ struct MenuAllowed
     bool delete_checkpoint{true};
     // Options Menu
     bool options_menu{false};
+    bool data_pool_options_menu{false};
     // Window Menu
     bool window_menu{true};
     bool center_windows{false};

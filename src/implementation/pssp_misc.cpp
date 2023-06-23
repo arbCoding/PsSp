@@ -36,6 +36,16 @@ void calc_spectrum(ProgramStatus& program_status, sac_1c& visual_sac, sac_1c& sp
     }
 }
 
+// Calculate the mean of a series of doubles
+double calc_mean(const std::vector<double>& data_vector)
+{
+    double mean{0};
+    // Clang apparently doesn't have std::accumulate yet...
+    for (double value : data_vector) { mean += value; }
+    mean /= static_cast<double>(data_vector.size());
+    return mean;
+}
+
 void remove_mean(ProgramStatus& program_status, int data_id)
 {
     if (!program_status.project.is_project) { return; }
@@ -48,27 +58,13 @@ void remove_mean(ProgramStatus& program_status, int data_id)
         program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, "REMOVE MEAN");
         double mean{0};
         // Check if the mean is already set
-        if (sac_ptr->sac.depmen != SAC::unset_float)
-        {
-            mean = sac_ptr->sac.depmen;
-        }
-        else
-        {
-            // Need to calculate the mean...
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                mean += sac_ptr->sac.data1[i];
-            }
-            mean /= static_cast<double>(sac_ptr->sac.npts);
-        }
+        if (sac_ptr->sac.depmen != SAC::unset_float) { mean = sac_ptr->sac.depmen; }
+        else { mean = calc_mean(sac_ptr->sac.data1); }
         // If out mean is zero, then we're done
         if (mean != 0.0 || sac_ptr->sac.depmen != 0.0f)
         {
             // Subtract the mean from ever data point
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                sac_ptr->sac.data1[i] -= mean;
-            }
+            for (int i{0}; i < sac_ptr->sac.npts; ++i) { sac_ptr->sac.data1[i] -= mean; }
             // The mean is zero
             sac_ptr->sac.depmen = 0.0f;
         }
@@ -104,18 +100,8 @@ void remove_trend(ProgramStatus& program_status, int data_id)
         // Static_cast just to be sure no funny business
         double mean_t{static_cast<double>(sac_ptr->sac.npts) / 2.0};
         // If depmen is not set, so no average to start from
-        if (sac_ptr->sac.depmen == SAC::unset_float)
-        {
-            for (int i{0}; i < sac_ptr->sac.npts; ++i)
-            {
-                mean_amplitude += sac_ptr->sac.data1[0];
-            }
-            mean_amplitude /= static_cast<double>(sac_ptr->sac.npts);
-        }
-        else
-        {
-            mean_amplitude = sac_ptr->sac.depmen;
-        }
+        if (sac_ptr->sac.depmen == SAC::unset_float) { mean_amplitude = calc_mean(sac_ptr->sac.data1); }
+        else { mean_amplitude = sac_ptr->sac.depmen; }
         // Now to calculate the slope and y-intercept (y = amplitude)
         double numerator{0};
         double denominator{0};
@@ -152,7 +138,12 @@ void batch_remove_trend(ProgramStatus& program_status)
 
 // For some reason these are not adding the processing notes after reloading
 // I wonder if the connection to the sq3 db in memory is getting lost/corrupted?
-void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lowpass_options)
+// In the future I should add a checkbox to automaically downsample the seismogram such that the sample-rate
+// such that the Nyquist-Frequency matches the upper-corner frequency.
+// In the future I should allow a corner frequency that is above the Nyquist frequency in any filters.
+// Not to mention I still need to implement the proper forms of their transfer functions instead of
+// just using the gain (blows up the signal amplitudes)
+void apply_lowpass(ProgramStatus& program_status, int data_id, const FilterOptions& lowpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -167,13 +158,12 @@ void apply_lowpass(ProgramStatus& program_status, int data_id, FilterOptions& lo
     oss << lowpass_options.freq_low;
     oss << ";";
     program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
-    // It is dying in here
     lowpass(program_status.fftw_planpool, sac_ptr, lowpass_options.order, lowpass_options.freq_low);
     program_status.data_pool.return_ptr(program_status.project, sac_ptr);
     ++program_status.tasks_completed;
 }
 
-void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_options)
+void batch_apply_lowpass(ProgramStatus& program_status, const FilterOptions& lowpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -186,7 +176,7 @@ void batch_apply_lowpass(ProgramStatus& program_status, FilterOptions& lowpass_o
     }
 }
 
-void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& highpass_options)
+void apply_highpass(ProgramStatus& program_status, int data_id, const FilterOptions& highpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -206,7 +196,7 @@ void apply_highpass(ProgramStatus& program_status, int data_id, FilterOptions& h
     ++program_status.tasks_completed;
 }
 
-void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass_options)
+void batch_apply_highpass(ProgramStatus& program_status, const FilterOptions& highpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -219,7 +209,7 @@ void batch_apply_highpass(ProgramStatus& program_status, FilterOptions& highpass
     }
 }
 
-void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& bandpass_options)
+void apply_bandpass(ProgramStatus& program_status, int data_id, const FilterOptions& bandpass_options)
 {
     if (!program_status.project.is_project) { return; }
     std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
@@ -241,7 +231,7 @@ void apply_bandpass(ProgramStatus& program_status, int data_id, FilterOptions& b
     ++program_status.tasks_completed;
 }
 
-void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass_options)
+void batch_apply_bandpass(ProgramStatus& program_status, const FilterOptions& bandpass_options)
 {
     std::scoped_lock lock_program(program_status.program_mutex);
     program_status.state.store(program_state::processing);
@@ -254,17 +244,14 @@ void batch_apply_bandpass(ProgramStatus& program_status, FilterOptions& bandpass
     }
 }
 
-void read_sac(ProgramStatus& program_status, const std::filesystem::path file_name)
+void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_name)
 {
     program_status.state.store(program_state::in);
     sac_1c sac{};
-    {
-        std::scoped_lock lock_sac(sac.mutex_);
-        sac.file_name = file_name;
-        sac.sac = SAC::SacStream(sac.file_name);
-        sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
-    }
-    std::shared_lock lock_sac(sac.mutex_);
+    std::scoped_lock lock_pool_sac(program_status.data_pool.mutex_, sac.mutex_);
+    sac.file_name = file_name;
+    sac.sac = SAC::SacStream(sac.file_name);
+    sac.data_id = program_status.project.add_sac(sac.sac, file_name.string());
     if (program_status.data_pool.n_data() < program_status.data_pool.max_data)
     {
         program_status.data_pool.add_data(program_status.project, sac.data_id, program_status.project.checkpoint_id_);
@@ -272,7 +259,7 @@ void read_sac(ProgramStatus& program_status, const std::filesystem::path file_na
     ++program_status.tasks_completed;
 }
 
-void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path directory)
+void scan_and_read_dir(ProgramStatus& program_status, const std::filesystem::path& directory)
 {
     // Iterate over files in directory
     std::vector<std::filesystem::path> file_names{};
@@ -290,7 +277,7 @@ void scan_and_read_dir(ProgramStatus& program_status, std::filesystem::path dire
     program_status.tasks_completed = 0;
     program_status.total_tasks = static_cast<int>(file_names.size());
     // Queue them up!
-    for (std::string file_name : file_names)
+    for (const std::filesystem::path& file_name : file_names)
     {
         program_status.thread_pool.enqueue(read_sac, std::ref(program_status), file_name);
     }
@@ -327,7 +314,7 @@ const char* setup_gl()
     return glsl_version;
 }
 
-ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, std::filesystem::path program_path)
+ImGuiIO& start_graphics(GLFWwindow* window, const char* glsl_version, const std::filesystem::path& program_path)
 {
     if (window == nullptr)
     {
@@ -463,12 +450,18 @@ void checkpoint_data(ProgramStatus& program_status, const int data_id, const int
 //------------------------------------------------------------------------
 // Unload data from memory
 //------------------------------------------------------------------------
+// This works fine inside of load_data
+// I think because the program state instantly goes back to idle
+// as there are not tasks being checked off, adding
 void unload_data(ProgramStatus& program_status)
 {
+    program_status.total_tasks += 2;
     program_status.state.store(program_state::in);
     // Remove the SQLite3 connections and the file paths
     program_status.project.unload_project();
+    ++program_status.tasks_completed;
     program_status.data_pool.empty_pool();
+    ++program_status.tasks_completed;
 }
 //------------------------------------------------------------------------
 // End Unload data from memory
@@ -479,6 +472,7 @@ void unload_data(ProgramStatus& program_status)
 //------------------------------------------------------------------------
 void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 {
+    std::scoped_lock lock_pool(program_status.data_pool.mutex_);
     program_status.data_pool.add_data(program_status.project, data_id, program_status.project.checkpoint_id_, true);
     ++program_status.tasks_completed;
 }
@@ -489,16 +483,17 @@ void load_2_data_pool(ProgramStatus& program_status, const int data_id)
 //------------------------------------------------------------------------
 // Load a project from a project file
 //------------------------------------------------------------------------
-void load_data(ProgramStatus& program_status, const std::filesystem::path project_file, int checkpoint_id)
+void load_data(ProgramStatus& program_status, const std::filesystem::path& project_file, int checkpoint_id)
 {
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.state.store(program_state::in);
-        program_status.tasks_completed = 0;
-        program_status.total_tasks = 4;
-    }
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::in);
+    program_status.tasks_completed = 0;
+    program_status.total_tasks = 4;
     // First make sure we unload the present project
     unload_data(program_status);
+    // Ignoring SonarLint S5524 because unload_data uses a scoped_lock on the project as well
+    // and hence I cannot merge this with the above lock_program
+    std::scoped_lock lock_project(program_status.project.mutex);
     ++program_status.tasks_completed;
     // Connection to the project file
     program_status.project.connect_2_existing(project_file);
@@ -506,8 +501,8 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
     // Set the checkpoint id to the latest checkpoint
     program_status.project.set_checkpoint_id(checkpoint_id);
     // Clear the temporary data if it is there
-    program_status.project.clear_temporary_data();
-    ++program_status.tasks_completed;
+    //program_status.project.clear_temporary_data();
+    //++program_status.tasks_completed;
     // Get the data-ids to load
     program_status.project.current_data_ids = program_status.project.get_data_ids_for_current_checkpoint();
     program_status.project.updated = true;
@@ -522,12 +517,9 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
     {
         to_load = total_ids;
     }
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.total_tasks = static_cast<int>(to_load);
-        program_status.tasks_completed = 0;
-        program_status.state.store(program_state::in);
-    }
+    program_status.total_tasks = static_cast<int>(to_load);
+    program_status.tasks_completed = 0;
+    program_status.state.store(program_state::in);
     // If we have space to load more data
     for (std::size_t i{0}; i < to_load; ++i)
     {
@@ -537,6 +529,8 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path projec
 //------------------------------------------------------------------------
 // End load a project from a project file
 //------------------------------------------------------------------------
+
+void reduce_data_pool(ProgramStatus& program_status) { program_status.data_pool.safe_clear_chunk(program_status.project); }
 
 //-----------------------------------------------------------------------------
 // Shitty Butterworth lowpass filter for testing (not correct, but useful)
@@ -669,12 +663,10 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
 {
     project.delete_checkpoint_from_list(checkpoint_id);
     std::vector<int> data_ids{project.get_data_ids()};
-    {
-        std::scoped_lock lock_program(program_status.program_mutex);
-        program_status.state.store(program_state::out);
-        program_status.total_tasks = static_cast<int>(data_ids.size());
-        program_status.tasks_completed = 0;
-    }
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::out);
+    program_status.total_tasks = static_cast<int>(data_ids.size());
+    program_status.tasks_completed = 0;
     // Clear the actual data values
     for (int data_id : data_ids)
     {
@@ -686,6 +678,35 @@ void delete_checkpoint(ProgramStatus& program_status, Project& project, int chec
 //-----------------------------------------------------------------------------
 // End Delete a checkpoint
 //-----------------------------------------------------------------------------
+
+// This is a terrible way to do down-sampling, it does nothing to prevent aliasing
+// it does nothing about the zoom-level of the plot
+// it pays no attention to the time-width of the plot (trimming beginning and end if appropriate)
+// it pays no attention to the size of the window
+// this is just quick and dirty to experiment
+void downsample_4_plotting(sac_1c& plotting_sac)
+{
+    // Seems like a sane amount
+    constexpr std::size_t n_plot{1500};
+    std::size_t n_orig_data1{plotting_sac.sac.data1.size()};
+    // If it isn't empty, down sample it too
+    // size of data1 must equal size of data2 (should always be true)
+    const bool down_sample2{!plotting_sac.sac.data2.empty()};
+    std::vector<double> temp_data1(n_plot, 0.0);
+    // Size depends on whether we're downsampling or not
+    std::vector<double> temp_data2(n_plot * (down_sample2 ? 1 : 0), 0.0);
+    std::size_t n_gap{n_orig_data1 / n_plot};
+    for (std::size_t i{0}; i < n_plot; ++i)
+    { 
+        temp_data1[i] = plotting_sac.sac.data1[i * n_gap];
+        if (down_sample2) { temp_data2[i] = plotting_sac.sac.data2[i * n_gap]; }
+    }
+    plotting_sac.sac.data1 = std::move(temp_data1);
+    if (down_sample2) { plotting_sac.sac.data2 = std::move(temp_data2); }
+    plotting_sac.sac.npts = n_plot;
+    // This is not correct, but is an okay approximation if we assume n_orig_data is huge
+    plotting_sac.sac.delta *= static_cast<double>(n_gap);
+}
 
 //-----------------------------------------------------------------------------
 // End Misc functions

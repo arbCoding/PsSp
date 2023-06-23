@@ -1,7 +1,7 @@
 # If using cloc to get a lines of code use (by file)
 #find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc --by-file {} +
 # or (by language)
-##find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc {} +
+#find . -type d \( -name "submodules" -o -name "submodules/ImGuiFileDialog" -o -name "submodules/imgui" -o -name "submodules/implot" \) -prune -o -type f -exec cloc {} +
 #------------------------------------------------------------------------------
 # We need to know what OS we're on as it determines which compiler we use (and 
 # therefore which compiler parameters are appropriate) and how we link to the
@@ -10,31 +10,42 @@
 # Use the correct shell for bash scripts
 # seemed to default to /bin/sh when I use /bin/bash
 SHELL := /bin/bash
-# Linux or mac
+# Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = true
+debug = false
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
 # Param is always used
 param = -std=c++20 -pedantic-errors -Wall
 # Common debug params regardless of clang++ or g++
+# Most basic, no dynamic analysis
+common_debug = -Wextra -Werror -Wshadow -ggdb
 #
-# This uses the thread-sanitizer, useful for finding data-races
-# though it also flags many false positives (better than missing
-# real positives)
+# This uses the ThreadSanitizer, useful for finding data-races
 #common_debug = -fsanitize=thread -pthread -Wextra -Werror -Wshadow -ggdb
 #
-# This does not use the thread-sanitizer (no pthreads needed either)
-common_debug = -Wextra -Werror -Wshadow -ggdb
+# This uses AddressSanitizer, useful for finding memory errors
+#common_debug = -fsanitize=address -fno-omit-frame-pointer -Wextra -Werror -Wshadow -ggdb
+#
+# Cannot use on M1 MacOS (doesn't support arm64-apple-darwin22.5.0)
+# This uses MemorySanitizer, useful for finding memory errors
+#common_debug = -fsanitize=memory -fPIE -pie -fno-omit-frame-pointer -Wextra -Werror -Wshadow -ggdb
+#
 # Slightly different between MacOS and Linux
+# MacOS = Darwin (__APPLE__ and __MACH__)
+# Linux = Linux (__linux__)
+# Windows with MSYS2 = MSYS_NT-10.0-22621 (__MINGW32__)
 ifeq ($(uname_s), Darwin)
-  compiler = clang++
+  	compiler = clang++
 	debug_param = $(common_debug) -Wsign-conversion -Weffc++
-else
-  compiler = g++-12
+else ifeq ($(uname_s), Linux)
+  	compiler = g++-13
 	debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
+else
+	compiler = g++
+	debug_param = $(common_debu) -fanalyzer -Wsign-conversion -Weffc++
 endif
 
 # Specific to Dear ImGui
@@ -86,6 +97,10 @@ code_prefix = $(base_prefix)code/
 exp_prefix = $(code_prefix)experiment/
 # Where experimental programs will go
 exp_bin_prefix = $(bin_prefix)experiment/
+# Where test code lives
+test_prefix = $(base_prefix)tests/
+# Where the test programs will go
+test_bin_prefix = $(bin_prefix)tests/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -140,14 +155,17 @@ imgui_flags = `pkg-config --cflags glfw3`
 imgui_libs = `pkg-config --static --libs glfw3`
 
 # Slightly different between MacOS and Linux
+# I have no idea what it should be on Windows
 ifeq ($(uname_s), Darwin)
 	imgui_libs += -framework OpenGL
-else
+else ifeq ($(uname_s), Linux)
 	imgui_libs += -lGL
+else
+	#imgui_libs += -lGl /entry:mainCRTStartu
+	imgui_libs += -lgdi32 -lopengl32 -limm32
 endif
 
 imgui_params = $(imgui_flags) $(imgui_libs)
-#imgui_cxx = g++-12 $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 imgui_cxx = $(compiler) $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End Dear ImGui
@@ -159,8 +177,15 @@ imgui_cxx = $(compiler) $(params_imgui) -I$(imgui_dir) -I$(imgui_dir)backends
 # ImGuiFileDialog adds a Filesystem Acess GUI that is OS-independent and works
 # great with Dear ImGui
 im_file_diag_dir = $(submod_prefix)ImGuiFileDialog/
-imgui_params += -I$(im_file_diag_dir)
-#imgui_file_cxx = g++-12 $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
+# Yes this is dumb since only Windows is different, don't feel like figuring out the
+# better version at the moment and this works
+ifeq ($(uname_s), Darwin)
+	imgui_params += -isystem$(im_file_diag_dir)
+else ifeq ($(uname_s), Linux)
+	imgui_params += -isystem$(im_file_diag_dir)
+else
+	imgui_params += -I$(im_file_diag_dir)
+endif
 imgui_file_cxx = $(compiler) $(param) $(release_param) -I$(imgui_dir) -I$(imgui_dir)backends
 #------------------------------------------------------------------------------
 # End ImGuiFileDialog
@@ -170,14 +195,17 @@ imgui_file_cxx = $(compiler) $(param) $(release_param) -I$(imgui_dir) -I$(imgui_
 # ImPlot
 #------------------------------------------------------------------------------
 implot_dir = $(submod_prefix)implot/
-# This library triggers sign-conversion warnings. So we
-# should treat as a system header and ignore warnings
-# That way we're only confirming for out code
-# If this is an issue later, we can include it normally to track down
-# IT WORKS
-imgui_cxx += -isystem$(implot_dir)
+imgui_cxx += -I$(implot_dir)
 #------------------------------------------------------------------------------
 # End ImPlot
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# Xoshiro-cpp
+#------------------------------------------------------------------------------
+xoshiro_dir = $(submod_prefix)Xoshiro-cpp/
+#------------------------------------------------------------------------------
+# End Xoshiro-cpp
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
@@ -212,6 +240,19 @@ endif
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Catch2
+#------------------------------------------------------------------------------
+catch2_dir := $(submod_prefix)catch2/
+catch2_build := $(catch2_dir)build/
+catch2_lib := $(catch2_build)src/
+catch2_inc := $(catch2_dir)src/
+catch2_user_inc := $(catch2_build)/generated-includes/
+catch2_params := -I$(catch2_inc) -I$(catch2_user_inc) -L$(catch2_lib) -lCatch2Main -lCatch2
+#------------------------------------------------------------------------------
+# End Catch2
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # Include my headers
 #------------------------------------------------------------------------------
 # Compilation command with inclusion of my headers
@@ -240,6 +281,9 @@ macos: PsSp.app
 
 # Experimental programs
 exp: tree_exp
+
+# Tests
+tests: sacio_tests sacstream_tests
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -301,7 +345,7 @@ $(imgui_objs): $(imgui_ex_dir)Makefile
 # PsSp
 #------------------------------------------------------------------------------
 pssp_param_list = -I$(hdr_prefix) -I$(sf_header) $(sf_obj) $(imgui_objs) $(imgui_dir)misc/cpp/imgui_stdlib.cpp $(im_file_diag_dir)ImGuiFileDialog.o $(implot_dir)implot.cpp 
-pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params) 
+pssp_param_list += $(implot_dir)implot_items.cpp $(my_imp_files) $(imgui_params) -lsqlite3 $(fftw_params) $(boost_params) $(msgpack_params)
 PsSp: $(code_prefix)main.cpp $(imgui_objs) $(im_file_diag_dir)ImGuiFileDialog.o $(sf_obj)
 	@echo "Building $@"
 	@echo "Build start:  $$(date)"
@@ -346,6 +390,59 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Catch2
+#------------------------------------------------------------------------------
+# Trying to migrate to their more modern usage...
+catch2:
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(catch2_build) || mkdir $(catch2_build) && cd $(catch2_build) && cmake ../ && cmake --build .
+	@echo -e "Build finish: $$(date)\n"
+
+#------------------------------------------------------------------------------
+# End Catch2
+#------------------------------------------------------------------------------
+
+# Catch2 Compilation setup
+catch2_full_params = $(params_imgui) $(boost_params) $(catch2_params) -I$(hdr_prefix) -I$(sf_header) -I$(xoshiro_dir) $(sf_obj)
+
+# Nice and compact
+#test_options = --reporter compact --success
+# A bit verbose
+test_options = --success
+
+#------------------------------------------------------------------------------
+# SacIO Tests
+#------------------------------------------------------------------------------
+sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj) catch2
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params)
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(test_bin_prefix)$@ $(test_options)
+
+#------------------------------------------------------------------------------
+# End SacIO Tests
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# SacStream Tests
+#------------------------------------------------------------------------------
+sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params)
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(test_bin_prefix)$@ $(test_options)
+#------------------------------------------------------------------------------
+# End SacStream Tests
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # End compilation patterns
 #------------------------------------------------------------------------------
 
@@ -355,6 +452,8 @@ tree_exp: $(exp_prefix)tree_exp.cpp
 clean:
 	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
+	echo $(catch2_build)
+	rm -rf $(catch2_build)
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------

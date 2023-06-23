@@ -102,10 +102,12 @@ explicit ThreadPool(std::size_t n_threads = std::thread::hardware_concurrency() 
 template <typename Function, typename... Args>
 void enqueue(Function&& func, Args&&... args)
 {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     // Add it to the queue!
     // Intentionally ignoring the return value of bind (CppCheck warning) as it isn't needed in this context
-    tasks_.emplace(std::bind(std::forward<Function>(func), std::forward<Args>(args)...));
+    //tasks_.emplace(std::bind(std::forward<Function>(func), std::forward<Args>(args)...));
+    // SonarLint S5995, bind is dangerous, bind_front is an improvement
+    tasks_.emplace(std::bind_front(std::forward<Function>(func), std::forward<Args>(args)...));
     // Let one worker know they have stuff to do
     condition_.notify_one();
 }
@@ -130,6 +132,7 @@ void worker_thread();
 std::size_t n_threads_;
 std::atomic<std::size_t> n_busy_threads_{0};
 // Vector of threads
+// Ignoring SolarLint S6168 as clang++ doesn't support jthreads yet
 std::vector<std::thread> threads_{};
 // Function queue of tasks to do
 std::queue<std::function<void()>> tasks_{};

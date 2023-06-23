@@ -7,6 +7,7 @@
 #include "pssp_projects.hpp"
 #include <sac_stream.hpp>
 // Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
+#include <filesystem>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -67,22 +68,22 @@ namespace pssp
 //-----------------------------------------------------------------------------
 // sac_1c struct
 //-----------------------------------------------------------------------------
+// Ignoring SonarLint S4963 in this case, we need to have operator= and copy constructor
+// to deal with having a mutex
 struct sac_1c
 {
-    std::string file_name{};
+    //std::string file_name{};
+    std::filesystem::path file_name{};
     SAC::SacStream sac{};
     std::shared_mutex mutex_{};
     int data_id{};
 
-    sac_1c() : file_name(), sac(), mutex_(), data_id() {}
+    // Default constructor
+    sac_1c() = default;
     // Copy constructor
-    sac_1c(const sac_1c& other)
-    {
-        file_name = other.file_name;
-        sac = other.sac;
-        data_id = other.data_id;
-        // Don't copy the mutex
-    }
+    sac_1c(const sac_1c& other) : file_name(other.file_name), sac(other.sac), data_id(other.data_id) {}
+    // Destructor
+    ~sac_1c() = default;
     // Assignment operator
     sac_1c& operator=(const sac_1c& other)
     {
@@ -103,6 +104,8 @@ struct sac_1c
 //-----------------------------------------------------------------------------
 // DataPool class
 //-----------------------------------------------------------------------------
+// Ignoring SonarLint S5414, I might change everything to be public
+// but I think mixing private and public is not that big of a problem
 class DataPool
 {
 public:
@@ -116,30 +119,26 @@ public:
     // If I allow up to 6, it can experience deadlocks (not always so can be hard to track
     // down)
     //=========================================================================
-    // In the future I'd like to implement smart resizing of the data-pool
-    // if we're close to max-size and the system still has tons of memory
-    // left, we should increase max-size.
-    // If we're below max-size and the system is low on memory,
-    // we should decrease max-size
-    // But, max size must never go below the number of threads
-    // in the thread-pool
-    DataPool(std::size_t max_data_ = 1000) : max_data(max_data_) {}
+    // Would like smart resizing based upon resource consumption, for now a safe default
+    // plus the user can adjust it (they're not allowed to go below n_threads)
+    explicit DataPool(std::size_t max_data_ = 2000) : max_data(max_data_) {}
     // Request a pointer for the data (raw pointer, only the pool owns the data!)
     std::shared_ptr<sac_1c> get_ptr(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // How much data is in the pool
     std::size_t n_data() const;
     // Fully empty the pool
     void empty_pool();
-    void remove_data(Project& project, int data_id);
+    // Clear a chunk safely
+    void safe_clear_chunk(Project& project);
+    void remove_data(const Project& project, int data_id);
     std::size_t max_data{};
     // Add data to the pool
     void add_data(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
     // Function for returning data to data-pool
-    void return_ptr(Project& project, std::shared_ptr<sac_1c>& sac_ptr);
-    //std::vector<int> get_iter(const std::vector<int>& input_ids);
+    void return_ptr(Project& project, const std::shared_ptr<sac_1c>& sac_ptr);
     std::vector<int> get_iter(Project& project);
-private:
     std::mutex mutex_{};
+private:
     std::map<int, std::shared_ptr<sac_1c>> data_pool_{};
     // Add and return a new raw pointer
     std::shared_ptr<sac_1c> get_new_pointer(Project& project, const int data_id, const int checkpoint_id, const bool from_checkpoint = false);
