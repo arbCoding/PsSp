@@ -86,7 +86,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
   * By using a plan-pool, that has an appropriate semaphore lock, I have implemented fft and ifft in a thread-safe fashion (super-fast!).
 * [GLFW3](https://www.glfw.org/)
   * This is a graphical backend for the GUI.
-* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), Lib_Only branch
+* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog), master branch
   * This adds OS-independent File Dialogs to Dear ImGui.
   * Git submodule.
 * [ImPlot](https://github.com/epezent/implot)
@@ -241,6 +241,10 @@ dylibbundler -s /opt/homebrew/lib/ -od -b -x ./PsSp.app/Contents/MacOS/PsSp -d .
 ```
 
 Of course, this is implemented automatically in the [Makefile](Makefile), assuming you also used Homebrew to install the other packages (non-Git submodules).
+
+## Notes on GitHub actions
+
+GitHub actions would be great, but at the present moment they are a bit behind. I cannot use Ubuntu 23.04 (only 22.04, which doesn't have the correct implementation of the standard library), nor can I use the correct implementation of the standard library for MacOS (tried). In the future I'll look back into this, but for now compilation will need to remain local which is fine.
 
 ---
 
