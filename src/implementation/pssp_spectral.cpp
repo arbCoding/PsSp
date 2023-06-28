@@ -1,4 +1,5 @@
 #include "pssp_spectral.hpp"
+#include <iostream>
 
 namespace pssp
 {
@@ -73,4 +74,74 @@ std::vector<double> ifft_spectrum(FFTWPlanPool& plan_pool, const std::vector<std
 //-----------------------------------------------------------------------------
 // End Inverse-FFT of spectrum using FFTWPlanPool (multi-thread)
 //-----------------------------------------------------------------------------
+
+std::vector<double> butterworth_coeffs(int n)
+{
+    // If order = n, then n + 1 elements (0 up to and including n)
+    std::vector<double> coeffs(n + 1, 0.0);
+    // Normalization condition
+    coeffs[0] = 1.0;
+    // Symmetry condition
+    coeffs[n] = 1.0;
+    // If we're done, return
+    if (n == 1) { return coeffs; }
+    const double gamma{M_PI / static_cast<double>(2 * n)};
+    for (int k{1}; k <= n / 2; ++k)
+    {
+        coeffs[k] = coeffs[k - 1] * (std::cos(static_cast<double>((k - 1)) * gamma) / std::sin(static_cast<double>(k) * gamma));
+        // Symmetry
+        coeffs[n - k] = coeffs[k];
+    }
+    return coeffs;
+}
+
+std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s)
+{
+    const std::size_t n{coeffs.size() - 1};
+    std::complex<double> result{};
+    for (std::size_t i{0}; i <= n; ++i) { result += coeffs[i] * std::pow(s, i); }
+    return result;
+}
+
+std::complex<double> z_to_s(const std::complex<double> z) { return 2.0 * (z - 1.0) / (z + 1.0); }
+
+void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum)
+{
+    const std::vector<double> coeffs{butterworth_coeffs(n)};
+    // Value closest to zero is the gain
+    double tiny_bn{1e100};
+    for (std::size_t i{0}; i < spectrum.size(); ++i)
+    {
+        const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
+        std::complex<double> bn = butterworth_laplace(coeffs, z_to_s(current_z / corner_freq));
+        double mag_bn = std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()));
+        tiny_bn = (tiny_bn < mag_bn) ? tiny_bn : mag_bn;
+        spectrum[i] *= 1.0 / bn;
+    }
+    // Want to divide by the square of the gain
+    tiny_bn *= tiny_bn;
+    // Now to remove the gain
+    for (std::size_t i{0}; i < spectrum.size(); ++i) { spectrum[i] /= tiny_bn; }
+}
+
+void butterworth_high(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum)
+{
+    const std::vector<double> coeffs{butterworth_coeffs(n)};
+    // Value closest to zero is the gain
+    double tiny_bn{1e100};
+    // We cannot have division by 0 so we do it separately
+    spectrum[0] = 0.0;
+    for (std::size_t i{1}; i < spectrum.size(); ++i)
+    {
+        const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
+        std::complex<double> bn = butterworth_laplace(coeffs, z_to_s(corner_freq / current_z));
+        double mag_bn = std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()));
+        tiny_bn = (tiny_bn < mag_bn) ? tiny_bn : mag_bn;
+        spectrum[i] *= 1.0 / bn;
+    }
+    // Want to divide by the square of the gain
+    tiny_bn *= tiny_bn;
+    // Now to remove the gain
+    for (std::size_t i{0}; i < spectrum.size(); ++i) { spectrum[i] /= tiny_bn; }
+}
 }

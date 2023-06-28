@@ -204,8 +204,12 @@ void load_data(ProgramStatus& program_status, const std::filesystem::path& proje
 // Safely reduce the size of the data pool
 void reduce_data_pool(ProgramStatus& program_status);
 // Shitty lowpass for testing
+void old_lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
+// Real butterworth lowpass
 void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
 // Shitty highpass for testing
+void old_highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
+// Real butterworth highpass
 void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
 // Shitty bandpass for testing
 void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowpass, double highpass);

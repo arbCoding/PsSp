@@ -1,4 +1,5 @@
 #include "pssp_misc.hpp"
+#include "pssp_spectral.hpp"
 
 namespace pssp
 {
@@ -535,7 +536,7 @@ void reduce_data_pool(ProgramStatus& program_status) { program_status.data_pool.
 //-----------------------------------------------------------------------------
 // Shitty Butterworth lowpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
+void old_lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
@@ -552,6 +553,18 @@ void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order
     // Do the ifft
     sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }
+
+// Real butterworth lowpass
+void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
+{
+    // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    butterworth_low(order, 0.0, freq_step, cutoff, complex_spectrum);
+    // Do the ifft
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+}
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth lowpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
@@ -559,7 +572,7 @@ void lowpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order
 //-----------------------------------------------------------------------------
 // Shitty Butterworth highpass filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
-void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
+void old_highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
 {
     // Do the fft
     std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
@@ -573,6 +586,18 @@ void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int orde
         double gain{1.0 / denominator};
         complex_spectrum[i] *= gain;
     }
+    // Do the ifft
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
+}
+
+// Real butterworth lowpass
+void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff)
+{
+    // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    butterworth_high(order, 0.0, freq_step, cutoff, complex_spectrum);
     // Do the ifft
     sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }

@@ -33,6 +33,20 @@ namespace pssp
 // Renormalize = true = "standard" normalization (FFT -> 1/sqrt(N); IFFT -> 1/sqrt(N))
 std::vector<std::complex<double>>  fft_time_series(FFTWPlanPool& plan_pool, const std::vector<double>& time_series, bool renormalize = false);
 std::vector<double> ifft_spectrum(FFTWPlanPool& plan_pool, const std::vector<std::complex<double>>& spectrum, bool renormalize = false);
+// Normalized Butterworth polynomials: https://en.wikipedia.org/wiki/Butterworth_filter#Normalized_Butterworth_polynomials
+// These are the a_k
+std::vector<double> butterworth_coeffs(int n);
+// These are the b_n(s)
+std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s);
+// This uses the bilinear approximation to go from discrete z-complex frequencies to continuous s
+// https://en.wikipedia.org/wiki/Bilinear_transform
+//std::complex<double> z_to_s(const std::complex<double> z);
+std::complex<double> z_to_s(const double delta, const std::complex<double> z);
+// Real frequency (omega) to complex frequency (z) is just z = i*omega
+// Now for the true butterworth lowpass filter
+void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
+// True butterworth highpass filter
+void butterworth_high(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
 }
 
 #endif
