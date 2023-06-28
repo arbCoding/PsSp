@@ -40,8 +40,7 @@ std::vector<double> butterworth_coeffs(int n);
 std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s);
 // This uses the bilinear approximation to go from discrete z-complex frequencies to continuous s
 // https://en.wikipedia.org/wiki/Bilinear_transform
-//std::complex<double> z_to_s(const std::complex<double> z);
-std::complex<double> z_to_s(const double delta, const std::complex<double> z);
+std::complex<double> z_to_s(const std::complex<double> z);
 // Real frequency (omega) to complex frequency (z) is just z = i*omega
 // Now for the true butterworth lowpass filter
 void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
