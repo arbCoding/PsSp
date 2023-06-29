@@ -9,6 +9,8 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+// Apparently M_PI is 'sometimes' defined by the compiler
+// But C++20 added the numbers library: https://eel.is/c++draft/numbers
 #include <numbers>
 #include <vector>
 
@@ -30,9 +32,6 @@
 
 namespace pssp
 {
-// Apparently M_PI is 'sometimes' defined by the compiler
-// But C++20 added the numbers library: https://eel.is/c++draft/numbers
-constexpr double M_PI{std::numbers::pi};
 // Given a plan pool, and a vector of time-series data (evenly sampled) return the forward FFT as a new vector
 // Renormalize = false = default FFTW normalization (FFT -> 1; IFFT -> 1/N)
 // Renormalize = true = "standard" normalization (FFT -> 1/sqrt(N); IFFT -> 1/sqrt(N))
@@ -44,11 +43,13 @@ std::vector<double> butterworth_coeffs(int n);
 // These are the b_n(s)
 std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s);
 // Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
-void butterworth_low(const int n, std::vector<double>& gain, std::vector<double>& phase, const double min_freq, const double max_freq, const int n_freq);
+void butterworth_low(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
 // Now for the true butterworth lowpass filter
 void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
 // True butterworth highpass filter
 void butterworth_high(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
+//
+std::vector<double> logspace(const double start_power, const double end_power, const int n_samples, const double base = 10.0);
 }
 
 #endif

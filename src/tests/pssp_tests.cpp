@@ -287,3 +287,56 @@ TEST_CASE("Normalized Butterworth Polynomial")
         }
     }
 }
+
+TEST_CASE("Sampling Logspace")
+{
+    SECTION("SPower: 0.0, EPower: 1.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(0.0, 1.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(1.0, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(10.0, 1e-10));
+    }
+    SECTION("SPower: 0.0, EPower: 2.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(0.0, 2.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(1.0, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(100.0, 1e-10));
+    }
+    SECTION("SPower: -1.0, EPower: 0.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(-1.0, 0.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(0.1, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(1.0, 1e-10));
+    }
+    SECTION("SPower: -2.0, EPower: 0.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(-2.0, 0.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(0.01, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(1.0, 1e-10));
+    }
+    SECTION("SPower: -1.0, EPower: 1.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(-1.0, 1.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(0.1, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(10.0, 1e-10));
+    }
+    SECTION("SPower: -2.0, EPower: 2.0, N_Samples: 10")
+    {
+        const std::vector<double> logspace{pssp::logspace(-2.0, 2.0, 10)};
+        REQUIRE(logspace.size() == 10);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(0.01, 1e-10));
+        REQUIRE_THAT(logspace[9], Catch::Matchers::WithinAbs(100.0, 1e-10));
+    }
+    SECTION("SPower: -2.0, EPower: 2.0, N_Samples: 1000")
+    {
+        const std::vector<double> logspace{pssp::logspace(-2.0, 2.0, 1000)};
+        REQUIRE(logspace.size() == 1000);
+        REQUIRE_THAT(logspace[0], Catch::Matchers::WithinAbs(0.01, 1e-10));
+        REQUIRE_THAT(logspace[999], Catch::Matchers::WithinAbs(100.0, 1e-10));
+    }
+}

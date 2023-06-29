@@ -117,7 +117,7 @@ struct FilterOptions
     int order{1};
     // Limits on order
     int min_order{1};
-    int max_order{10};
+    int max_order{100};
     // Limits on filter frequencies
     float min_freq{0.0f};
     // Two freqs for bandpass
