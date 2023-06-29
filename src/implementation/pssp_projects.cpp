@@ -484,6 +484,8 @@ void Project::connect_2_existing(const std::filesystem::path& full_path)
     name_ = full_path.stem().string();
     path_ = full_path;
     connect();
+    // I think this is what was missing
+    create_temporary_data();
     is_project = true;
 }
 //------------------------------------------------------------------------
@@ -514,7 +516,6 @@ void Project::new_project(const std::string& name, const std::filesystem::path& 
 void Project::unload_project()
 {
     std::scoped_lock lock_project(mutex);
-    clear_temporary_data();
     is_project = false;
     disconnect();
     // Clear the paths
@@ -876,6 +877,8 @@ void Project::add_data_checkpoint(SAC::SacStream& sac, int data_id, bool process
 //------------------------------------------------------------------------
 void Project::add_data_processing(sqlite3* connection, int data_id, const std::string& processing_comment)
 {
+    // Create the table if it doesn't exist
+    create_data_processing_table(connection, data_id);
     // I think that this is not working with the memory upon loading a project
     std::ostringstream oss{};
     oss << "INSERT INTO processing_" << data_id << " (";

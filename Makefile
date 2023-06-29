@@ -13,7 +13,7 @@ SHELL := /bin/bash
 # Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release mode
-debug = false
+debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -283,7 +283,7 @@ macos: PsSp.app
 exp: tree_exp
 
 # Tests
-tests: sacio_tests sacstream_tests
+tests: sacio_tests sacstream_tests pssp_test
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -435,6 +435,21 @@ sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
 	@echo "Build start:  $$(date)"
 	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
 	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params)
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(test_bin_prefix)$@ $(test_options)
+#------------------------------------------------------------------------------
+# End SacStream Tests
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# PsSp Tests
+#------------------------------------------------------------------------------
+pssp_tests: $(test_prefix)pssp_tests.cpp $(sf_obj) catch2
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(test_bin_prefix) || mkdir -p $(test_bin_prefix)
+	$(compiler) -o $(test_bin_prefix)$@ $< $(catch2_full_params) $(imp_prefix)pssp_fftw_planpool.cpp $(imp_prefix)pssp_spectral.cpp $(fftw_params)
 	@echo -e "Build finish: $$(date)\n"
 	@echo -e "Running test $@\n"
 	$(test_bin_prefix)$@ $(test_options)

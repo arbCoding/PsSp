@@ -539,10 +539,6 @@ int main(int arg_count, char* arg_array[])
         window_data_pool_options(current_settings.window_settings.data_pool_options, program_status);
         // If we're idle and there is data to show, we can show it
         pssp::program_state current_state{program_status.state.load()};
-        (void) current_state;
-        (void) clear_sac;
-        (void) update_spectrum;
-        (void) spectrum; 
         if (current_state == pssp::program_state::idle && !data_ids.empty())
         {
           if (active_sac < 0) { active_sac = 0; } else if (active_sac >= static_cast<int>(data_ids.size())) { active_sac = 0; }

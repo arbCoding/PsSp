@@ -1,5 +1,7 @@
 #include "pssp_windows.hpp"
 #include "ImGuiFileDialog.h"
+#include "imgui.h"
+#include <implot.h>
 #include <mutex>
 
 namespace pssp
@@ -48,6 +50,9 @@ void status_bar(const ProgramStatus& program_status)
 //-----------------------------------------------------------------------------
 void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
+    static std::vector<double> gain{};
+    static std::vector<double> phase{};
+    static std::vector<double> freqs{};
     if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
@@ -64,11 +69,41 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
         
         if (ImGui::InputFloat("Freq (Hz)", &lowpass_settings.freq_low, lowpass_settings.freq_step))
         { lowpass_settings.freq_low = std::max(0.0f, lowpass_settings.freq_low); }
-        
+
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(130);
         if (ImGui::InputInt("Order##", &lowpass_settings.order))
         { lowpass_settings.order = std::clamp(lowpass_settings.order, lowpass_settings.min_order, lowpass_settings.max_order); }
-        
+
+        butterworth_low(lowpass_settings.order, gain, phase, freqs);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Gain");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -0.1, 1.1);
+            ImPlot::PlotLine("##", &freqs[0], &gain[0], static_cast<int>(gain.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Phase (rads)");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.6, 0.0);
+            ImPlot::PlotLine("##", &freqs[0], &phase[0], static_cast<int>(phase.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::PopID();
+
         if (ImGui::Button("Ok##"))
         {
             lowpass_settings.apply_filter = true;

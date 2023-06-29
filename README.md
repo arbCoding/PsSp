@@ -9,17 +9,21 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 
 ## Screenshots
 
-### MacOS 13.4 - 16 June 2023
+### MacOS 13.4 - 16 June 2023 (Scaled)
 
-![PsSp Main Window on MacOS 13.4](screenshots/pssp_main_window_16June2023.png)
+![PsSp Main Window on MacOS 13.4, scaled resolution](screenshots/MacOS/pssp_main_window_16June2023.png)
+
+### MacOS 13.4 - 24 June 2023 (Unscaled)
+
+![PsSp Main Window on MacOS 13.4, unscaled resolution](screenshots/MacOS/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png)
 
 ### Ubuntu Linux 23.04 - 22 June 2023
 
-![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
+![PsSp Main Window on Ubuntu 23.04](screenshots/Linux/pssp_29June2023_FilterResponse_Ubuntu2304.png)
 
 ### Windows 11 - 22 June 2023
 
-![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
+![PsSp Main Window on Windows 11](screenshots/Windows/pssp_main_window_22June2023_Windows11.png)
 
 ## Why does this exist?
 
@@ -245,6 +249,22 @@ Of course, this is implemented automatically in the [Makefile](Makefile), assumi
 ## Notes on GitHub actions
 
 GitHub actions would be great, but at the present moment they are a bit behind. I cannot use Ubuntu 23.04 (only 22.04, which doesn't have the correct implementation of the standard library), nor can I use the correct implementation of the standard library for MacOS (tried). In the future I'll look back into this, but for now compilation will need to remain local which is fine.
+
+## MacOS Resolution Issue
+
+This is a known issue with Dear ImGui. You can see discussions on the topic by following these links:
+
+1) [SDL](https://github.com/ocornut/imgui/issues/3757)
+2) [GLFW](https://github.com/ocornut/imgui/issues/5081)
+3) [More GLFW](https://github.com/ocornut/imgui/pull/287)
+
+Summary: Basically, on MacOS, if you're using a retina display the screen is a much higher resolution than what is being 'used'. This can be easily checked by modifying the resolution from the recommended to the maximum. On my M1 MBP the recommended is 1440x900, which looks great. The maximum is 2560x1600, which is remarkably small on my 13" screen. Apple knows this, so they scale the UI based upon the physical size of the screen to determine a best scaled-resolution. Dear ImGui asks for a window of a given size from the OS, not realizing that the resolution it receives is a scaled resolution (it assumes a raw resolution). The end result is that despite having a much higher resolution screen, the screen is treated as being significantly smaller than it actually is, hence the cluttered appearance of the UI on the [MacOS screenshot](screenshots/pssp_main_window_16June2023.png).
+
+In my own testing, the resolution was fixable by modifying the GLFW backend to scale everything, but the mouse location was incorrect unless the window was in exclusive fullscreen mode (then it worked fine). That was some progress, but insufficient to justify making a separate fork of Dear ImGui. Hopefully they fix the issue in the near future, especially as it seems to be a priority as it overlaps with their work on multiple viewports (multiple monitors and separate windows).
+
+### Fix
+
+Assuming you want to take full advantage of the High-DPI retina display you have, you can fix this by simply adjusting the resolution of your computer. Click the Apple icon in the upper-left of your screen and select `System Settings`. From there select `Displays`. Select `Show all resolutions` and then choose the resolution you desire. PsSp will scale accordingly with that, as can be seen from this [screenshot](screenshots/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png).
 
 ---
 
