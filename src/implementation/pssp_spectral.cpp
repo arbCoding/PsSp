@@ -1,6 +1,4 @@
 #include "pssp_spectral.hpp"
-#include "pssp_data_trees.hpp"
-#include <iostream>
 
 namespace pssp
 {

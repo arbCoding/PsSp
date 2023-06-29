@@ -8,6 +8,8 @@
 // Needed by FFTW library
 #include <cmath>
 #include <complex>
+#include <iostream>
+#include <numbers>
 #include <vector>
 
 //-----------------------------------------------------------------------------
@@ -28,6 +30,9 @@
 
 namespace pssp
 {
+// Apparently M_PI is 'sometimes' defined by the compiler
+// But C++20 added the numbers library: https://eel.is/c++draft/numbers
+constexpr double M_PI{std::numbers::pi};
 // Given a plan pool, and a vector of time-series data (evenly sampled) return the forward FFT as a new vector
 // Renormalize = false = default FFTW normalization (FFT -> 1; IFFT -> 1/N)
 // Renormalize = true = "standard" normalization (FFT -> 1/sqrt(N); IFFT -> 1/sqrt(N))
