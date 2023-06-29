@@ -1,5 +1,6 @@
 #include "pssp_windows.hpp"
 #include "ImGuiFileDialog.h"
+#include "imgui.h"
 #include <mutex>
 
 namespace pssp
@@ -48,6 +49,8 @@ void status_bar(const ProgramStatus& program_status)
 //-----------------------------------------------------------------------------
 void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowpass_settings)
 {
+    static std::vector<double> gain(100, 0.0);
+    static std::vector<double> phase(100, 0.0);
     if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
@@ -68,7 +71,29 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
         ImGui::SetNextItemWidth(130);
         if (ImGui::InputInt("Order##", &lowpass_settings.order))
         { lowpass_settings.order = std::clamp(lowpass_settings.order, lowpass_settings.min_order, lowpass_settings.max_order); }
-        
+
+        butterworth_low(lowpass_settings.order, gain, phase, 0.0, 1e3, 100);
+        ImGui::BeginChild("##", ImVec2(400.0, 200.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc"); // Move this line here
+            ImPlot::PlotLine("Gain", &gain[0], static_cast<int>(gain.size()),1e3 / 100.0);
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        ImGui::BeginChild("##", ImVec2(400.0, 200.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc"); // Move this line here
+            ImPlot::SetNextPlotLimits(0, 1e3, -3.2, 0.0);
+            ImPlot::PlotLine("Phase (rads)", &phase[0], static_cast<int>(phase.size()),1e3 / 100.0);
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::PopID();
+
         if (ImGui::Button("Ok##"))
         {
             lowpass_settings.apply_filter = true;

@@ -287,35 +287,3 @@ TEST_CASE("Normalized Butterworth Polynomial")
         }
     }
 }
-
-TEST_CASE("Bilinear Transformation, discrete z to continous s")
-{
-    SECTION("z = 0 + 0i")
-    {
-        constexpr std::complex<double> z{0.0, 0.0};
-        const std::complex<double> s{pssp::z_to_s(z)};
-        REQUIRE_THAT(s.real(), Catch::Matchers::WithinAbs(-2.0, 1e-10));
-        REQUIRE_THAT(s.imag(), Catch::Matchers::WithinAbs(0.0, 1e-10));
-    }
-    SECTION("z = 1 + 0i")
-    {
-        constexpr std::complex<double> z{1.0, 0.0};
-        const std::complex<double> s{pssp::z_to_s(z)};
-        REQUIRE_THAT(s.real(), Catch::Matchers::WithinAbs(0.0, 1e-10));
-        REQUIRE_THAT(s.imag(), Catch::Matchers::WithinAbs(0.0, 1e-10));
-    }
-    SECTION("z = 0 + 1i")
-    {
-        constexpr std::complex<double> z{0.0, 1.0};
-        const std::complex<double> s{pssp::z_to_s(z)};
-        REQUIRE_THAT(s.real(), Catch::Matchers::WithinAbs(0.0, 1e-10));
-        REQUIRE_THAT(s.imag(), Catch::Matchers::WithinAbs(2.0, 1e-10));
-    }
-    SECTION("z = 1 + 1i")
-    {
-        constexpr std::complex<double> z{1.0, 1.0};
-        const std::complex<double> s{pssp::z_to_s(z)};
-        REQUIRE_THAT(s.real(), Catch::Matchers::WithinAbs(0.4, 1e-10));
-        REQUIRE_THAT(s.imag(), Catch::Matchers::WithinAbs(0.8, 1e-10));
-    }
-}

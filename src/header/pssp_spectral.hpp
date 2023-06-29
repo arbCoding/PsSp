@@ -38,10 +38,8 @@ std::vector<double> ifft_spectrum(FFTWPlanPool& plan_pool, const std::vector<std
 std::vector<double> butterworth_coeffs(int n);
 // These are the b_n(s)
 std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s);
-// This uses the bilinear approximation to go from discrete z-complex frequencies to continuous s
-// https://en.wikipedia.org/wiki/Bilinear_transform
-std::complex<double> z_to_s(const std::complex<double> z);
-// Real frequency (omega) to complex frequency (z) is just z = i*omega
+// Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
+void butterworth_low(const int n, std::vector<double>& gain, std::vector<double>& phase, const double min_freq, const double max_freq, const int n_freq);
 // Now for the true butterworth lowpass filter
 void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
 // True butterworth highpass filter

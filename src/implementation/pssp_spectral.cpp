@@ -1,4 +1,5 @@
 #include "pssp_spectral.hpp"
+#include "pssp_data_trees.hpp"
 #include <iostream>
 
 namespace pssp
@@ -98,50 +99,59 @@ std::vector<double> butterworth_coeffs(int n)
 std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, const std::complex<double> s)
 {
     const std::size_t n{coeffs.size() - 1};
-    std::complex<double> result{};
-    for (std::size_t i{0}; i <= n; ++i) { result += coeffs[i] * std::pow(s, i); }
+    std::complex<double> result{coeffs[0]};
+    for (std::size_t i{1}; i <= n; ++i) { result += coeffs[i] * std::pow(s, i); }
     return result;
 }
 
-std::complex<double> z_to_s(const std::complex<double> z) { return 2.0 * (z - 1.0) / (z + 1.0); }
+// Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
+void butterworth_low(const int n, std::vector<double>& gain, std::vector<double>& phase, const double min_freq, const double max_freq, const int n_freq)
+{
+    const std::vector<double> coeffs{butterworth_coeffs(n)};
+    const double d_freq{(max_freq - min_freq) / n_freq};
+    for (int i{0}; i < n_freq; ++i)
+    {
+        const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
+        const std::complex<double> bn{butterworth_laplace(coeffs, current_z)};
+        const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
+        // I want plots of the current_gain and current_phase to look at!
+        gain[i] = 1.0 / bn_mag;
+        phase[i] = std::atan2(-bn.imag(), bn.real());
+    }
+}
 
 void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum)
 {
     const std::vector<double> coeffs{butterworth_coeffs(n)};
-    // Value closest to zero is the gain
-    double tiny_bn{1e100};
-    for (std::size_t i{0}; i < spectrum.size(); ++i)
+    std::size_t n_freq{spectrum.size()};
+    double max_gain{0.0};
+    for (std::size_t i{0}; i <= n_freq / 2; ++i)
     {
         const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
-        std::complex<double> bn = butterworth_laplace(coeffs, z_to_s(current_z / corner_freq));
-        double mag_bn = std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()));
-        tiny_bn = (tiny_bn < mag_bn) ? tiny_bn : mag_bn;
-        spectrum[i] *= 1.0 / bn;
+        const std::complex<double> bn{butterworth_laplace(coeffs, current_z / corner_freq)};
+        const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
+        // I want plots of the current_gain and current_phase to look at!
+        const double current_gain{1.0 / bn_mag};
+        const double current_phase{std::atan2(-bn.imag(), bn.real())};
+        std::cout << "w/wc: " << current_z.imag() / corner_freq << ", G: " << current_gain << ", P: " << current_phase << '\n';
+        max_gain = ((max_gain > current_gain) ? max_gain : current_gain);
+        // Maybe division of complex's is incorrectly implemented?
+        spectrum[i] /= bn;
+        // Since frequencies above nyquist are mirrored
+        spectrum[n_freq - i] = spectrum[i];
     }
-    // Want to divide by the square of the gain
-    tiny_bn *= tiny_bn;
-    // Now to remove the gain
-    for (std::size_t i{0}; i < spectrum.size(); ++i) { spectrum[i] /= tiny_bn; }
+    std::cout << "Max gain: " << max_gain << '\n';
 }
 
 void butterworth_high(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum)
 {
     const std::vector<double> coeffs{butterworth_coeffs(n)};
-    // Value closest to zero is the gain
-    double tiny_bn{1e100};
     // We cannot have division by 0 so we do it separately
     spectrum[0] = 0.0;
     for (std::size_t i{1}; i < spectrum.size(); ++i)
     {
         const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
-        std::complex<double> bn = butterworth_laplace(coeffs, z_to_s(corner_freq / current_z));
-        double mag_bn = std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()));
-        tiny_bn = (tiny_bn < mag_bn) ? tiny_bn : mag_bn;
-        spectrum[i] *= 1.0 / bn;
+        spectrum[i] /= butterworth_laplace(coeffs, corner_freq / current_z);
     }
-    // Want to divide by the square of the gain
-    tiny_bn *= tiny_bn;
-    // Now to remove the gain
-    for (std::size_t i{0}; i < spectrum.size(); ++i) { spectrum[i] /= tiny_bn; }
 }
 }

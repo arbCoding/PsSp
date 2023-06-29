@@ -9,6 +9,7 @@
 #include "pssp_program_settings.hpp"
 #include "pssp_projects.hpp"
 #include "pssp_misc.hpp"
+#include "pssp_spectral.hpp"
 // Dear ImGui
 #include <imgui.h>
 // FileDialog add-on for Dear ImGui

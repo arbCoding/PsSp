@@ -85,7 +85,8 @@ struct AllWindowSettings
     // List of sac_1c's, allows user to select specific one in memory
     WindowSettings sac_files{287, 495, 375, 312, false, false, ImGuiWindowFlags{}, "SAC Files##"};
     // Small window providing access to lowpass filter options
-    WindowSettings lowpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
+    //WindowSettings lowpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
+    WindowSettings lowpass{508, 297, 1300, 700, false, false, ImGuiWindowFlags_NoScrollbar 
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Lowpass Options##"};
     // Small window providing access to highpass filter options
     WindowSettings highpass{508, 297, 231, 120, false, false, ImGuiWindowFlags_NoScrollbar 
