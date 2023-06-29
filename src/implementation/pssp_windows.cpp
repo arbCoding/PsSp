@@ -87,7 +87,6 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
         if (ImPlot::BeginPlot("##"))
         {
             ImPlot::SetupAxis(ImAxis_X1, "F/Fc"); // Move this line here
-            ImPlot::SetNextPlotLimits(0, 1e3, -3.2, 0.0);
             ImPlot::PlotLine("Phase (rads)", &phase[0], static_cast<int>(phase.size()),1e3 / 100.0);
             ImPlot::EndPlot();
         }
