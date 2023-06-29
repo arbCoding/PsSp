@@ -11,19 +11,19 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 
 ### MacOS 13.4 - 16 June 2023 (Scaled)
 
-![PsSp Main Window on MacOS 13.4, scaled resolution](screenshots/pssp_main_window_16June2023.png)
+![PsSp Main Window on MacOS 13.4, scaled resolution](screenshots/MacOS/pssp_main_window_16June2023.png)
 
 ### MacOS 13.4 - 24 June 2023 (Unscaled)
 
-![PsSp Main Window on MacOS 13.4, unscaled resolution](screenshots/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png)
+![PsSp Main Window on MacOS 13.4, unscaled resolution](screenshots/MacOS/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png)
 
 ### Ubuntu Linux 23.04 - 22 June 2023
 
-![PsSp Main Window on Ubuntu 23.04](screenshots/pssp_main_window_22June2023_Ubuntu2304.png)
+![PsSp Main Window on Ubuntu 23.04](screenshots/Linux/pssp_29June2023_FilterResponse_Ubuntu2304.png)
 
 ### Windows 11 - 22 June 2023
 
-![PsSp Main Window on Windows 11](screenshots/pssp_main_window_22June2023_Windows11.png)
+![PsSp Main Window on Windows 11](screenshots/Windows/pssp_main_window_22June2023_Windows11.png)
 
 ## Why does this exist?
 
