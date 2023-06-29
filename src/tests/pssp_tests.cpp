@@ -3,7 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 // Floating-point comparisons
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library  
+// Standard Library stuff, https://en.cppreference.com/w/cpp/standard_library
 #include <iostream>
 #include <vector>
 // All tests pass on AFRO (x86_64 Ubuntu 23.04)
