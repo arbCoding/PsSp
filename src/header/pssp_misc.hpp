@@ -212,6 +212,8 @@ void old_highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int 
 // Real butterworth highpass
 void highpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double cutoff);
 // Shitty bandpass for testing
+void old_bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowpass, double highpass);
+// Real butterworth bandpass
 void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowpass, double highpass);
 // Shitty bandreject for testing
 void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowreject, double highreject);

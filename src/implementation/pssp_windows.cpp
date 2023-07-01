@@ -130,6 +130,9 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
 //-----------------------------------------------------------------------------
 void window_highpass_options(WindowSettings& window_settings, FilterOptions& highpass_settings)
 {
+    static std::vector<double> gain{};
+    static std::vector<double> phase{};
+    static std::vector<double> freqs{};
     if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
@@ -147,9 +150,39 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
         if (ImGui::InputFloat("Freq (Hz)", &highpass_settings.freq_low, highpass_settings.freq_step))
         { highpass_settings.freq_low = std::max(0.0f, highpass_settings.freq_low); }
         
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(130);
         if (ImGui::InputInt("Order##", &highpass_settings.order))
         { highpass_settings.order = std::clamp(highpass_settings.order, highpass_settings.min_order, highpass_settings.max_order); }
+
+        butterworth_high(highpass_settings.order, gain, phase, freqs);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Gain");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -0.1, 1.1);
+            ImPlot::PlotLine("##", &freqs[0], &gain[0], static_cast<int>(gain.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Phase (rads)");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.6, 0.0);
+            ImPlot::PlotLine("##", &freqs[0], &phase[0], static_cast<int>(phase.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::PopID();
         
         if (ImGui::Button("Ok##"))
         {
@@ -171,11 +204,19 @@ void window_highpass_options(WindowSettings& window_settings, FilterOptions& hig
 // End highpass Filter Options Window
 //-----------------------------------------------------------------------------
 
+//=============================================================================
+// Really I should consider merging the filters and the filter windows
+// There is an awful lot of unnecessary code reproduction going on
+//=============================================================================
+
 //-----------------------------------------------------------------------------
 // Bandpass Filter Options Window
 //-----------------------------------------------------------------------------
 void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings)
 {
+    static std::vector<double> gain{};
+    static std::vector<double> phase{};
+    static std::vector<double> freqs{};
     if (window_settings.show && window_settings.state != hide)
     {
         if (!window_settings.is_set)
@@ -193,16 +234,47 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
         if (ImGui::InputFloat("Min Freq (Hz)", &bandpass_settings.freq_low, bandpass_settings.freq_step))
         { bandpass_settings.freq_low = std::max(0.0f, bandpass_settings.freq_low); }
         
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(130);
         
         if (ImGui::InputFloat("Max Freq (Hz)", &bandpass_settings.freq_high, bandpass_settings.freq_step))
         { bandpass_settings.freq_high = std::max(bandpass_settings.freq_low, bandpass_settings.freq_high); }
         
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(130);
         
         if (ImGui::InputInt("Order##", &bandpass_settings.order))
         { bandpass_settings.order = std::clamp(bandpass_settings.order, bandpass_settings.min_order, bandpass_settings.max_order); }
         
+        butterworth_bandpass(bandpass_settings.order, gain, phase, freqs);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Gain");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -0.1, 1.1);
+            ImPlot::PlotLine("##", &freqs[0], &gain[0], static_cast<int>(gain.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Phase (rads)");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.6, 0.0);
+            ImPlot::PlotLine("##", &freqs[0], &phase[0], static_cast<int>(phase.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::PopID();
+
         if (ImGui::Button("Ok##") && bandpass_settings.freq_low < bandpass_settings.freq_high)
         {
             bandpass_settings.apply_filter = true;

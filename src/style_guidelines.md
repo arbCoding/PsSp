@@ -376,3 +376,7 @@ Stuff from the standard library is also included inside angular brackets, but we
 has internal header-guards such that single-components of the library can be include (instead of the entire file). This is unique to the standard library.
 
 It is also ideal to add a note above the include statement as to why it is being included (what does it do, what does it provide?).
+
+## Unit Tests
+
+When adding code, remember to add Unit tests using Catch2. This is how we can ensure our functions work the way we expect them to and how we will catch any changes that break functionality (tests that previously passed begin to fail). This will aid troubleshooting in the future. Tests should be implemented as soon as new code is written, this will ensure that they actually get added and it will ensure the tests are being written while the concept is still fresh in your mind (instead of needing to go back to old code).

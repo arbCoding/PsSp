@@ -27,6 +27,7 @@ The purpose of this document is to provide a list of the tools that are being us
 5) [clangd](https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd) - Provides auto-complete functionality for VSCodium (language server).
 6) [SonarLint](https://open-vsx.org/extension/SonarSource/sonarlint-vscode) - Additional static analysis tool.
 7) [Markdown Extension Pack](https://open-vsx.org/vscode/item?itemName=sugatoray.vscode-markdown-extension-pack)
+8) [LaTeX Workshop](https://open-vsx.org/vscode/item?itemName=James-Yu.latex-workshop) - LaTeX typesetting efficiency with preview, compile, autocomplete, colorize, etc.
 
 ## Static Analysis
 
@@ -61,3 +62,8 @@ The purpose of this document is to provide a list of the tools that are being us
 7) [Incomplete List of Static Analysis Tools](https://github.com/analysis-tools-dev/static-analysis#cpp)
 8) [Incomplete List of Dynamic Analysis Tools](https://github.com/analysis-tools-dev/dynamic-analysis#cpp)
 9) [Making portable executables for Windows](https://stackoverflow.com/questions/31449769/distribute-a-program-compiled-with-mingw-g)
+
+## Other References
+
+1) [Latex documentation](https://en.wikibooks.org/wiki/LaTeX)
+2) [Latex mathtools documentation](https://mirror.mwt.me/ctan/macros/latex/contrib/mathtools/mathtools.pdf)

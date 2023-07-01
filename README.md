@@ -17,7 +17,7 @@ PsSp aims to provide an OS-independent, graphical, seismic-processing software p
 
 ![PsSp Main Window on MacOS 13.4, unscaled resolution](screenshots/MacOS/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png)
 
-### Ubuntu Linux 23.04 - 22 June 2023
+### Ubuntu Linux 23.04 - 29 June 2023
 
 ![PsSp Main Window on Ubuntu 23.04](screenshots/Linux/pssp_29June2023_FilterResponse_Ubuntu2304.png)
 
@@ -82,7 +82,7 @@ Dependencies that are marked as 'Git submodule' are handled automatically. Other
 
 * [Boost](https://www.boost.org/)
   * Provides some convenient string manipulation operations.
-* [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.5
+* [Dear ImGui](https://github.com/ocornut/imgui/tree/v1.89.5) v1.89.6
   * This provides the OS-independent GUI.
   * Git submodule.
 * [FFTW3](https://www.fftw.org/)

@@ -89,6 +89,8 @@ cxx := $(compiler) $(params)
 # Project directory structure
 # Code base starts here
 base_prefix = $(CURDIR)/src/
+# Documentation will live here
+doc_prefix = $(base_prefix)/documentation/
 # Built programs will go here
 bin_prefix = $(CURDIR)/bin/
 # Where the source code files for PsSp are stored
@@ -422,7 +424,6 @@ sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj) catch2
 	@echo -e "Build finish: $$(date)\n"
 	@echo -e "Running test $@\n"
 	$(test_bin_prefix)$@ $(test_options)
-
 #------------------------------------------------------------------------------
 # End SacIO Tests
 #------------------------------------------------------------------------------
@@ -467,8 +468,8 @@ pssp_tests: $(test_prefix)pssp_tests.cpp $(sf_obj) catch2
 clean:
 	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
-	echo $(catch2_build)
 	rm -rf $(catch2_build)
+	rm $(doc_prefix)*.aux $(doc_prefix)*.fdb_latexmk $(doc_prefix)*.fls $(doc_prefix)*.log $(doc_prefix)*.synctex.gz $(doc_prefix)*.pdf
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------

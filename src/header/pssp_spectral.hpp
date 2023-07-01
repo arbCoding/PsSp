@@ -46,8 +46,15 @@ std::complex<double> butterworth_laplace(const std::vector<double>& coeffs, cons
 void butterworth_low(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
 // Now for the true butterworth lowpass filter
 void butterworth_low(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
+// Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
+void butterworth_high(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
 // True butterworth highpass filter
 void butterworth_high(const int n, const double min_freq, const double d_freq, const double corner_freq, std::vector<std::complex<double>>& spectrum);
+// Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
+// This should also take a bandwidth (need to make sure bandwidth cannot be set to 0!)
+void butterworth_bandpass(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
+// True butterworth bandpass filter
+void butterworth_bandpass(const int n, const double min_freq, const double d_freq, const double corner_freq_low, const double corner_freq_high, std::vector<std::complex<double>>& spectrum);
 //
 std::vector<double> logspace(const double start_power, const double end_power, const int n_samples, const double base = 10.0);
 }

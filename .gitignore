@@ -71,3 +71,9 @@ bin/*
 # as they cause preprocessor directive errors for CppCheck
 # took a little while to figure that out
 compile_commands.json
+
+# LaTeX stuff
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
