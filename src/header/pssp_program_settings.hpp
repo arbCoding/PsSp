@@ -94,7 +94,7 @@ struct AllWindowSettings
     // Small window providing access to bandpass filter options
     WindowSettings bandpass{508, 297, 825, 450, false, false, ImGuiWindowFlags_NoScrollbar 
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandpass Options##"};
-    WindowSettings bandreject{508, 297, 276, 148, false, false, ImGuiWindowFlags_NoScrollbar
+    WindowSettings bandreject{508, 297, 825, 450, false, false, ImGuiWindowFlags_NoScrollbar
     | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav, "Bandreject Options##"};
     // File Dialog positions
     WindowSettings file_dialog{337, 150, 750, 450};

@@ -176,6 +176,10 @@ void batch_apply_highpass(ProgramStatus& program_status, const FilterOptions& hi
 void apply_bandpass(ProgramStatus& program_status, int data_id, const FilterOptions& bandpass_options);
 // Bandpass all sac_1c's in a deque
 void batch_apply_bandpass(ProgramStatus& program_status, const FilterOptions& bandpass_options);
+// Bandreject one sac_1c
+void apply_bandreject(ProgramStatus& program_status, int data_id, const FilterOptions& bandreject_options);
+// Bandreject all sac_1c's
+void batch_apply_bandreject(ProgramStatus& program_status, const FilterOptions& bandreject_options);
 // Read in a single sac file and add it to the DataPool
 void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_name);
 // Read all SAC files in a directory

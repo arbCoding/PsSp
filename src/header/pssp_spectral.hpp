@@ -55,7 +55,9 @@ void butterworth_high(const int n, const double min_freq, const double d_freq, c
 void butterworth_bandpass(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
 // True butterworth bandpass filter
 void butterworth_bandpass(const int n, const double min_freq, const double d_freq, const double corner_freq_low, const double corner_freq_high, std::vector<std::complex<double>>& spectrum);
-//
+void butterworth_bandreject(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs = 1e3);
+// True butterworth bandreject filter
+void butterworth_bandreject(const int n, const double min_freq, const double d_freq, const double corner_freq_low, const double corner_freq_high, std::vector<std::complex<double>>& spectrum);
 std::vector<double> logspace(const double start_power, const double end_power, const int n_samples, const double base = 10.0);
 }
 

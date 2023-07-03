@@ -296,6 +296,92 @@ void window_bandpass_options(WindowSettings& window_settings, FilterOptions& ban
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Bandreject Filter Options Window
+//-----------------------------------------------------------------------------
+void window_bandreject_options(WindowSettings& window_settings, FilterOptions& bandreject_settings)
+{
+    static std::vector<double> gain{};
+    static std::vector<double> phase{};
+    static std::vector<double> freqs{};
+    if (window_settings.show && window_settings.state != hide)
+    {
+        if (!window_settings.is_set)
+        {
+            ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_settings.width), static_cast<float>(window_settings.height)));
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(window_settings.pos_x), static_cast<float>(window_settings.pos_y)));
+            window_settings.is_set = true;
+        }
+
+        ImGui::Begin(window_settings.title.c_str(), &window_settings.show, window_settings.img_flags);
+        if (window_settings.state == frozen) { ImGui::BeginDisabled(); }
+        
+        ImGui::SetNextItemWidth(130);
+        
+        if (ImGui::InputFloat("Min Freq (Hz)", &bandreject_settings.freq_low, bandreject_settings.freq_step))
+        { bandreject_settings.freq_low = std::max(0.0f, bandreject_settings.freq_low); }
+        
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(130);
+        
+        if (ImGui::InputFloat("Max Freq (Hz)", &bandreject_settings.freq_high, bandreject_settings.freq_step))
+        { bandreject_settings.freq_high = std::max(bandreject_settings.freq_low, bandreject_settings.freq_high); }
+        
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(130);
+        
+        if (ImGui::InputInt("Order##", &bandreject_settings.order))
+        { bandreject_settings.order = std::clamp(bandreject_settings.order, bandreject_settings.min_order, bandreject_settings.max_order); }
+        
+        butterworth_bandreject(bandreject_settings.order, gain, phase, freqs);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Gain");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -0.1, 1.1);
+            ImPlot::PlotLine("##", &freqs[0], &gain[0], static_cast<int>(gain.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        ImGui::BeginChild("##", ImVec2(400.0, 350.0), true);
+        if (ImPlot::BeginPlot("##"))
+        {
+            ImPlot::SetupAxis(ImAxis_X1, "F/Fc");
+            ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 1e-2, 1e2);
+            ImPlot::SetupAxis(ImAxis_Y1, "Phase (rads)");
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.6, 0.0);
+            ImPlot::PlotLine("##", &freqs[0], &phase[0], static_cast<int>(phase.size()));
+            ImPlot::EndPlot();
+        }
+        ImGui::EndChild();
+        ImGui::PopID();
+
+        if (ImGui::Button("Ok##") && bandreject_settings.freq_low < bandreject_settings.freq_high)
+        {
+            bandreject_settings.apply_filter = true;
+            window_settings.show = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel##"))
+        {
+            bandreject_settings.apply_filter = false;
+            bandreject_settings.apply_batch = false;
+            window_settings.show = false;
+        }
+        if (window_settings.state == frozen) { ImGui::EndDisabled(); }
+        ImGui::End();
+    }
+}
+//-----------------------------------------------------------------------------
+// End Bandreject Filter Options Window
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Main menu bar
 //-----------------------------------------------------------------------------
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, const MenuAllowed& menu_allowed,
@@ -633,6 +719,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = true;
             allwindow_settings.highpass.show = false;
             allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = false;
             af_settings.lowpass.apply_batch = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -643,6 +730,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = false;
             allwindow_settings.highpass.show = true;
             allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = false;
             af_settings.highpass.apply_batch = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -653,6 +741,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = false;
             allwindow_settings.highpass.show = false;
             allwindow_settings.bandpass.show = true;
+            allwindow_settings.bandreject.show = false;
             af_settings.bandpass.apply_batch = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -660,7 +749,11 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
         
         if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, menu_allowed.bandreject))
         {
-            // To be implemented later
+            allwindow_settings.lowpass.show = false;
+            allwindow_settings.highpass.show = false;
+            allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = true;
+            af_settings.bandreject.apply_batch = false;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Butterworth Bandreject filter active data. Not implemented"); }
@@ -694,6 +787,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = true;
             allwindow_settings.highpass.show = false;
             allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = false;
             af_settings.lowpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -704,6 +798,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = false;
             allwindow_settings.highpass.show = true;
             allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = false;
             af_settings.highpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -714,6 +809,7 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
             allwindow_settings.lowpass.show = false;
             allwindow_settings.highpass.show = false;
             allwindow_settings.bandpass.show = true;
+            allwindow_settings.bandreject.show = false;
             af_settings.bandpass.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
@@ -721,7 +817,11 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
         
         if (ImGui::MenuItem("Bandreject##", nullptr, nullptr, menu_allowed.bandreject))
         {
-            // To be implemented later
+            allwindow_settings.lowpass.show = false;
+            allwindow_settings.highpass.show = false;
+            allwindow_settings.bandpass.show = false;
+            allwindow_settings.bandreject.show = true;
+            af_settings.bandreject.apply_batch = true;
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
         { ImGui::SetTooltip("Butterworth Bandreject filter all data."); }

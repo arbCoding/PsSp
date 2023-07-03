@@ -578,6 +578,7 @@ int main(int arg_count, char* arg_array[])
           window_lowpass_options(current_settings.window_settings.lowpass, af_settings.lowpass);
           window_highpass_options(current_settings.window_settings.highpass, af_settings.highpass);
           window_bandpass_options(current_settings.window_settings.bandpass, af_settings.bandpass);
+          window_bandreject_options(current_settings.window_settings.bandreject, af_settings.bandreject);
         }
         else
         {
@@ -649,7 +650,18 @@ int main(int arg_count, char* arg_array[])
         }
         else if (af_settings.bandreject.apply_filter)
         {
-            // Not yet implemented
+            if (af_settings.bandreject.apply_batch)
+            {
+                program_status.thread_pool.enqueue(pssp::batch_apply_bandreject, std::ref(program_status), std::ref(af_settings.bandreject));
+                af_settings.bandreject.apply_batch = false;
+            }
+            else
+            {
+                program_status.tasks_completed = 0;
+                program_status.total_tasks = 1;
+                program_status.thread_pool.enqueue(pssp::apply_bandreject, std::ref(program_status), std::ref(data_ids[active_sac]), std::ref(af_settings.bandreject));
+            }
+            af_settings.bandreject.apply_filter = false;
         }
         //-------------------------------------------------------------------------
         // End Queue Filtering tasks

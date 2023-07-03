@@ -49,6 +49,8 @@ void window_lowpass_options(WindowSettings& window_settings, FilterOptions& lowp
 void window_highpass_options(WindowSettings& window_settings, FilterOptions& highpass_settings);
 // Window to allow user to select options for their bandpass filter
 void window_bandpass_options(WindowSettings& window_settings, FilterOptions& bandpass_settings);
+// Window to allow user to select options for their bandreject filter
+void window_bandreject_options(WindowSettings& window_settings, FilterOptions& bandreject_settings);
 // Main menu bar along top of screen
 void main_menu_bar(GLFWwindow* window, AllWindowSettings& allwindow_settings, const MenuAllowed& menu_allowed,
 AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_sac);

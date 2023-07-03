@@ -160,6 +160,7 @@ void butterworth_high(const int n, const double min_freq, const double d_freq, c
     }
 }
 
+// This and bandreject should scale based upon the frequencies chosen
 // Given appropriately sized vectors (gain and phase), as well as the bounds to look at, fill the gain and phase vectors
 void butterworth_bandpass(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs)
 {
@@ -188,7 +189,7 @@ void butterworth_bandpass(const int n, std::vector<double>& gain, std::vector<do
         if (freqs[i] != 0.0)
         {
             const std::complex<double> current_z{0.0, freqs[i]};
-            const std::complex<double> bn{butterworth_laplace(coeffs, delta_freq * ((current_z / freq_naught) - (freq_naught / current_z)))};
+            const std::complex<double> bn{butterworth_laplace(coeffs, delta_freq * ((current_z / freq_naught) + (freq_naught / current_z)))};
             const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
             const double current_gain{1.0 / bn_mag};
             max_gain = ((max_gain > current_gain) ? max_gain : current_gain);
@@ -218,20 +219,74 @@ void butterworth_bandpass(const int n, const double min_freq, const double d_fre
     for (std::size_t i{1}; i <= n_freq / 2; ++i)
     {
         const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
-        const std::complex<double> bn{butterworth_laplace(coeffs, delta_freq * ((current_z / freq_naught) - (freq_naught / current_z)))};
+        const std::complex<double> bn{butterworth_laplace(coeffs, delta_freq * ((current_z / freq_naught) + (freq_naught / current_z)))};
         const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
         const double current_gain{1.0 / bn_mag};
         max_gain = ((max_gain > current_gain) ? max_gain : current_gain);
         spectrum[i] /= bn;
-        // Since frequencies above Nyquist are mirrored
-        spectrum[n_freq - i] = spectrum[i];
     }
-    // Normalize
-    for (std::size_t i{0}; i < n_freq; ++i) { spectrum[i] /= max_gain; }
+    // Normalize and take advantage of symmetry of the FFTW output spectrum
+    for (std::size_t i{0}; i <= n_freq / 2; ++i) { spectrum[i] /= max_gain; spectrum[n_freq - i] = spectrum[i]; }
 }
 
-// Next I need to implement a bandreject filter (similar to bandpass, but inverted low and high basically which amounts to switching the fractions I think
-// Once that is complete, the filters will be done for a good while. I'll need to add amplitude and phase display for seismograms (may be more useful
+// Bandreject doesn't seem to actaully work?
+// I've tested it on data, the gain/phase display looks okay, but the signal doesn't seem to get edited much (if at all)
+//=============================================================================
+// I need to get amplitude/phase display for seismograms to make it easier to tell what is going on
+//=============================================================================
+void butterworth_bandreject(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs)
+{
+    constexpr double freq_naught{1.0};
+    constexpr double freq_low{freq_naught / 10.0};
+    constexpr double freq_high{(freq_naught * freq_naught) / freq_low};
+    constexpr double delta_freq{freq_high - freq_low};
+    if (gain.size() < static_cast<std::size_t>(n_freqs)) { gain.resize(n_freqs); phase.resize(n_freqs); }
+    freqs = logspace(-2, 2, n_freqs);
+    const std::vector<double> coeffs{butterworth_coeffs(n)};
+    double max_gain{0.0};
+    for (int i{0}; i < n_freqs; ++i)
+    {
+        // Avoid division by 0.0
+        if (freqs[i] != 0.0)
+        {
+            const std::complex<double> current_z{0.0, freqs[i]};
+            const std::complex<double> bn{butterworth_laplace(coeffs, 1.0 / (delta_freq * ((current_z / freq_naught) + (freq_naught / current_z))))};
+            const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
+            const double current_gain{1.0 / bn_mag};
+            max_gain = ((max_gain > current_gain) ? max_gain : current_gain);
+            gain[i] = 1.0 / bn_mag;
+            phase[i] = -std::abs(std::atan(-bn.imag() / bn.real()));
+        }
+        else { gain[0] = 0.0; phase[i] = 0.0; }
+    }
+    // Normalize
+    //for (int i{0}; i < n_freqs; ++i) { gain[i] /= max_gain; }
+}
+
+// True butterworth bandreject filter
+void butterworth_bandreject(const int n, const double min_freq, const double d_freq, const double corner_freq_low, const double corner_freq_high, std::vector<std::complex<double>>& spectrum)
+{
+    const std::vector<double> coeffs{butterworth_coeffs(n)};
+    const std::size_t n_freq{spectrum.size()};
+    const double delta_freq{corner_freq_high - corner_freq_low};
+    const double freq_naught{std::sqrt(corner_freq_low + corner_freq_high)};
+    spectrum[0] = 0.0;
+    spectrum[n_freq - 1] = spectrum[0];
+    double max_gain{0.0};
+    for (std::size_t i{1}; i <= n_freq / 2; ++i)
+    {
+        const std::complex<double> current_z{0.0, (i * d_freq) + min_freq};
+        const std::complex<double> bn{butterworth_laplace(coeffs, 1.0 / (delta_freq * ((current_z / freq_naught) + (freq_naught / current_z))))};
+        const double bn_mag{std::sqrt((bn.real() * bn.real()) + (bn.imag() * bn.imag()))};
+        const double current_gain{1.0 / bn_mag};
+        max_gain = ((max_gain > current_gain) ? max_gain : current_gain);
+        spectrum[i] /= bn;
+    }
+    // Normalize and take advantage of symmetry of the FFTW output spectrum
+    //for (std::size_t i{0}; i <= n_freq / 2; ++i) { spectrum[i] /= max_gain; spectrum[n_freq - i] = spectrum[i]; }
+}
+
+// I need to add amplitude and phase display for seismograms (may be more useful
 // to determine the effect a filter had on the signal than just showing the real and imaginary components).
 //
 // Then TESTS I need so many tests for the spectral stuff. Which is going to require template signals (dirac delta, boxcar, triangle, gaussian, sombrero hat

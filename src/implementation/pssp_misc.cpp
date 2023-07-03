@@ -245,6 +245,41 @@ void batch_apply_bandpass(ProgramStatus& program_status, const FilterOptions& ba
     }
 }
 
+void apply_bandreject(ProgramStatus& program_status, int data_id, const FilterOptions& bandreject_options)
+{
+    if (!program_status.project.is_project) { return; }
+    std::shared_ptr<sac_1c> sac_ptr{program_status.data_pool.get_ptr(program_status.project, data_id, program_status.project.checkpoint_id_)};
+    if (!sac_ptr) { return; }
+    std::scoped_lock lock_sac(sac_ptr->mutex_);
+    
+    program_status.state.store(program_state::processing);
+    std::ostringstream oss{};
+    oss << "BANDREJECT; ORDER ";
+    oss << bandreject_options.order;
+    oss << "; FREQ LOW ";
+    oss << bandreject_options.freq_low;
+    oss << "; FREQ HIGH ";
+    oss << bandreject_options.freq_high;
+    oss << ";";
+    program_status.project.add_data_processing(program_status.project.sq3_connection_memory, data_id, oss.str());
+    bandreject(program_status.fftw_planpool, sac_ptr, bandreject_options.order, bandreject_options.freq_low, bandreject_options.freq_high);
+    program_status.data_pool.return_ptr(program_status.project, sac_ptr);
+    ++program_status.tasks_completed;
+}
+
+void batch_apply_bandreject(ProgramStatus& program_status, const FilterOptions& bandreject_options)
+{
+    std::scoped_lock lock_program(program_status.program_mutex);
+    program_status.state.store(program_state::processing);
+    program_status.tasks_completed = 0;
+    std::vector<int> id_order{program_status.data_pool.get_iter(program_status.project)};
+    program_status.total_tasks = static_cast<int>(id_order.size());
+    for (std::size_t i{0}; i < id_order.size(); ++i)
+    {
+        program_status.thread_pool.enqueue(apply_bandreject, std::ref(program_status), id_order[i], std::ref(bandreject_options));
+    }
+}
+
 void read_sac(ProgramStatus& program_status, const std::filesystem::path& file_name)
 {
     program_status.state.store(program_state::in);
@@ -644,17 +679,17 @@ void bandpass(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int orde
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Shitty Butterworth bandreject filter for testing (not correct, but useful)
+// Real Butterworth bandreject filter for testing (not correct, but useful)
 //-----------------------------------------------------------------------------
 void bandreject(FFTWPlanPool& plan_pool, std::shared_ptr<sac_1c> sac_ptr, int order, double lowreject, double highreject)
 {
-    (void) plan_pool;
-    (void) sac_ptr;
-    (void) order;
-    (void) lowreject;
-    (void) highreject;
-    // To be implemented eventually
-    return;
+     // Do the fft
+    std::vector<std::complex<double>> complex_spectrum = fft_time_series(plan_pool, sac_ptr->sac.data1);
+    const double sampling_freq{1.0 / sac_ptr->sac.delta};
+    const double freq_step{sampling_freq / complex_spectrum.size()};
+    butterworth_bandreject(order, 0.0, freq_step, lowreject, highreject, complex_spectrum);
+    // Do the ifft
+    sac_ptr->sac.data1 = pssp::ifft_spectrum(plan_pool, complex_spectrum);
 }
 //-----------------------------------------------------------------------------
 // End Shitty Butterworth bandreject filter for testing (not correct, but useful)
