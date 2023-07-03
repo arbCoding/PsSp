@@ -1,0 +1,82 @@
+%------------------------------------------------------------------------------
+% Document setup
+%------------------------------------------------------------------------------
+\documentclass[12pt, letterpaper]{article}
+%-------------------------------------------------------------------------
+% Packages
+%-------------------------------------------------------------------------
+% Nice equations
+\usepackage{mathtools}
+% Provide hypertext links
+\usepackage{hyperref}
+% Skip a line between paragraphs
+\usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
+% Reduce the margins
+\usepackage[margin=0.5in]{geometry}
+%-------------------------------------------------------------------------
+% End Packages
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Article meta-data
+%-------------------------------------------------------------------------
+\title{The Implementation of Seismic Filters in Passive-source Seismic Processing}
+\author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
+\date{3 July\\2023}
+%-------------------------------------------------------------------------
+% End Article meta-data
+%-------------------------------------------------------------------------
+
+%------------------------------------------------------------------------------
+% End Document setup
+%------------------------------------------------------------------------------
+
+%------------------------------------------------------------------------------
+% Article Content
+%------------------------------------------------------------------------------
+\begin{document}
+\maketitle
+\noindent\rule{\textwidth}{1pt}
+
+\section{Abstract} \label{Abstract}
+
+%\section{Purpose} \label{Purpose}
+%The purpose of this document is to provide information on the filters provided by
+
+\section{Introduction} \label{Introduction}
+Filtering of time-varying signals is a common task across a wide-swath of different scientific/engineering disciplines.
+While great advances have been made to analyze as much of the seismic signal as possible, even the extraction of approximate
+Green's functions from the ambient seismic noise field, virtually all seismic analysis first requires the seismic signal to
+be filtered in order to isolate the portion of the signal that is most of interest to the analyst's plans. In the fairly
+distant past this was less important due to the limitations of the instruments available. At present, relatively inexpensive
+seismometers can record broadband seismic signals with the typical flat-reponse range of a high-quality instrument being between
+a period of 1000 seconds (s) at the low end (a frequency of 0.001 Hz) up to a high of 100 Hz. With such a large dynamic range
+of frequencies over which the signal is recorded much overlapping information is recorded. This excess information convolutes
+the analysis of the signals of interest. Filtering is the solution to this problem, filtering allows the analyst to isolate
+the signal of interest by removing the noise\footnote{'Noise' is a bit of a misunderstood term in seismology, especially with the advances in
+the last few decades in ambient noise seismology. I use the word 'noise' to mean 'any signal that is not of interest for a specific
+analysis' and not to provide any information of the source of the noise.}.
+
+Filtering is a tremendously wide topic of study itself, with a rich history across many otherwise disparate fields of study, well
+beyond the scope of this simple documentation. Therefore, I will restrict mysellf in this document to provide a brief discussion
+on the fundamentals of filtering, while leaving many of the details up for the intrepid reader to research on their own. Afterward
+I will provide a detailed description of the implementation of filters specific to \href{https://github.com/arbCoding/PsSp}{PsSp}.
+This is not meant to provide a detailed derivation of the filters employed from first principles, but is instead intended to serve as
+a pragmatic guide on their internal implementation. This is intended as much as a guide to any reader as it is to myself.
+
+\begin{equation} \label{butterworth:lowpass_generic}
+    H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}
+\end{equation}
+
+\begin{equation} \label{butterworth:polynomial}
+    B_{n}(s) = \sum_{k = 0}^{n} a_{k}s^{k}
+\end{equation}
+
+\begin{equation} \label{butterowrth:coefficients}
+    a_{k + 1} = a_{k}\frac{cos\left(k\gamma\right)}{sin((k + 1)\gamma)}; a_{0} = 1; \gamma = \frac{\pi}{2n}; a_{k} = a_{n - k}
+\end{equation}
+
+\end{document}
+%------------------------------------------------------------------------------
+% End Article Content
+%------------------------------------------------------------------------------

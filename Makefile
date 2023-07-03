@@ -469,7 +469,7 @@ clean:
 	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
 	rm -rf $(catch2_build)
-	rm $(doc_prefix)*.aux $(doc_prefix)*.fdb_latexmk $(doc_prefix)*.fls $(doc_prefix)*.log $(doc_prefix)*.synctex.gz $(doc_prefix)*.pdf
+	rm $(doc_prefix)*.aux $(doc_prefix)*.fdb_latexmk $(doc_prefix)*.fls $(doc_prefix)*.log $(doc_prefix)*.synctex.gz $(doc_prefix)*.pdf $(doc_prefix)*.out
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------

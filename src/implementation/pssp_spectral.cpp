@@ -234,6 +234,10 @@ void butterworth_bandpass(const int n, const double min_freq, const double d_fre
 //=============================================================================
 // I need to get amplitude/phase display for seismograms to make it easier to tell what is going on
 //=============================================================================
+// I think the issue may be with frequency scaling the bandpass/bandreject
+// I need to calculate the freq_naught, then scale the lowpass to freq_naught
+// Then go from lowpass at freq_naught to bandpass at freq_naught (or bandreject)
+// I think those are the issues.f
 void butterworth_bandreject(const int n, std::vector<double>& gain, std::vector<double>& phase, std::vector<double>& freqs, const int n_freqs)
 {
     constexpr double freq_naught{1.0};
