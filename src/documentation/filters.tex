@@ -24,8 +24,13 @@
 \usepackage{datetime2}
 % Language localization
 \usepackage[american]{babel}
-% Boxes around stuff
+% Boxes around stuff (just the ToC for now)
 \usepackage{tcolorbox}
+% Make some micro-typographical corrections to improve appearance
+\usepackage{microtype}
+% Reference management
+\usepackage[sorting=nty]{biblatex}
+\addbibresource{filters.bib}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -140,7 +145,7 @@ seismology, especially with the advances in the last few decades in ambient nois
 signal that is not of interest for a specific analysis' and does not provide any suggestion to the source of the noise.} from the
 recorded timeseries. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
 capable of handling most modern seismic workflows (all except particularly large or high throughput workflows that require more specialized
-computing infrastructure).
+computing infrastructure).\cite{laplaceWikipedia}
 
 Filtering is a tremendously wide topic of study itself, with a rich history across many otherwise disparate fields of study, well
 beyond the scope of this simple document. Therefore, I will restrict myself to---at most---provide a brief discussion
@@ -193,6 +198,7 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 % The Butterworth Filter
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
+Testing\cite{butterworthWikipedia}
 \subsection{Lowpass} \label{Butterworth:Lowpass}
 \begin{equation} \label{butterworth:lowpass_generic}
     H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}
@@ -216,6 +222,7 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 % References
 %-------------------------------------------------------------------------
 \section{References} \label{References}
+\printbibliography
 %-------------------------------------------------------------------------
 % End References
 %-------------------------------------------------------------------------

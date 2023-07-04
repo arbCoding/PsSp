@@ -78,3 +78,7 @@ compile_commands.json
 *.fls
 *.synctex.gz
 *.toc
+*.bbl
+*.blg
+*.run.xml
+*.bcf
