@@ -24,13 +24,12 @@
 \usepackage{datetime2}
 % Language localization
 \usepackage[american]{babel}
-% Boxes around stuff (just the ToC for now)
+% Boxes around stuff (Abstract and ToC)
 \usepackage{tcolorbox}
 % Make some micro-typographical corrections to improve appearance
 \usepackage{microtype}
 % Reference management
-\usepackage[sorting=nty]{biblatex}
-\addbibresource{filters.bib}
+\usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, autocite=superscript, sortcites=true]{biblatex}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -53,6 +52,7 @@
 \large Implementation details of the filters provided for isolating seismic signals}
 \author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
 \date{\Today}
+\addbibresource{filters.bib}
 %-------------------------------------------------------------------------
 % End Article meta-data
 %-------------------------------------------------------------------------
@@ -82,7 +82,7 @@
 \fancyhead[C]{Blanchette}
 \fancyhead[LO, RE]{2023}
 % Not so ugly anymore!
-\hypersetup{colorlinks=true, linkcolor=black, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
 \urlstyle{same}
 %-------------------------------------------------------------------------
 % End Miscellaneous Formatting
@@ -101,14 +101,16 @@
 %-------------------------------------------------------------------------
 % Abstract
 %-------------------------------------------------------------------------
-\section*{Abstract} \label{Abstract}
-Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (timeseries). Seismic timeseries
-recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task is focused on processing/analyzing
-signals from a specific target \textit{source}\footnote{\textit{Source} is being used in the generic sense here; it could refer to the nucleation point of the seismic
-signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
-to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
-isolating signals of interest. In this document I give a brief overview of timeseries filtering in general and provide the specific details of the filters
-implemented in Passive-source Seismic-processing (PsSp).
+\begin{tcolorbox}
+    \section*{Abstract} \label{Abstract}
+    Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (timeseries). Seismic timeseries
+    recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task is focused on processing/analyzing
+    signals from a specific target \textit{source}\footnote{\textit{Source} is being used in the generic sense here; it could refer to the nucleation point of the seismic
+    signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
+    to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
+    isolating signals of interest. In this document I give a brief overview of timeseries filtering in general and provide the specific details of the filters
+    implemented in Passive-source Seismic-processing (PsSp).
+\end{tcolorbox}
 %-------------------------------------------------------------------------
 % End Abstract
 %-------------------------------------------------------------------------
@@ -145,7 +147,7 @@ seismology, especially with the advances in the last few decades in ambient nois
 signal that is not of interest for a specific analysis' and does not provide any suggestion to the source of the noise.} from the
 recorded timeseries. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
 capable of handling most modern seismic workflows (all except particularly large or high throughput workflows that require more specialized
-computing infrastructure).\cite{laplaceWikipedia}
+computing infrastructure).
 
 Filtering is a tremendously wide topic of study itself, with a rich history across many otherwise disparate fields of study, well
 beyond the scope of this simple document. Therefore, I will restrict myself to---at most---provide a brief discussion
@@ -198,7 +200,7 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 % The Butterworth Filter
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
-Testing\cite{butterworthWikipedia}
+Testing\autocite{butterworthWikipedia}
 \subsection{Lowpass} \label{Butterworth:Lowpass}
 \begin{equation} \label{butterworth:lowpass_generic}
     H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}
@@ -221,8 +223,9 @@ Testing\cite{butterworthWikipedia}
 %-------------------------------------------------------------------------
 % References
 %-------------------------------------------------------------------------
-\section{References} \label{References}
-\printbibliography
+% Always want the references to start on a new page
+\newpage
+\printbibliography[heading=bibintoc]
 %-------------------------------------------------------------------------
 % End References
 %-------------------------------------------------------------------------
