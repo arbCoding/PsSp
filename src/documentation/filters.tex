@@ -91,9 +91,6 @@
 % Not so ugly anymore!
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
 \urlstyle{same}
-% Place thin boxes around figures
-%\floatstyle{boxed} 
-%\restylefloat{figure}
 % Pgfplot compatibility
 \pgfplotsset{compat=1.18}
 %-------------------------------------------------------------------------
@@ -139,7 +136,7 @@
     % Unnormalized (better for me)
     \pgfmathparse{(1-((#1/#2)^2))*e^(-(#1^2)/(2*(#2^2)))}%
 }
-% Wave package function
+% Wave-packet function
 \pgfmathdeclarefunction{wavepack}{3}{%
     \pgfmathparse{cos(deg(#1*2*pi/#2))*e^(-((#1*2*pi)^2)/(#3^2))}
 }
@@ -160,8 +157,6 @@
 %-------------------------------------------------------------------------
 % Foreword
 %-------------------------------------------------------------------------
-%\section*{Foreword} \label{Foreword}
-%\addcontentsline{toc}{section}{\nameref{Foreword}}
 \scriptsize The goal of this document is to be as useful and accessible as possible. Therefore, it is a \textit{living document}. By that I mean
 that it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
 \textit{finished}.
@@ -295,6 +290,12 @@ and then back to the time domain (via the \textit{Inverse Fourier Transform}). I
 domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
+Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
+rather artifical assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
+record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation $x\rightarrow v\rightarrow a$
+or integration $a\rightarrow v \rightarrow x$. The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
+response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
+
 \begin{center}
     \begin{figure}[ht]
         \label{figure:1}
@@ -313,25 +314,27 @@ domain and apply it to a signal in the (non-complex) frequency domain.
                     domain=0:10,
                     samples=500
                 ]{wavepack(x-3, 0.25, 5)};
-                \addplot[
-                    domain=0:10,
-                    samples=500,
-                    color=blue
-                ]{e^((-2*pi*(x-3)^2)/5)};
             \end{axis}
         \end{tikzpicture}
-        \caption[Wave-packet]{Wave-packet (black) and its corresponding envelope function (blue).}
+        \caption[Schematic timeseries]{A simple schematic timeseries.}
     \end{figure}
 \end{center}
-Test figure reference for figure \ref{figure:1}.
 
-Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
-rather artifical assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
-record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation $x\rightarrow v\rightarrow a$
-or integration $a\rightarrow v \rightarrow x$. The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
-response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
+The timeseries recorded at a seismographic station is referred to as a seismogram. A rather simple example timeseries can be seen in figure \ref{figure:1}.
+The timeseries in figure \ref{figure:1} shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
+potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}.)} of approximately one second
+and is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Timeseries}.
+It is simply a time-shifted cosine function multiplied by a two-sided exponential attenuation function.
+
+\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Timeseries}
+
+In this case we can determine at least one frequency purely by visual inspection. The cosine function is $2\pi$-periodic, meaning that $cos(t)$ has a frequency of
+$\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly 4 Hz). Are there signals of other frequencies contained
+in equation \ref{Schematic Timeseries}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
+I'll return to the frequencies hidden in this example timeseries once I've introduced the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
+
 
 \subsubsection{The Laplace (Complex-Frequency) Domain} \label{Background:Math:Laplace}
 %--------------------------------------------------------------------
