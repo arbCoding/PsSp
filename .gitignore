@@ -82,3 +82,6 @@ compile_commands.json
 *.blg
 *.run.xml
 *.bcf
+*.lof
+*.lot
+*.equ

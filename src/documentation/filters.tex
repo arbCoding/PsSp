@@ -16,23 +16,26 @@
 \usepackage[twoside, letterpaper, lmargin=0.75in, rmargin=1.0in]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
+% To undo centering in noteworthy command
+\usepackage{ragged2e}
 % Adjust table of contents formatting
 \usepackage{tocloft}
 % Provide hypertext links
 \usepackage{hyperref}
 % Custom datetime formatting
 \usepackage{datetime2}
+\usepackage{csquotes}
 % Language localization
 \usepackage[american]{babel}
 % Boxes around stuff (Abstract and ToC)
-\usepackage{tcolorbox}
+\usepackage[most]{tcolorbox}
 % Make some micro-typographical corrections to improve appearance
 \usepackage{microtype}
 % Reference management
 \usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, sortcites=true]{biblatex}
 % Pretty plots
 \usepackage{pgfplots}
-% Place boxes around figures
+% Figure placement
 \usepackage{float}
 %-------------------------------------------------------------------------
 % End Packages
@@ -66,11 +69,11 @@
 %-------------------------------------------------------------------------
 % These can be commented out to get a finalized version
 % Place line numbers in the left-side margin
-\usepackage[left]{lineno}
-\linenumbers
+%\usepackage[left]{lineno}
+%\linenumbers
 % Double-spacing
-\usepackage{setspace}
-\doublespacing
+%\usepackage{setspace}
+%\doublespacing
 %-------------------------------------------------------------------------
 % End Draft formatting options
 %-------------------------------------------------------------------------
@@ -91,8 +94,31 @@
 % Place thin boxes around figures
 %\floatstyle{boxed} 
 %\restylefloat{figure}
+% Pgfplot compatibility
+\pgfplotsset{compat=1.18}
 %-------------------------------------------------------------------------
 % End Miscellaneous Formatting
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Functions to build list of equations
+%-------------------------------------------------------------------------
+% define list of equations
+\newcommand{\listequationsname}{\Large{Equations}}
+\newlistof{myequations}{equ}{\listequationsname}
+\newcommand{\myequations}[1]{
+   \addcontentsline{equ}{myequations}{\protect\numberline{\theequation}#1}
+}
+\setlength{\cftmyequationsnumwidth}{2.3em}
+\setlength{\cftmyequationsindent}{1.5em}
+
+% command to label, reference, and include 'noteworthy' equation in list of equations
+\newcommand{\noteworthy}[2]{
+    \begin{align} \label{#2} \ensuremath{#1} \end{align} 
+    \myequations{#2} \centering \small #2 \normalsize \justify
+}
+%-------------------------------------------------------------------------
+% End Functions to build list of equations
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
@@ -136,9 +162,10 @@
 %-------------------------------------------------------------------------
 %\section*{Foreword} \label{Foreword}
 %\addcontentsline{toc}{section}{\nameref{Foreword}}
-Because the goal of this document is to be as useful and accessible as possible it is a \textit{living document}. By that I mean
+\scriptsize The goal of this document is to be as useful and accessible as possible. Therefore, it is a \textit{living document}. By that I mean
 that it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
 \textit{finished}.
+\normalsize
 %-------------------------------------------------------------------------
 % End Foreword
 %-------------------------------------------------------------------------
@@ -146,7 +173,7 @@ that it will change and grow over time in order to ensure the quality of the con
 %-------------------------------------------------------------------------
 % Abstract and Plain Language Summary
 %-------------------------------------------------------------------------
-\begin{tcolorbox}
+\begin{tcolorbox}[enhanced]
     % Don't number
     \section*{Abstract} \label{Abstract}
     % Add to the ToC even though not numbered
@@ -171,7 +198,7 @@ that it will change and grow over time in order to ensure the quality of the con
 % ToC
 %-------------------------------------------------------------------------
 \newpage
-\begin{tcolorbox}
+\begin{tcolorbox}[enhanced]
     \renewcommand\cftsecfont{\large}
     \renewcommand\cftsecpagefont{\small}
     \tableofcontents
@@ -179,6 +206,40 @@ that it will change and grow over time in order to ensure the quality of the con
 %-------------------------------------------------------------------------
 % End ToC
 %-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% List of Figures
+%-------------------------------------------------------------------------
+\begin{tcolorbox}[enhanced]
+    \renewcommand{\listfigurename}{Figures}
+    \listoffigures
+\end{tcolorbox}
+%-------------------------------------------------------------------------
+% End List of Figures
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% List of Tables
+%-------------------------------------------------------------------------
+% Currently no tables so not needed
+%\begin{tcolorbox}[enhanced]
+%    \renewcommand{\listtablename}{Tables}
+%    \listoftables
+%\end{tcolorbox}
+%-------------------------------------------------------------------------
+% End List of Tables
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% List of Equations
+%-------------------------------------------------------------------------
+\begin{tcolorbox}[enhanced]
+    \listofmyequations
+\end{tcolorbox}
+%-------------------------------------------------------------------------
+% End List of Equations
+%-------------------------------------------------------------------------
+\newpage
 
 %-------------------------------------------------------------------------
 % Introduction
@@ -234,40 +295,41 @@ and then back to the time domain (via the \textit{Inverse Fourier Transform}). I
 domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
+\begin{center}
+    \begin{figure}[ht]
+        \label{figure:1}
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=0.95\textwidth,
+                height=5cm,
+                title={},
+                axis lines=left,
+                xlabel = \(t\hspace{1pt}(s)\),
+                ylabel = {\(f(t)\)},
+                ymin = -1, ymax = 1.1,
+                xmin = 0, xmax = 10,
+            ]
+                \addplot[
+                    domain=0:10,
+                    samples=500
+                ]{wavepack(x-3, 0.25, 5)};
+                \addplot[
+                    domain=0:10,
+                    samples=500,
+                    color=blue
+                ]{e^((-2*pi*(x-3)^2)/5)};
+            \end{axis}
+        \end{tikzpicture}
+        \caption[Wave-packet]{Wave-packet (black) and its corresponding envelope function (blue).}
+    \end{figure}
+\end{center}
+Test figure reference for figure \ref{figure:1}.
+
 Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
 rather artifical assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
 record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation $x\rightarrow v\rightarrow a$
 or integration $a\rightarrow v \rightarrow x$. The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
 response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
-
-\begin{center}
-\begin{figure}
-\label{figure:1}
-\begin{tikzpicture}
-    \begin{axis}[
-        width=0.95\textwidth,
-        height=5cm,
-        title={},
-        axis lines=left,
-        xlabel = \(t\hspace{1pt}(s)\),
-        ylabel = {\(f(t)\)},
-        ymin = -1, ymax = 1,
-        xmin = 0, xmax = 10,
-    ]
-        \addplot[
-            domain=0:10,
-            samples=500
-        ]{wavepack(x-3, 0.25, 5)};
-        \addplot[
-            domain=0:10,
-            samples=500,
-            color=blue
-        ]{e^((-2*pi*(x-3)^2)/5)};
-    \end{axis}
-\end{tikzpicture}
-\caption{Wave-packet (black) and its corresponding envelope function (blue).}
-\end{figure}
-\end{center}
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
 
@@ -284,20 +346,15 @@ response removal can be thought of as a form of filtering, but it will be a topi
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
 \subsection{Lowpass} \label{Butterworth:Lowpass}
-\begin{equation} \label{butterworth:lowpass_generic}
-    H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}
-\end{equation}
+Test equation reference for equation \ref{Butterworth Lowpass Filter}.
+\noteworthy{H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}}{Butterworth Lowpass Filter}
+\noteworthy{B_{n}(s) = \sum_{k = 0}^{n} a_{k}s^{k}}{Normalized Butterworth Polynomial}
+\noteworthy{a_{k + 1} = a_{k}\frac{cos\left(k\gamma\right)}{sin((k + 1)\gamma)}; a_{0} = 1; \gamma = \frac{\pi}{2n}; a_{k} = a_{n - k}}{Normalized Butterworth Polynomial Coefficients}
 
 \subsection{Highpass} \label{Butterworth:Highpass}
-\begin{equation} \label{butterworth:polynomial}
-    B_{n}(s) = \sum_{k = 0}^{n} a_{k}s^{k}
-\end{equation}
 
 \subsection{Bandpass} \label{Butterworth:Bandpass}
 \subsection{Bandreject} \label{Butterworth:Bandreject}
-\begin{equation} \label{butterowrth:coefficients}
-    a_{k + 1} = a_{k}\frac{cos\left(k\gamma\right)}{sin((k + 1)\gamma)}; a_{0} = 1; \gamma = \frac{\pi}{2n}; a_{k} = a_{n - k}
-\end{equation}
 %-------------------------------------------------------------------------
 % End The Butterworth Filter
 %-------------------------------------------------------------------------
