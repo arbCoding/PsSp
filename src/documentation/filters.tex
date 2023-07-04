@@ -13,7 +13,7 @@
 \usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
 % Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for
 % two-sided printing
-\usepackage[twoside, letterpaper, lmargin=0.75in, rmargin=1.0in]{geometry}
+\usepackage[twoside, letterpaper, lmargin=1.0in, rmargin=0.75in, bmargin=1.0in, tmargin=1.0in]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
 % To undo centering in noteworthy command
@@ -83,11 +83,11 @@
 %-------------------------------------------------------------------------
 \fancyhf{} % clear existing header/footer entries
 % Place Page X of Y on outer-edge of footer
-\fancyfoot[RO, LE]{Page \thepage \hspace{1pt} of \pageref{LastPage}}
+\fancyfoot[LE, RO]{Page \thepage \hspace{1pt} of \pageref{LastPage}}
 \fancyhead{} % clear all header fields
-\fancyhead[RO, LE]{\textbf{Filtering Seismic Timeseries Data}}
-\fancyhead[C]{Blanchette}
-\fancyhead[LO, RE]{2023}
+\fancyhead[C]{\textbf{Filtering Seismic Timeseries Data}}
+\fancyhead[LO, RE]{Blanchette}
+\fancyhead[LE, RO]{2023}
 % Not so ugly anymore!
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
 \urlstyle{same}
@@ -251,7 +251,7 @@ of 100 Hz. Such a large dynamic range of frequencies---containing signals from n
 rather complicated timeseries. This excess information convolutes the analysis of the signal(s) of interest.
 Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the \textit{noise}\footnote{\textit{Noise} is a bit of a misunderstood term in
 seismology, especially with the advances in the last few decades in ambient noise seismology. The word 'noise' is used here to mean 'any
-signal that is not of interest for a specific analysis' and does not provide any suggestion to the source of the noise.} from the
+signal that is not of interest for a specific analysis' and does not provide any suggestion as to the source of the noise.} from the
 recorded timeseries. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
 capable of handling most modern seismic workflows (all except particularly large or high throughput workflows that require more specialized
 computing infrastructure).
@@ -282,10 +282,10 @@ to the reader to research on their own, if they so desire.
 %--------------------------------------------------------------------
 \subsection{Mathematical Background} \label{Background:Math}
 While I do intend for this document to focus more on the development of the reader's intuitive understanding of the filtering process, it would be a significant
-disservice to totally forgoe all mathemtical formalism. In fact, the equations themselves provide a great deal of insight into inner workings of the filters.
-In order to provide a sufficiently comprehensive introduction to the application of filters I will need to first introduce a few mathematical concepts. In particular,
+disservice to totally forgo all mathematical formalism. In fact, the equations themselves provide a great deal of insight into how filters work.
+In order to provide a sufficiently comprehensive introduction to the application of filters, I will need to first introduce a few mathematical concepts. In particular,
 I need to discuss how it is that we take data that is measured over time and \textit{transform}\footnote{\textit{Transform} is commonly used in mathematics to refer to
-a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversable manner.} it to the frequency (spectral) domain (via the \textit{Fourier Transform})
+a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversible manner.} it to the frequency (spectral) domain (via the \textit{Fourier Transform})
 and then back to the time domain (via the \textit{Inverse Fourier Transform}). I must also discuss how we take a filter that is defined in the Lapace (Complex-Frequency)
 domain and apply it to a signal in the (non-complex) frequency domain.
 
@@ -312,7 +312,7 @@ response removal can be thought of as a form of filtering, but it will be a topi
             ]
                 \addplot[
                     domain=0:10,
-                    samples=500
+                    samples=1000
                 ]{wavepack(x-3, 0.25, 5)};
             \end{axis}
         \end{tikzpicture}
@@ -321,17 +321,18 @@ response removal can be thought of as a form of filtering, but it will be a topi
 \end{center}
 
 The timeseries recorded at a seismographic station is referred to as a seismogram. A rather simple example timeseries can be seen in figure \ref{figure:1}.
-The timeseries in figure \ref{figure:1} shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
-potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}.)} of approximately one second
-and is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Timeseries}.
-It is simply a time-shifted cosine function multiplied by a two-sided exponential attenuation function.
+This timeseries shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
+potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second
+and it is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Timeseries}.
+It is simply a time-shifted cosine function multiplied by an unnormalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
+The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normalize distribution}.} function.
 
 \noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Timeseries}
 
 In this case we can determine at least one frequency purely by visual inspection. The cosine function is $2\pi$-periodic, meaning that $cos(t)$ has a frequency of
-$\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly 4 Hz). Are there signals of other frequencies contained
+$\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly four Hz). Are there signals of other frequencies contained
 in equation \ref{Schematic Timeseries}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
-I'll return to the frequencies hidden in this example timeseries once I've introduced the Fourier Transform of a function.
+I'll return to the frequencies hidden in this example timeseries once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
 
