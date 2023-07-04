@@ -1,24 +1,44 @@
 %------------------------------------------------------------------------------
 % Document setup
 %------------------------------------------------------------------------------
-\documentclass[twoside]{article}
+\documentclass[american, twoside]{article}
 %-------------------------------------------------------------------------
 % Packages
 %-------------------------------------------------------------------------
-% 
+% Ability to reference the number of pages in document
 \usepackage{lastpage}
 % Nice equations
 \usepackage{mathtools}
-% Provide hypertext links
-\usepackage{hyperref}
 % Skip a line between paragraphs
 \usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
-% Alter the margins
+% Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for
+% two-sided printing
 \usepackage[twoside, letterpaper, lmargin=0.75in, rmargin=1.25in]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
+% Adjust table of contents formatting
+\usepackage{tocloft}
+% Provide hypertext links
+\usepackage{hyperref}
+% Custom datetime formatting
+\usepackage{datetime2}
+% Language localization
+\usepackage[american]{babel}
+% Boxes around stuff
+\usepackage{tcolorbox}
 %-------------------------------------------------------------------------
 % End Packages
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Custom date format
+%-------------------------------------------------------------------------
+\DTMnewdatestyle{strunkdate}{%
+  \renewcommand*{\DTMdisplaydate}[4]{\number##3\ \DTMenglishmonthname{##2} ##1}
+  \renewcommand*{\DTMDisplaydate}{\DTMdisplaydate}}
+\AtBeginDocument{\DTMsetdatestyle{strunkdate}}
+%-------------------------------------------------------------------------
+% End Custom date format
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
@@ -27,22 +47,38 @@
 \title{\Huge Filtering Seismic Timeseries Data in Passive-source Seismic-Processing (PsSp)\\
 \large Implementation details of the filters provided for isolating seismic signals}
 \author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
-\date{3 July\\2023}
+\date{\Today}
 %-------------------------------------------------------------------------
 % End Article meta-data
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Draft formatting options
+%-------------------------------------------------------------------------
+% These can be commented out to get a finalized version
+% Place line numbers in the left-side margin
+\usepackage[left]{lineno}
+\linenumbers
+% Double-spacing
+\usepackage{setspace}
+\doublespacing
+%-------------------------------------------------------------------------
+% End Draft formatting options
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
 % Miscellaneous Formatting
 %-------------------------------------------------------------------------
 \fancyhf{} % clear existing header/footer entries
-% Place Page X of Y on the right-hand
-% side of the footer
-\fancyfoot[R]{Page \thepage \hspace{1pt} of \pageref{LastPage}}
+% Place Page X of Y on outer-edge of footer
+\fancyfoot[RO, LE]{Page \thepage \hspace{1pt} of \pageref{LastPage}}
 \fancyhead{} % clear all header fields
-\fancyhead[RO,LE]{\textbf{Filtering Seismic Timeseries Data}}
+\fancyhead[RO, LE]{\textbf{Filtering Seismic Timeseries Data}}
 \fancyhead[C]{Blanchette}
-\fancyhead[LO,RE]{2023}
+\fancyhead[LO, RE]{2023}
+% Not so ugly anymore!
+\hypersetup{colorlinks=true, linkcolor=black, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
+\urlstyle{same}
 %-------------------------------------------------------------------------
 % End Miscellaneous Formatting
 %-------------------------------------------------------------------------
@@ -56,17 +92,16 @@
 %------------------------------------------------------------------------------
 \begin{document}
 \maketitle
-%\noindent\rule{\textwidth}{1pt}
 \pagestyle{fancy}
 %-------------------------------------------------------------------------
 % Abstract
 %-------------------------------------------------------------------------
-\section{Abstract} \label{Abstract}
-Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time. Seismic timeseries
-recordings contain information from a plethora of sources---natural or anthropogenic. Typically, an analysis task is focused on processing/analyzing
-signals from a specific target 'source'\footnote{'Source' is being used in the generic sense here; it could refer to the nucleation point of the seismic
-signals (earthquake, explosion, etc.) or to structural sources (reflections, refractions, conversions)}. Generally, seismometers record and are sensitive
-to a frequency range that is significantly larger than that which any given analyitcal method/goal requires. Filtering is a critically important tool for
+\section*{Abstract} \label{Abstract}
+Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (timeseries). Seismic timeseries
+recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task is focused on processing/analyzing
+signals from a specific target \textit{source}\footnote{\textit{Source} is being used in the generic sense here; it could refer to the nucleation point of the seismic
+signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
+to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
 isolating signals of interest. In this document I give a brief overview of timeseries filtering in general and provide the specific details of the filters
 implemented in Passive-source Seismic-processing (PsSp).
 %-------------------------------------------------------------------------
@@ -74,30 +109,44 @@ implemented in Passive-source Seismic-processing (PsSp).
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
+% ToC
+%-------------------------------------------------------------------------
+\newpage
+\begin{tcolorbox}
+    %\renewcommand*\contentsname{Organization}
+    \renewcommand\cftsecfont{\large}
+    \renewcommand\cftsecpagefont{\small}
+    \tableofcontents
+\end{tcolorbox}
+%-------------------------------------------------------------------------
+% End ToC
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
 % Introduction
 %-------------------------------------------------------------------------
 \section{Introduction} \label{Introduction}
 Filtering of time-dependent recordings (timeseries data) is a task common among a wide range of different scientific/engineering disciplines.
-While great advances have been made to analyze as much of the seismic timeseries as possible, even the extraction of approximate
-Green's functions from the ambient seismic noise field, virtually all seismic analysis first requires the seismic timeseries to
-be filtered in order to isolate the portion of the recorded data that is most compatible with the analysis planned. In the fairly
+While great advances have been made to analyze as much of the seismic timeseries as possible---such as the extraction of approximate
+Green's functions from the ambient seismic noise field---virtually all seismic analysis first requires the seismic timeseries to
+be filtered in order to isolate the portion of the recorded data that is most compatible with the intended analysis. In the fairly
 distant past this was less important due to the limitations of: 1) the available seismographic instruments, and 2) the available
 computational infrastructure. At present, relatively inexpensive seismometers can record broadband seismic timeseries with the flat-sensitivity
 range of a high-quality instrument being between a period of 1000 seconds (s) at the low end (a frequency of 0.001 Hz) up to a high
 of 100 Hz. Such a large dynamic range of frequencies---containing signals from numerous stationary and non-stationary sources---results in a
 rather complicated timeseries. This excess information convolutes the analysis of the signal(s) of interest.
-Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the noise\footnote{'Noise' is a bit of a misunderstood term in
-seismology, especially with the advances in the last few decades in ambient noise seismology. I use the word 'noise' to mean 'any
-signal that is not of interest for a specific analysis' and not to provide any information of the source of the noise.} from the
-recorded timeserie. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
-capable of handling most modern seismic workflows (all except particularly large/high through-put workflows that require more specialized
+Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the \textit{noise}\footnote{\textit{Noise} is a bit of a misunderstood term in
+seismology, especially with the advances in the last few decades in ambient noise seismology. The word 'noise' is used here to mean 'any
+signal that is not of interest for a specific analysis' and does not provide any suggestion to the source of the noise.} from the
+recorded timeseries. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
+capable of handling most modern seismic workflows (all except particularly large or high throughput workflows that require more specialized
 computing infrastructure).
 
 Filtering is a tremendously wide topic of study itself, with a rich history across many otherwise disparate fields of study, well
-beyond the scope of this simple documentation. Therefore, I will restrict mysellf in this document to provide a brief discussion
+beyond the scope of this simple document. Therefore, I will restrict myself to---at most---provide a brief discussion
 on the fundamentals of filtering, while leaving many of the details up for the intrepid reader to research on their own. Afterward,
 I will provide a detailed description of the implementation of filters specific to \href{https://github.com/arbCoding/PsSp}{PsSp}.
-This is not meant to provide a detailed derivation of the filters employed from first principles, but is instead intended to serve as
+This is not meant to provide a detailed derivation from first principles of the filters employed, but is instead intended to serve as
 a pragmatic guide on their internal implementation. This is intended as much as a guide to any reader as it is to myself.
 %-------------------------------------------------------------------------
 % End Introduction
@@ -162,6 +211,15 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 %-------------------------------------------------------------------------
 % End The Butterworth Filter
 %-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% References
+%-------------------------------------------------------------------------
+\section{References} \label{References}
+%-------------------------------------------------------------------------
+% End References
+%-------------------------------------------------------------------------
+
 \end{document}
 %------------------------------------------------------------------------------
 % End Article Content
