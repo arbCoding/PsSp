@@ -13,7 +13,7 @@
 \usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
 % Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for
 % two-sided printing
-\usepackage[twoside, letterpaper, lmargin=0.75in, rmargin=1.25in]{geometry}
+\usepackage[twoside, letterpaper, lmargin=0.75in, rmargin=1.0in]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
 % Adjust table of contents formatting
@@ -29,7 +29,11 @@
 % Make some micro-typographical corrections to improve appearance
 \usepackage{microtype}
 % Reference management
-\usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, autocite=superscript, sortcites=true]{biblatex}
+\usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, sortcites=true]{biblatex}
+% Pretty plots
+\usepackage{pgfplots}
+% Place boxes around figures
+\usepackage{float}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -84,8 +88,37 @@
 % Not so ugly anymore!
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
 \urlstyle{same}
+% Place thin boxes around figures
+%\floatstyle{boxed} 
+%\restylefloat{figure}
 %-------------------------------------------------------------------------
 % End Miscellaneous Formatting
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Plotting functions
+%-------------------------------------------------------------------------
+% Gaussian
+\pgfmathdeclarefunction{gauss}{2}{%
+    \pgfmathparse{1/(#2*sqrt(2*pi))*exp(-((x-#1)^2)/(2*#2^2))}%
+}
+% Sinc function
+\pgfmathdeclarefunction{sinc}{1}{%
+    \pgfmathparse{sin(deg(#1))/(#1)}%
+}
+% Ricker wavelet
+\pgfmathdeclarefunction{ricker}{2}{%
+    % Normalized
+    %\pgfmathparse{(2/(sqrt(3*#2)*pi^(1/4)))*(1-((#1/#2)^2))*e^(-(#1^2)/(2*(#2^2)))}%
+    % Unnormalized (better for me)
+    \pgfmathparse{(1-((#1/#2)^2))*e^(-(#1^2)/(2*(#2^2)))}%
+}
+% Wave package function
+\pgfmathdeclarefunction{wavepack}{3}{%
+    \pgfmathparse{cos(deg(#1*2*pi/#2))*e^(-((#1*2*pi)^2)/(#3^2))}
+}
+%-------------------------------------------------------------------------
+% End Plotting functions
 %-------------------------------------------------------------------------
 
 %------------------------------------------------------------------------------
@@ -99,10 +132,25 @@
 \maketitle
 \pagestyle{fancy}
 %-------------------------------------------------------------------------
-% Abstract
+% Foreword
+%-------------------------------------------------------------------------
+%\section*{Foreword} \label{Foreword}
+%\addcontentsline{toc}{section}{\nameref{Foreword}}
+Because the goal of this document is to be as useful and accessible as possible it is a \textit{living document}. By that I mean
+that it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
+\textit{finished}.
+%-------------------------------------------------------------------------
+% End Foreword
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Abstract and Plain Language Summary
 %-------------------------------------------------------------------------
 \begin{tcolorbox}
+    % Don't number
     \section*{Abstract} \label{Abstract}
+    % Add to the ToC even though not numbered
+    \addcontentsline{toc}{section}{\nameref{Abstract}}
     Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (timeseries). Seismic timeseries
     recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task is focused on processing/analyzing
     signals from a specific target \textit{source}\footnote{\textit{Source} is being used in the generic sense here; it could refer to the nucleation point of the seismic
@@ -110,9 +158,13 @@
     to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
     isolating signals of interest. In this document I give a brief overview of timeseries filtering in general and provide the specific details of the filters
     implemented in Passive-source Seismic-processing (PsSp).
+    \section*{Plain Language Summary} \label{PlainSummary}
+    Filters are an important step in preparing seismic data to be analyzed. In this document I will hint at some of the basic theory of seismic filtering
+    with most of the focus being placed on the specific filters implemented in PsSp. This is intended to serve as a basic guide on the what/how of filtering seismic data without going through
+    any explicit mathematical derivations; instead I hope this will provide a more intuitive understanding to the reader.
 \end{tcolorbox}
 %-------------------------------------------------------------------------
-% End Abstract
+% End Abstract and Plain Language Summary
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
@@ -120,7 +172,6 @@
 %-------------------------------------------------------------------------
 \newpage
 \begin{tcolorbox}
-    %\renewcommand*\contentsname{Organization}
     \renewcommand\cftsecfont{\large}
     \renewcommand\cftsecpagefont{\small}
     \tableofcontents
@@ -163,20 +214,60 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 % Background
 %-------------------------------------------------------------------------
 \section{Background} \label{Background}
-%--------------------------------------------------------------------
-% Historical Background
-%--------------------------------------------------------------------
-\subsection{Historical Background} \label{Background:History}
-%--------------------------------------------------------------------
-% End Historical Background
-%--------------------------------------------------------------------
+Filtering of timeseries data is necessary across numerous disciplines (e.g. seismology, electrical engineering, audio engineering, etc.). Due to its prevalence
+across a diverse range of disciplines, it has been studied extensively over time---with many of the major theoretical advances having been discovered
+more than 100 years ago (Joseph Fourier published on his series expansion in 1822\autocite{fourier1822theorie}). In fact, the Butterworth filters employed here were first published
+by Stephan Butterworth in 1930\autocite{butterworth1930theory}. Of course, there has been significant progress since, both theoretical and practical. While much could be---and has been---written
+on the history of filtering signals, I think that it is sufficient here to simply say that it is a quite mature field of study and leave the historical developments
+to the reader to research on their own, if they so desire.
 
 %--------------------------------------------------------------------
 % Mathematical Background
 %--------------------------------------------------------------------
 \subsection{Mathematical Background} \label{Background:Math}
+While I do intend for this document to focus more on the development of the reader's intuitive understanding of the filtering process, it would be a significant
+disservice to totally forgoe all mathemtical formalism. In fact, the equations themselves provide a great deal of insight into inner workings of the filters.
+In order to provide a sufficiently comprehensive introduction to the application of filters I will need to first introduce a few mathematical concepts. In particular,
+I need to discuss how it is that we take data that is measured over time and \textit{transform}\footnote{\textit{Transform} is commonly used in mathematics to refer to
+a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversable manner.} it to the frequency (spectral) domain (via the \textit{Fourier Transform})
+and then back to the time domain (via the \textit{Inverse Fourier Transform}). I must also discuss how we take a filter that is defined in the Lapace (Complex-Frequency)
+domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
+Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
+rather artifical assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
+record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation $x\rightarrow v\rightarrow a$
+or integration $a\rightarrow v \rightarrow x$. The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
+response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
+
+\begin{center}
+\begin{figure}
+\label{figure:1}
+\begin{tikzpicture}
+    \begin{axis}[
+        width=0.95\textwidth,
+        height=5cm,
+        title={},
+        axis lines=left,
+        xlabel = \(t\hspace{1pt}(s)\),
+        ylabel = {\(f(t)\)},
+        ymin = -1, ymax = 1,
+        xmin = 0, xmax = 10,
+    ]
+        \addplot[
+            domain=0:10,
+            samples=500
+        ]{wavepack(x-3, 0.25, 5)};
+        \addplot[
+            domain=0:10,
+            samples=500,
+            color=blue
+        ]{e^((-2*pi*(x-3)^2)/5)};
+    \end{axis}
+\end{tikzpicture}
+\caption{Wave-packet (black) and its corresponding envelope function (blue).}
+\end{figure}
+\end{center}
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
 
@@ -189,18 +280,9 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
-% Usage of FFTW
-%-------------------------------------------------------------------------
-\section{The Fast Fourier Transform} \label{FFT}
-%-------------------------------------------------------------------------
-% End Usage of FFTW
-%-------------------------------------------------------------------------
-
-%-------------------------------------------------------------------------
 % The Butterworth Filter
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
-Testing\autocite{butterworthWikipedia}
 \subsection{Lowpass} \label{Butterworth:Lowpass}
 \begin{equation} \label{butterworth:lowpass_generic}
     H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}
