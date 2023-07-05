@@ -41,7 +41,9 @@
 \usepackage[protrusion=true, activate={true,nocompatibility}, final, tracking=true, kerning=true, spacing=false, factor=1100]{microtype}
 % Reference management
 \usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, sortcites=true]{biblatex}
-% Pretty plots
+% Basic Pretty plots
+\usepackage{tikz}
+% Expanded Pretty plots
 \usepackage{pgfplots}
 % Figure placement
 \usepackage{float}
@@ -59,8 +61,14 @@
 \usepackage{xparse}
 % Allows to reference things without referring to their type
 \usepackage[capitalise]{cleveref}
-% Can add a list of terms and acronyms to the document
-\usepackage[automake, acronym]{glossaries-extra}
+% Can add a list of terms and acronyms to the document, include it in the toc, automake the glossary
+\usepackage[automake, acronym, toc]{glossaries-extra}
+% Can be used to add appendicies to the document
+%\usepackage{appendix}
+% Better control over the number of columns per section
+\usepackage{multicol}
+% Allows for table elements to span more than one row
+%\usepackage{multirow}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -164,6 +172,18 @@
 \newacronym{pssp}{PsSp}{Passive-source Seismic-Processing}
 \newacronym{fft}{FFT}{Fast Fourier Transform}
 \newacronym{ifft}{IFFT}{Inverse Fast Fourier Transform}
+\newglossaryentry{period}{
+    name=period,
+    description={The amount of time it takes for a process to complete a full cycle.}
+}
+\newglossaryentry{frequency}{
+    name=frequency,
+    description={The number of cycles completed in one second.}
+}
+\newglossaryentry{wavelength}{
+    name=wavelength,
+    description={The distance over which a wave completes a full cycle.}
+}
 \makeglossaries
 %-------------------------------------------------------------------------
 % End Acronyms
@@ -194,7 +214,7 @@
 %-------------------------------------------------------------------------
 % Foreword
 %-------------------------------------------------------------------------
-\scriptsize The goal of this document is to be as useful and accessible as possible. Therefore, it is a \textit{living document}. By that I mean
+\scriptsize The goal of this document is to be as useful and accessible as possible. Therefore, it is a \textit{living document}. That means
 it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
 \textit{finished}.
 \normalsize
@@ -214,7 +234,7 @@ it will change and grow over time in order to ensure the quality of the content.
     recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task focuses on processing/analyzing
     signals from a specific target \textit{source}\footnote{\textit{Source} is in the generic sense here; it could refer to the nucleation point of the seismic
     signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
-    to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
+    to a \gls{frequency} range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
     isolating signals of interest. In this document I give a brief overview of time series filtering in general and provide the specific details of the filters
     implemented in \gls{pssp}.
     \section*{Plain Language Summary} \label{PlainSummary}
@@ -284,9 +304,9 @@ be filtered in order to isolate the portion of the recorded data that is most co
 distant past this was less important due to the limitations of: 1) the available seismographic instruments, and 2) the available
 computational infrastructure.
 
-At present, relatively inexpensive broadband seismometers can record seismic time series with the flat-sensitivity
-range period of 100 seconds (s) at the low-end (a frequency of 0.01 Hz) up to a high of 100 Hz. Higher quality instruments are sensitive to
-much longer periods---not uncommon to hit 1000 s (0.001 Hz). High frequency nodal seismometers can record time series at frequencies of a few
+At present, relatively inexpensive broadband seismometers can record seismic time series with a flat-sensitivity
+range starting at a \gls{period} of 100 seconds (s) (a \gls{frequency} of 0.01 Hz) up to a high of 100 Hz. Higher quality instruments are sensitive to
+much longer \glspl{period}---it is not uncommon to hit 1000 s (0.001 Hz). High \gls{frequency} nodal seismometers can record time series at frequencies of a few
 thousand Hz (kHz). Such a large dynamic range of frequencies---containing signals from numerous stationary and non-stationary sources---results in a
 rather complicated time series. This excess information convolutes the analysis of the signal(s) of interest.
 Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the \textit{noise}\footnote{\textit{Noise} is a bit of a misunderstood term in
@@ -314,8 +334,8 @@ Filtering of time series data is necessary across numerous disciplines (e.g., se
 across a diverse range of disciplines, it has been studied extensively over time---with many of the major theoretical advances discovered
 more than 100 years ago (Joseph Fourier published on his series expansion in 1822\autocite{fourier1822theorie}). In fact, the Butterworth filters employed here were first published
 by Stephan Butterworth in 1930\autocite{butterworth1930theory}. Of course, there has been significant progress since, both theoretical and practical. While much could be---and has been---written
-on the history of filtering signals, I think that it is sufficient here to simply say that it is a quite mature field of study and leave the historical developments
-to the reader to research on their own, if they so desire.
+on the history of filtering signals, I think that it is sufficient here to simply say that it is a quite mature field of study. I therefore leave the historical developments
+for the reader to research on their own, if they so desire.
 
 %--------------------------------------------------------------------
 % Mathematical Background
@@ -325,15 +345,15 @@ While I do intend for this document to focus more on the development of the read
 disservice to totally forgo all mathematical formalism. In fact, the equations themselves provide a great deal of insight into how filters work.
 In order to provide a sufficiently comprehensive introduction to the application of filters, I will need to first introduce a few mathematical concepts. In particular,
 I need to discuss how it is that we take data that is measured over time and \textit{transform}\footnote{\textit{Transform} is commonly used in mathematics to refer to
-a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversible manner.} it to the frequency (spectral) domain (via the \textit{Fourier Transform})
+a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversible manner.} it to the \gls{frequency} (spectral) domain (via the \textit{Fourier Transform})
 and then back to the time domain (via the \textit{Inverse Fourier Transform}). I must also discuss how we take a filter that is defined in the Laplace (Complex-Frequency)
-domain and apply it to a signal in the (non-complex) frequency domain.
+domain and apply it to a signal in the (non-complex) \gls{frequency} domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
 Observations are always a function of time. Whether the observed process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
 rather artificial assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
 record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation ($x\rightarrow v\rightarrow a$)
-or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related the internal \textit{instrument response}\footnote{\textit{Instrument response}
+or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related to the internal \textit{instrument response}\footnote{\textit{Instrument response}
 removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
 
 \begin{center}
@@ -361,7 +381,9 @@ removal can be thought of as a form of filtering, but it will be a topic of a se
 
 The time series recorded at a seismographic station is a seismogram. A rather simple example time series can be seen in \cref{figure1}.
 This time series shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
-potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second,
+potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately
+one second\footnote{While it is \textit{technically} true in this case that the signal has infinite duration and therefore the first deviation from zero is \textit{technically} at $-\infty$, real data
+always has some background noise that renders this technicality purely \textit{academic/pedantic}.},
 and it is centered at three seconds. For the sake of completeness: the waveform plotted in \cref{figure1} was generated using \cref{Schematic Time Series}.
 It is simply a time-shifted cosine function multiplied by a non-normalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
 The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normal distribution}.}.
@@ -369,12 +391,42 @@ The name used is typically dependent upon the field of study. Other names you ma
 %\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
 \noteworthy{f(t) = \cos(8\pi(t-3))e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
 
-In this case we can determine at least one frequency purely by visual inspection. The cosine function is $2\pi$-periodic, meaning that $cos(t)$ has a frequency of
-$\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly four Hz). Are there signals of other frequencies contained
-in \cref{Schematic Time Series}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
+In this case we can determine at least one \gls{frequency} purely by visual inspection. The cosine function is $2\pi$-\gls{period}ic, meaning that $cos(t)$ has a \gls{frequency} of
+$\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a \gls{frequency} greater than one (it is exactly four Hz). There are signals of other frequencies contained
+in \cref{Schematic Time Series}, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
 I'll return to the frequencies hidden in this example time series once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
+To set the stage for us to discuss spectral analysis/processing I must first introduce some basic terminology.
+
+\begin{center}
+    \begin{figure}[ht]
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=0.95\textwidth,
+                height=5cm,
+                title={},
+                axis lines=left,
+                xlabel = \(t\hspace{1pt}(s)\),
+                ylabel = {\(f(t)\)},
+                ymin = -1, ymax = 1.1,
+                xmin = 0, xmax = 2,
+            ]
+                \addplot[
+                    domain=0:2,
+                    samples=100
+                ]{cos(deg(2*pi*x)))};
+                \addplot +[mark=none] coordinates {(1, -1) (1, 1)};
+                \addplot [<->] coordinates {(0, 0.5) (1, 0.5)};
+                \node[] at (axis cs: 0.5, .6) {Period};
+            \end{axis}
+        \end{tikzpicture}
+        \caption[Cosine Function]{Plot of a cosine function that shows its period.} \label{figure2}
+    \end{figure}
+\end{center}
+
+In \cref{figure2} we can see a cosine function with a \gls{period} of one second. It is the time-analogue to the spatial \gls{wavelength}.
+
 \paragraph{Fourier Series} \label{Background:Math:Spectral:FourSeries}
 \paragraph{Fourier Transform} \label{Background:Math:Spectral:FourTransform}
 \subparagraph{Linearity of the Fourier Transform} \label{Background:Math:Spectral:FourTransform:Linearity}
@@ -417,7 +469,9 @@ Test equation reference for \cref{Butterworth Low-pass Filter}.
 % Glossaries
 %-------------------------------------------------------------------------
 \newpage
+\begin{multicols}{2}
 \printglossaries
+\end{multicols}
 %-------------------------------------------------------------------------
 % End Glossaries
 %-------------------------------------------------------------------------
