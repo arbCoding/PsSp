@@ -55,7 +55,7 @@
 %-------------------------------------------------------------------------
 % Article meta-data
 %-------------------------------------------------------------------------
-\title{\Huge Filtering Seismic Timeseries Data in Passive-source Seismic-Processing (PsSp)\\
+\title{\Huge Filtering Seismic Time Series Data in Passive-source Seismic-Processing (PsSp)\\
 \large Implementation details of the filters provided for isolating seismic signals}
 \author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
 \date{\Today}
@@ -85,11 +85,11 @@
 % Place Page X of Y on outer-edge of footer
 \fancyfoot[LE, RO]{Page \thepage \hspace{1pt} of \pageref{LastPage}}
 \fancyhead{} % clear all header fields
-\fancyhead[C]{\textbf{Filtering Seismic Timeseries Data}}
+\fancyhead[C]{\textbf{Filtering Seismic Time Series Data}}
 \fancyhead[LO, RE]{Blanchette}
 \fancyhead[LE, RO]{2023}
 % Not so ugly anymore!
-\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic Timeseries Data}, pdfpagemode=FullScreen}
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic time series Data}, pdfpagemode=FullScreen}
 \urlstyle{same}
 % Pgfplot compatibility
 \pgfplotsset{compat=1.18}
@@ -173,16 +173,16 @@ that it will change and grow over time in order to ensure the quality of the con
     \section*{Abstract} \label{Abstract}
     % Add to the ToC even though not numbered
     \addcontentsline{toc}{section}{\nameref{Abstract}}
-    Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (timeseries). Seismic timeseries
-    recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task is focused on processing/analyzing
-    signals from a specific target \textit{source}\footnote{\textit{Source} is being used in the generic sense here; it could refer to the nucleation point of the seismic
+    Seismic data---whether it is ground motion (displacement), velocity, or acceleration---is recorded as a function of time (time series). Seismic time series
+    recordings contain information from a plethora of sources---natural and anthropogenic. Typically, an analysis task focuses on processing/analyzing
+    signals from a specific target \textit{source}\footnote{\textit{Source} is in the generic sense here; it could refer to the nucleation point of the seismic
     signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
     to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
-    isolating signals of interest. In this document I give a brief overview of timeseries filtering in general and provide the specific details of the filters
+    isolating signals of interest. In this document I give a brief overview of time series filtering in general and provide the specific details of the filters
     implemented in Passive-source Seismic-processing (PsSp).
     \section*{Plain Language Summary} \label{PlainSummary}
-    Filters are an important step in preparing seismic data to be analyzed. In this document I will hint at some of the basic theory of seismic filtering
-    with most of the focus being placed on the specific filters implemented in PsSp. This is intended to serve as a basic guide on the what/how of filtering seismic data without going through
+    Filters are an important step in preparing seismic data to be analyzed. In this document I will hint at the basic theory of seismic filtering
+    with most of the focus placed on the specific filters implemented in PsSp. This is intended to serve as a basic guide on the what and how of filtering seismic data without going through
     any explicit mathematical derivations; instead I hope this will provide a more intuitive understanding to the reader.
 \end{tcolorbox}
 %-------------------------------------------------------------------------
@@ -240,19 +240,19 @@ that it will change and grow over time in order to ensure the quality of the con
 % Introduction
 %-------------------------------------------------------------------------
 \section{Introduction} \label{Introduction}
-Filtering of time-dependent recordings (timeseries data) is a task common among a wide range of different scientific/engineering disciplines.
-While great advances have been made to analyze as much of the seismic timeseries as possible---such as the extraction of approximate
-Green's functions from the ambient seismic noise field---virtually all seismic analysis first requires the seismic timeseries to
+Filtering of time-dependent recordings (time series data) is a task common among a wide range of different scientific/engineering disciplines.
+While great advances have been made to analyze as much of the seismic time series as possible---such as the extraction of approximate
+Green's functions from the ambient seismic noise field---virtually all seismic analysis first requires the seismic time series to
 be filtered in order to isolate the portion of the recorded data that is most compatible with the intended analysis. In the fairly
 distant past this was less important due to the limitations of: 1) the available seismographic instruments, and 2) the available
-computational infrastructure. At present, relatively inexpensive seismometers can record broadband seismic timeseries with the flat-sensitivity
+computational infrastructure. At present, relatively inexpensive seismometers can record broadband seismic time series with the flat-sensitivity
 range of a high-quality instrument being between a period of 1000 seconds (s) at the low end (a frequency of 0.001 Hz) up to a high
 of 100 Hz. Such a large dynamic range of frequencies---containing signals from numerous stationary and non-stationary sources---results in a
-rather complicated timeseries. This excess information convolutes the analysis of the signal(s) of interest.
+rather complicated time series. This excess information convolutes the analysis of the signal(s) of interest.
 Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the \textit{noise}\footnote{\textit{Noise} is a bit of a misunderstood term in
 seismology, especially with the advances in the last few decades in ambient noise seismology. The word 'noise' is used here to mean 'any
 signal that is not of interest for a specific analysis' and does not provide any suggestion as to the source of the noise.} from the
-recorded timeseries. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
+recorded time series. Fortunately---thanks to the many technological advancements over the last few decades---personal computers are sufficiently
 capable of handling most modern seismic workflows (all except particularly large or high throughput workflows that require more specialized
 computing infrastructure).
 
@@ -270,8 +270,8 @@ a pragmatic guide on their internal implementation. This is intended as much as 
 % Background
 %-------------------------------------------------------------------------
 \section{Background} \label{Background}
-Filtering of timeseries data is necessary across numerous disciplines (e.g. seismology, electrical engineering, audio engineering, etc.). Due to its prevalence
-across a diverse range of disciplines, it has been studied extensively over time---with many of the major theoretical advances having been discovered
+Filtering of time series data is necessary across numerous disciplines (e.g., seismology, electrical engineering, audio engineering, etc.). Due to its prevalence
+across a diverse range of disciplines, it has been studied extensively over time---with many of the major theoretical advances discovered
 more than 100 years ago (Joseph Fourier published on his series expansion in 1822\autocite{fourier1822theorie}). In fact, the Butterworth filters employed here were first published
 by Stephan Butterworth in 1930\autocite{butterworth1930theory}. Of course, there has been significant progress since, both theoretical and practical. While much could be---and has been---written
 on the history of filtering signals, I think that it is sufficient here to simply say that it is a quite mature field of study and leave the historical developments
@@ -286,14 +286,14 @@ disservice to totally forgo all mathematical formalism. In fact, the equations t
 In order to provide a sufficiently comprehensive introduction to the application of filters, I will need to first introduce a few mathematical concepts. In particular,
 I need to discuss how it is that we take data that is measured over time and \textit{transform}\footnote{\textit{Transform} is commonly used in mathematics to refer to
 a linear change of basis. That is, to change the meaning of the dependent-variable in a well-behaved and reversible manner.} it to the frequency (spectral) domain (via the \textit{Fourier Transform})
-and then back to the time domain (via the \textit{Inverse Fourier Transform}). I must also discuss how we take a filter that is defined in the Lapace (Complex-Frequency)
+and then back to the time domain (via the \textit{Inverse Fourier Transform}). I must also discuss how we take a filter that is defined in the Laplace (Complex-Frequency)
 domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
 Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
-rather artifical assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
-record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation $x\rightarrow v\rightarrow a$
-or integration $a\rightarrow v \rightarrow x$. The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
+rather artificial assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
+record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation ($x\rightarrow v\rightarrow a$)
+or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
 response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
 
 \begin{center}
@@ -316,23 +316,23 @@ response removal can be thought of as a form of filtering, but it will be a topi
                 ]{wavepack(x-3, 0.25, 5)};
             \end{axis}
         \end{tikzpicture}
-        \caption[Schematic timeseries]{A simple schematic timeseries.}
+        \caption[Schematic Time Series]{A simple schematic time series.}
     \end{figure}
 \end{center}
 
-The timeseries recorded at a seismographic station is referred to as a seismogram. A rather simple example timeseries can be seen in figure \ref{figure:1}.
-This timeseries shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
-potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second
-and it is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Timeseries}.
+The time series recorded at a seismographic station is called a seismogram. A rather simple example time series can be seen in figure \ref{figure:1}.
+This time series shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
+potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second,
+and it is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Time Series}.
 It is simply a time-shifted cosine function multiplied by an unnormalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
 The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normalize distribution}.} function.
 
-\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Timeseries}
+\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
 
 In this case we can determine at least one frequency purely by visual inspection. The cosine function is $2\pi$-periodic, meaning that $cos(t)$ has a frequency of
 $\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly four Hz). Are there signals of other frequencies contained
-in equation \ref{Schematic Timeseries}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
-I'll return to the frequencies hidden in this example timeseries once we've been introduced to the Fourier Transform of a function.
+in equation \ref{Schematic Time Series}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
+I'll return to the frequencies hidden in this example time series once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
 
@@ -349,16 +349,16 @@ I'll return to the frequencies hidden in this example timeseries once we've been
 % The Butterworth Filter
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
-\subsection{Lowpass} \label{Butterworth:Lowpass}
-Test equation reference for equation \ref{Butterworth Lowpass Filter}.
-\noteworthy{H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}}{Butterworth Lowpass Filter}
+\subsection{Low-pass} \label{Butterworth:Lowpass}
+Test equation reference for equation \ref{Butterworth Low-pass Filter}.
+\noteworthy{H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}}{Butterworth Low-pass Filter}
 \noteworthy{B_{n}(s) = \sum_{k = 0}^{n} a_{k}s^{k}}{Normalized Butterworth Polynomial}
 \noteworthy{a_{k + 1} = a_{k}\frac{cos\left(k\gamma\right)}{sin((k + 1)\gamma)}; a_{0} = 1; \gamma = \frac{\pi}{2n}; a_{k} = a_{n - k}}{Normalized Butterworth Polynomial Coefficients}
 
-\subsection{Highpass} \label{Butterworth:Highpass}
+\subsection{High-pass} \label{Butterworth:Highpass}
 
-\subsection{Bandpass} \label{Butterworth:Bandpass}
-\subsection{Bandreject} \label{Butterworth:Bandreject}
+\subsection{Band-pass} \label{Butterworth:Bandpass}
+\subsection{Band-reject} \label{Butterworth:Bandreject}
 %-------------------------------------------------------------------------
 % End The Butterworth Filter
 %-------------------------------------------------------------------------
