@@ -5,15 +5,16 @@
 %-------------------------------------------------------------------------
 % Packages
 %-------------------------------------------------------------------------
+% Different font
+%\usepackage{lmodern}
 % Ability to reference the number of pages in document
 \usepackage{lastpage}
 % Nice equations
 \usepackage{mathtools}
 % Skip a line between paragraphs
 \usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
-% Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for
-% two-sided printing
-\usepackage[twoside, letterpaper, lmargin=1.0in, rmargin=0.75in, bmargin=1.0in, tmargin=1.0in]{geometry}
+% Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for two-sided printing
+\usepackage[twoside, letterpaper, lmargin=1.0in, rmargin=0.75in, bmargin=0.75in, tmargin=0.75in]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
 % To undo centering in noteworthy command
@@ -24,19 +25,22 @@
 \usepackage{hyperref}
 % Custom datetime formatting
 \usepackage{datetime2}
+% Provides advanced quotation display functionality (used by babel and biblatex)
 \usepackage{csquotes}
 % Language localization
 \usepackage[american]{babel}
 % Boxes around stuff (Abstract and ToC)
 \usepackage[most]{tcolorbox}
 % Make some micro-typographical corrections to improve appearance
-\usepackage{microtype}
+\usepackage[protrusion=true, activate={true,nocompatibility}, final, tracking=true, kerning=true, spacing=true, factor=1100]{microtype}
 % Reference management
 \usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, sortcites=true]{biblatex}
 % Pretty plots
 \usepackage{pgfplots}
 % Figure placement
 \usepackage{float}
+% Tighten up the text placement slightly to reduce page-length
+\usepackage[subtle]{savetrees}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -66,7 +70,7 @@
 
 %-------------------------------------------------------------------------
 % Draft formatting options
-%-------------------------------------------------------------------------
+%------------------------------------------------------------------------- 
 % These can be commented out to get a finalized version
 % Place line numbers in the left-side margin
 %\usepackage[left]{lineno}
@@ -290,11 +294,11 @@ and then back to the time domain (via the \textit{Inverse Fourier Transform}). I
 domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
-Observations are always made as a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
+Observations are always a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
 rather artificial assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
 record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation ($x\rightarrow v\rightarrow a$)
-or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related the internal instrument response\footnote{Instrument
-response removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
+or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related the internal \textit{instrument response}\footnote{\textit{Instrument response}
+removal can be thought of as a form of filtering, but it will be a topic of a separate document.}.
 
 \begin{center}
     \begin{figure}[ht]
@@ -320,12 +324,12 @@ response removal can be thought of as a form of filtering, but it will be a topi
     \end{figure}
 \end{center}
 
-The time series recorded at a seismographic station is called a seismogram. A rather simple example time series can be seen in figure \ref{figure:1}.
+The time series recorded at a seismographic station is a seismogram. A rather simple example time series can be seen in figure \ref{figure:1}.
 This time series shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
 potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second,
 and it is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Time Series}.
-It is simply a time-shifted cosine function multiplied by an unnormalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
-The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normalize distribution}.} function.
+It is simply a time-shifted cosine function multiplied by a non-normalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
+The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normal distribution}.}.
 
 \noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
 
@@ -335,9 +339,17 @@ in equation \ref{Schematic Time Series}? Yes, in fact it contains a range of fre
 I'll return to the frequencies hidden in this example time series once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
-
-
+\paragraph{Fourier Series} \label{Background:Math:Spectral:FourSeries}
+\paragraph{Fourier Transform} \label{Background:Math:Spectral:FourTransform}
+\subparagraph{Linearity of the Fourier Transform} \label{Background:Math:Spectral:FourTransform:Linearity}
+\paragraph{Real/Imaginary vs Amplitude/Phase} \label{Background:Math:Spectral:AmplitudePhase}
+\paragraph{Convolution} \label{Background:Math:Spectral:Convolution}
+\subparagraph{Return to the Example Time Series} \label{Background:Math:Spectral:Example}
 \subsubsection{The Laplace (Complex-Frequency) Domain} \label{Background:Math:Laplace}
+\subsubsection{Analysis of Discrete Time Series Data} \label{Background:Math:Discrete}
+\paragraph{The Discrete Fourier Transform} \label{Background:Math:Discrete:FourierTransform}
+\paragraph{Windowing Functions} \label{Background:Math:Discrete:Windowing}
+\paragraph{Discrete Z-Transform} \label{Background:Math:Discrete:ZTransform}
 %--------------------------------------------------------------------
 % End Mathematical Background
 %--------------------------------------------------------------------
@@ -349,6 +361,8 @@ I'll return to the frequencies hidden in this example time series once we've bee
 % The Butterworth Filter
 %-------------------------------------------------------------------------
 \section{The Butterworth Filter} \label{Butterworth}
+\paragraph{Ideal Filter} \label{IdealFilter}
+\subparagraph{Unrealizable} \label{IdealFilter:Unrealizable}
 \subsection{Low-pass} \label{Butterworth:Lowpass}
 Test equation reference for equation \ref{Butterworth Low-pass Filter}.
 \noteworthy{H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}}{Butterworth Low-pass Filter}

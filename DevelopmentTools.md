@@ -28,6 +28,7 @@ The purpose of this document is to provide a list of the tools that are being us
 6) [SonarLint](https://open-vsx.org/extension/SonarSource/sonarlint-vscode) - Additional static analysis tool.
 7) [Markdown Extension Pack](https://open-vsx.org/vscode/item?itemName=sugatoray.vscode-markdown-extension-pack)
 8) [LaTeX Workshop](https://open-vsx.org/vscode/item?itemName=James-Yu.latex-workshop) - LaTeX typesetting efficiency with preview, compile, autocomplete, colorize, etc.
+9) [LTeX – LanguageTool grammar/spell checking](https://open-vsx.org/vscode/item?itemName=valentjn.vscode-ltex)
 
 ## Static Analysis
 

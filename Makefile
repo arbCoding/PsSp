@@ -12,7 +12,7 @@
 SHELL := /bin/bash
 # Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
-# Debug mode or release mode
+# Debug mode or release model
 debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
