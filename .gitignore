@@ -77,6 +77,7 @@ compile_commands.json
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+*.synctex(busy)
 *.toc
 *.bbl
 *.blg

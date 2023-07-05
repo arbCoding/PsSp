@@ -27,6 +27,10 @@
 \usepackage{hyperref}
 % Custom datetime formatting
 \usepackage{datetime2}
+% T1 Font encoding
+\usepackage[T1]{fontenc}
+% Use UTF8 versions of fonts if available
+\usepackage[utf8]{inputenc}
 % Provides advanced quotation display functionality (used by babel and biblatex)
 \usepackage{csquotes}
 % Language localization
@@ -34,7 +38,7 @@
 % Boxes around stuff (Abstract and ToC)
 \usepackage[most]{tcolorbox}
 % Make some micro-typographical corrections to improve appearance
-\usepackage[protrusion=true, activate={true,nocompatibility}, final, tracking=true, kerning=true, spacing=true, factor=1100]{microtype}
+\usepackage[protrusion=true, activate={true,nocompatibility}, final, tracking=true, kerning=true, spacing=false, factor=1100]{microtype}
 % Reference management
 \usepackage[sorting=nty, backref=true, backend=biber, hyperref=true, sortcites=true]{biblatex}
 % Pretty plots
@@ -43,10 +47,6 @@
 \usepackage{float}
 % Tighten up the text placement slightly to reduce page-length
 \usepackage[subtle]{savetrees}
-% T1 Font encoding
-\usepackage[T1]{fontenc}
-% Use UTF8 versions of fonts if available
-\usepackage[utf8]{inputenc}
 % Custom list enumeration
 %\usepackage{enumitem}
 % Adjust size of tikz/pgfplots figures like you can with includegraphics
@@ -74,27 +74,6 @@
 \AtBeginDocument{\DTMsetdatestyle{strunkdate}}
 %-------------------------------------------------------------------------
 % End Custom date format
-%-------------------------------------------------------------------------
-
-%-------------------------------------------------------------------------
-% Acronyms
-%-------------------------------------------------------------------------
-\newacronym{pssp}{PsSp}{Passive-source Seismic-Processing}
-\makeglossaries
-%-------------------------------------------------------------------------
-% End Acronyms
-%-------------------------------------------------------------------------
-
-%-------------------------------------------------------------------------
-% Article meta-data
-%-------------------------------------------------------------------------
-\title{\Huge Filtering Seismic Time Series Data in \glsxtrfull{pssp}\\
-\large Implementation details of the filters provided for isolating seismic signals}
-\author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
-\date{\Today}
-\addbibresource{filters.bib}
-%-------------------------------------------------------------------------
-% End Article meta-data
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
@@ -177,6 +156,29 @@
 }
 %-------------------------------------------------------------------------
 % End Plotting functions
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Acronyms
+%-------------------------------------------------------------------------
+\newacronym{pssp}{PsSp}{Passive-source Seismic-Processing}
+\newacronym{fft}{FFT}{Fast Fourier Transform}
+\newacronym{ifft}{IFFT}{Inverse Fast Fourier Transform}
+\makeglossaries
+%-------------------------------------------------------------------------
+% End Acronyms
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
+% Article meta-data
+%-------------------------------------------------------------------------
+\title{\Huge Filtering Seismic Time Series Data in \glsxtrfull{pssp}\\
+\large Implementation details of the filters provided for isolating seismic signals}
+\author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
+\date{\Today}
+\addbibresource{filters.bib}
+%-------------------------------------------------------------------------
+% End Article meta-data
 %-------------------------------------------------------------------------
 
 %------------------------------------------------------------------------------
@@ -276,13 +278,16 @@ it will change and grow over time in order to ensure the quality of the content.
 %-------------------------------------------------------------------------
 \section{Introduction} \label{Introduction}
 Filtering of time-dependent recordings (time series data) is a task common among a wide range of different scientific/engineering disciplines.
-While great advances have been made to analyze as much of the seismic time series as possible---such as the extraction of approximate
-Green's functions from the ambient seismic noise field---virtually all seismic analysis first requires the seismic time series to
+Great advances have been made to analyze as much of the seismic time series as possible---such as the extraction of approximate
+Green's functions from the ambient seismic noise field. Still, virtually all seismic analysis first requires the seismic time series to
 be filtered in order to isolate the portion of the recorded data that is most compatible with the intended analysis. In the fairly
 distant past this was less important due to the limitations of: 1) the available seismographic instruments, and 2) the available
-computational infrastructure. At present, relatively inexpensive seismometers can record broadband seismic time series with the flat-sensitivity
-range of a high-quality instrument being between a period of 1000 seconds (s) at the low end (a frequency of 0.001 Hz) up to a high
-of 100 Hz. Such a large dynamic range of frequencies---containing signals from numerous stationary and non-stationary sources---results in a
+computational infrastructure.
+
+At present, relatively inexpensive broadband seismometers can record seismic time series with the flat-sensitivity
+range period of 100 seconds (s) at the low-end (a frequency of 0.01 Hz) up to a high of 100 Hz. Higher quality instruments are sensitive to
+much longer periods---not uncommon to hit 1000 s (0.001 Hz). High frequency nodal seismometers can record time series at frequencies of a few
+thousand Hz (kHz). Such a large dynamic range of frequencies---containing signals from numerous stationary and non-stationary sources---results in a
 rather complicated time series. This excess information convolutes the analysis of the signal(s) of interest.
 Filtering is the solution to this problem; it allows the analyst to isolate the signal(s) of interest by removing the \textit{noise}\footnote{\textit{Noise} is a bit of a misunderstood term in
 seismology, especially with the advances in the last few decades in ambient noise seismology. The word 'noise' is used here to mean 'any
@@ -408,8 +413,14 @@ Test equation reference for \cref{Butterworth Low-pass Filter}.
 % End The Butterworth Filter
 %-------------------------------------------------------------------------
 
+%-------------------------------------------------------------------------
+% Glossaries
+%-------------------------------------------------------------------------
 \newpage
 \printglossaries
+%-------------------------------------------------------------------------
+% End Glossaries
+%-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
 % References
