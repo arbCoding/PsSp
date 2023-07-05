@@ -85,3 +85,10 @@ compile_commands.json
 *.lof
 *.lot
 *.equ
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist

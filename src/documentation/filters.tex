@@ -6,7 +6,7 @@
 % Packages
 %-------------------------------------------------------------------------
 % Different font
-%\usepackage{lmodern}
+\usepackage{lmodern}
 % Ability to reference the number of pages in document
 \usepackage{lastpage}
 % Nice equations
@@ -14,7 +14,9 @@
 % Skip a line between paragraphs
 \usepackage[skip=10pt plus1pt, indent=40pt]{parskip}
 % Alter the margins, twoside tells it to alternate left/right margins on even/odd pages for two-sided printing
-\usepackage[twoside, letterpaper, lmargin=1.0in, rmargin=0.75in, bmargin=0.75in, tmargin=0.75in]{geometry}
+%\usepackage[twoside, letterpaper, lmargin=1.0in, rmargin=0.75in, bmargin=0.75in, tmargin=0.75in]{geometry}
+% A4 is standard outside North/South America (slighter taller and thinner than letter)
+\usepackage[twoside, a4paper, lmargin=2.5cm, rmargin=2cm, bmargin=2cm, tmargin=2cm]{geometry}
 % Fancy Headers/Footers
 \usepackage{fancyhdr}
 % To undo centering in noteworthy command
@@ -41,6 +43,24 @@
 \usepackage{float}
 % Tighten up the text placement slightly to reduce page-length
 \usepackage[subtle]{savetrees}
+% T1 Font encoding
+\usepackage[T1]{fontenc}
+% Use UTF8 versions of fonts if available
+\usepackage[utf8]{inputenc}
+% Custom list enumeration
+%\usepackage{enumitem}
+% Adjust size of tikz/pgfplots figures like you can with includegraphics
+%\usepackage{adjustbox}
+% Publication quality tables
+%\usepackage{booktabs}
+% Adds some easy to use commands for writing equations
+\usepackage{physics}
+% Provides greater functionality for creating custom functions (used by some packages)
+\usepackage{xparse}
+% Allows to reference things without referring to their type
+\usepackage[capitalise]{cleveref}
+% Can add a list of terms and acronyms to the document
+\usepackage[automake, acronym]{glossaries-extra}
 %-------------------------------------------------------------------------
 % End Packages
 %-------------------------------------------------------------------------
@@ -57,9 +77,18 @@
 %-------------------------------------------------------------------------
 
 %-------------------------------------------------------------------------
+% Acronyms
+%-------------------------------------------------------------------------
+\newacronym{pssp}{PsSp}{Passive-source Seismic-Processing}
+\makeglossaries
+%-------------------------------------------------------------------------
+% End Acronyms
+%-------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------
 % Article meta-data
 %-------------------------------------------------------------------------
-\title{\Huge Filtering Seismic Time Series Data in Passive-source Seismic-Processing (PsSp)\\
+\title{\Huge Filtering Seismic Time Series Data in \glsxtrfull{pssp}\\
 \large Implementation details of the filters provided for isolating seismic signals}
 \author{Alexander R. Blanchette\thanks{arbCoding@gmail.com}}
 \date{\Today}
@@ -97,6 +126,8 @@
 \urlstyle{same}
 % Pgfplot compatibility
 \pgfplotsset{compat=1.18}
+% Abbreviation style of acronyms
+\setabbreviationstyle[acronym]{long-short}
 %-------------------------------------------------------------------------
 % End Miscellaneous Formatting
 %-------------------------------------------------------------------------
@@ -162,7 +193,7 @@
 % Foreword
 %-------------------------------------------------------------------------
 \scriptsize The goal of this document is to be as useful and accessible as possible. Therefore, it is a \textit{living document}. By that I mean
-that it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
+it will change and grow over time in order to ensure the quality of the content. As such, I don't ever truly plan on it being
 \textit{finished}.
 \normalsize
 %-------------------------------------------------------------------------
@@ -183,10 +214,10 @@ that it will change and grow over time in order to ensure the quality of the con
     signals (earthquakes, explosions, etc.) or to structural sources (reflections, refractions, conversions).}. Generally, seismometers record and are sensitive
     to a frequency range that is significantly larger than that which any given analytical method/goal requires. Filtering is a critically important tool for
     isolating signals of interest. In this document I give a brief overview of time series filtering in general and provide the specific details of the filters
-    implemented in Passive-source Seismic-processing (PsSp).
+    implemented in \gls{pssp}.
     \section*{Plain Language Summary} \label{PlainSummary}
     Filters are an important step in preparing seismic data to be analyzed. In this document I will hint at the basic theory of seismic filtering
-    with most of the focus placed on the specific filters implemented in PsSp. This is intended to serve as a basic guide on the what and how of filtering seismic data without going through
+    with most of the focus placed on the specific filters implemented in \glsxtrshort{pssp}. This is intended to serve as a basic guide on the what and how of filtering seismic data without going through
     any explicit mathematical derivations; instead I hope this will provide a more intuitive understanding to the reader.
 \end{tcolorbox}
 %-------------------------------------------------------------------------
@@ -294,7 +325,7 @@ and then back to the time domain (via the \textit{Inverse Fourier Transform}). I
 domain and apply it to a signal in the (non-complex) frequency domain.
 
 \subsubsection{The Temporal (Time) Domain} \label{Background:Math:Temporal}
-Observations are always a function of time. Whether the process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
+Observations are always a function of time. Whether the observed process is constant or dynamic, the very nature of measurement is time-dependent itself. We can, at best, make the
 rather artificial assumption of constancy and pretend that time doesn't exist---but we can never truly remove the temporal component from our measurements. Seismographic stations
 record ground motion as a function of time. The distinction between measurements of displacement, velocity, and acceleration is simply a matter of differentiation ($x\rightarrow v\rightarrow a$)
 or integration ($a\rightarrow v \rightarrow x$). The distinction between ground motion and the actual instrumental measurement is related the internal \textit{instrument response}\footnote{\textit{Instrument response}
@@ -302,7 +333,6 @@ removal can be thought of as a form of filtering, but it will be a topic of a se
 
 \begin{center}
     \begin{figure}[ht]
-        \label{figure:1}
         \begin{tikzpicture}
             \begin{axis}[
                 width=0.95\textwidth,
@@ -320,22 +350,23 @@ removal can be thought of as a form of filtering, but it will be a topic of a se
                 ]{wavepack(x-3, 0.25, 5)};
             \end{axis}
         \end{tikzpicture}
-        \caption[Schematic Time Series]{A simple schematic time series.}
+        \caption[Schematic Time Series]{A simple schematic time series.} \label{figure1}
     \end{figure}
 \end{center}
 
-The time series recorded at a seismographic station is a seismogram. A rather simple example time series can be seen in figure \ref{figure:1}.
+The time series recorded at a seismographic station is a seismogram. A rather simple example time series can be seen in \cref{figure1}.
 This time series shows a wave-packet with an \textit{arrival time}\footnote{\textit{Arrival time} is an ambiguous term with multiple
 potential meanings. In this case I'm referring to the first deviation from zero amplitude (often referred to as the \textit{first break}).} of approximately one second,
-and it is centered at three seconds. For the sake of completeness: the waveform plotted in figure \ref{figure:1} was generated using equation \ref{Schematic Time Series}.
+and it is centered at three seconds. For the sake of completeness: the waveform plotted in \cref{figure1} was generated using \cref{Schematic Time Series}.
 It is simply a time-shifted cosine function multiplied by a non-normalized \textit{Gaussian}\footnote{\textit{Gaussian} is one of multiple names for this type of function.
 The name used is typically dependent upon the field of study. Other names you may have heard it called are a \textit{Bell curve} and a \textit{Normal distribution}.}.
 
-\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
+%\noteworthy{f(t) = cos\left(8\pi(t-3)\right)e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
+\noteworthy{f(t) = \cos(8\pi(t-3))e^{-\left(\frac{2\pi(t-3)^{2}}{9}\right)}}{Schematic Time Series}
 
 In this case we can determine at least one frequency purely by visual inspection. The cosine function is $2\pi$-periodic, meaning that $cos(t)$ has a frequency of
 $\frac{1}{2\pi}$ Hz. In this particular case I've chosen to have a frequency greater than one (it is exactly four Hz). Are there signals of other frequencies contained
-in equation \ref{Schematic Time Series}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
+in \cref{Schematic Time Series}? Yes, in fact it contains a range of frequencies---an observation that is not immediately obvious when written as a function of time.
 I'll return to the frequencies hidden in this example time series once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
@@ -364,7 +395,7 @@ I'll return to the frequencies hidden in this example time series once we've bee
 \paragraph{Ideal Filter} \label{IdealFilter}
 \subparagraph{Unrealizable} \label{IdealFilter:Unrealizable}
 \subsection{Low-pass} \label{Butterworth:Lowpass}
-Test equation reference for equation \ref{Butterworth Low-pass Filter}.
+Test equation reference for \cref{Butterworth Low-pass Filter}.
 \noteworthy{H(s) = \frac{G_{0}}{B_{n}(a)}; a = \frac{s}{w_{c}}}{Butterworth Low-pass Filter}
 \noteworthy{B_{n}(s) = \sum_{k = 0}^{n} a_{k}s^{k}}{Normalized Butterworth Polynomial}
 \noteworthy{a_{k + 1} = a_{k}\frac{cos\left(k\gamma\right)}{sin((k + 1)\gamma)}; a_{0} = 1; \gamma = \frac{\pi}{2n}; a_{k} = a_{n - k}}{Normalized Butterworth Polynomial Coefficients}
@@ -376,6 +407,9 @@ Test equation reference for equation \ref{Butterworth Low-pass Filter}.
 %-------------------------------------------------------------------------
 % End The Butterworth Filter
 %-------------------------------------------------------------------------
+
+\newpage
+\printglossaries
 
 %-------------------------------------------------------------------------
 % References

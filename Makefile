@@ -469,7 +469,7 @@ clean:
 	rm -rf $(bin_prefix) $(obj_prefix) *.dSYM $(im_file_diag_dir)ImGuiFileDialog.o $(imgui_dir)objects/ $(imgui_ex_dir)example_glfw_opengl3 *.ini *.csv *.msgpack *.db
 	make -C $(sf_dir) clean
 	rm -rf $(catch2_build)
-	rm $(doc_prefix)*.aux $(doc_prefix)*.fdb_latexmk $(doc_prefix)*.fls $(doc_prefix)*.log $(doc_prefix)*.synctex.gz $(doc_prefix)*.pdf $(doc_prefix)*.out $(doc_prefix)*.bbl $(doc_prefix)*.bcf $(doc_prefix)*.blg $(doc_prefix)*.run.xml $(doc_prefix)*.toc $(doc_prefix)*.lof $(doc_prefix)*.lot $(doc_prefix)*.equ
+	rm $(doc_prefix)*.aux $(doc_prefix)*.fdb_latexmk $(doc_prefix)*.fls $(doc_prefix)*.log $(doc_prefix)*.synctex.gz $(doc_prefix)*.pdf $(doc_prefix)*.out $(doc_prefix)*.bbl $(doc_prefix)*.bcf $(doc_prefix)*.blg $(doc_prefix)*.run.xml $(doc_prefix)*.toc $(doc_prefix)*.lof $(doc_prefix)*.lot $(doc_prefix)*.equ $(doc_prefix)*.acn $(doc_prefix)*.acr $(doc_prefix)*.alg $(doc_prefix)*.glg $(doc_prefix)*.glo $(doc_prefix)*.gls $(doc_prefix)*.ist
 #------------------------------------------------------------------------------
 # End cleanup
 #------------------------------------------------------------------------------
