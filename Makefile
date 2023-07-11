@@ -13,7 +13,7 @@ SHELL := /bin/bash
 # Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release model
-debug = true
+debug = false 
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -400,7 +400,6 @@ catch2:
 	@echo "Build start:  $$(date)"
 	@test -d $(catch2_build) || mkdir $(catch2_build) && cd $(catch2_build) && cmake ../ && cmake --build .
 	@echo -e "Build finish: $$(date)\n"
-
 #------------------------------------------------------------------------------
 # End Catch2
 #------------------------------------------------------------------------------

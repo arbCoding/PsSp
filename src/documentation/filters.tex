@@ -109,7 +109,7 @@
 \fancyhead[LO, RE]{Blanchette}
 \fancyhead[LE, RO]{2023}
 % Not so ugly anymore!
-\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic time series Data}, pdfpagemode=FullScreen}
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, filecolor=magenta, urlcolor=blue, pdftitle={Filtering Seismic time series Data}}
 \urlstyle{same}
 % Pgfplot compatibility
 \pgfplotsset{compat=1.18}
@@ -183,6 +183,10 @@
 \newglossaryentry{wavelength}{
     name=wavelength,
     description={The distance over which a wave completes a full cycle.}
+}
+\newglossaryentry{fourierSeries}{
+    name=Fourier series,
+    description={An infinite-series representation of a function.}
 }
 \makeglossaries
 %-------------------------------------------------------------------------
@@ -397,8 +401,12 @@ in \cref{Schematic Time Series}, in fact it contains a range of frequencies---an
 I'll return to the frequencies hidden in this example time series once we've been introduced to the Fourier Transform of a function.
 
 \subsubsection{The Spectral (Frequency) Domain} \label{Background:Math:Spectral}
-To set the stage for us to discuss spectral analysis/processing I must first introduce some basic terminology.
+To set the stage for us to discuss spectral analysis/processing I must first introduce some basic terminology. In \cref{figure2} we can see a cosine function with a \gls{period}
+of one second. It is the time-analogue to the spatial \gls{wavelength}. \Gls{period} is written in mathematical expressions as \textit{T}. \Gls{frequency} (\textit{f}) is the inverse of \gls{period},
+(e.g., $f=\frac{1}{T}$).
 
+% I dislike how absurdly large of a gap get placed beneath a figure. This also affects its designated location, even if it ended up being placed
+% elsewhere due to placement constraints
 \begin{center}
     \begin{figure}[ht]
         \begin{tikzpicture}
@@ -424,10 +432,8 @@ To set the stage for us to discuss spectral analysis/processing I must first int
         \caption[Cosine Function]{Plot of a cosine function that shows its period.} \label{figure2}
     \end{figure}
 \end{center}
-
-In \cref{figure2} we can see a cosine function with a \gls{period} of one second. It is the time-analogue to the spatial \gls{wavelength}.
-
-\paragraph{Fourier Series} \label{Background:Math:Spectral:FourSeries}
+%\paragraph{Fourier Series} \label{Background:Math:Spectral:FourSeries}
+It can be shown that any function can be written in terms of a \gls{fourierSeries}.
 \paragraph{Fourier Transform} \label{Background:Math:Spectral:FourTransform}
 \subparagraph{Linearity of the Fourier Transform} \label{Background:Math:Spectral:FourTransform:Linearity}
 \paragraph{Real/Imaginary vs Amplitude/Phase} \label{Background:Math:Spectral:AmplitudePhase}
