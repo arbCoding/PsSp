@@ -467,10 +467,21 @@ AllFilterOptions& af_settings, ProgramStatus& program_status, const int& active_
         {
             allwindow_settings.name_checkpoint.show = true;
         }
-        if (ImGui::MenuItem("Checkpoint Notes", nullptr, nullptr, menu_allowed.new_checkpoint))
+        if (ImGui::MenuItem("Checkpoint Notes##", nullptr, nullptr, menu_allowed.new_checkpoint))
         {
             allwindow_settings.notes_checkpoint.show = true;
         }
+        if (ImGui::MenuItem("Load Original##", nullptr, nullptr, menu_allowed.load_checkpoint))
+        {
+            std::filesystem::path project_file{program_status.project.get_path()};
+            program_status.project.checkpoint_timestamp = "";
+            program_status.project.clear_name = true;
+            program_status.project.clear_notes = true;
+            program_status.project.copy_notes = false;
+            program_status.thread_pool.enqueue(load_data, std::ref(program_status), project_file, 0);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled))
+        { ImGui::SetTooltip("Revert project to original data"); }
         if (ImGui::BeginMenu("Load Checkpoint##", menu_allowed.load_checkpoint))
         {
             std::vector<int> checkpoint_ids{program_status.project.get_checkpoint_ids()};

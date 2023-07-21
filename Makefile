@@ -13,7 +13,7 @@ SHELL := /bin/bash
 # Linux (Linux), Mac (Darwin), Windows MSYS2 (MSYS_NT-10.0-22621)
 uname_s := $(shell uname -s)
 # Debug mode or release model
-debug = false 
+debug = true
 #------------------------------------------------------------------------------
 # Setup compiler
 #------------------------------------------------------------------------------
@@ -103,6 +103,10 @@ exp_bin_prefix = $(bin_prefix)experiment/
 test_prefix = $(base_prefix)tests/
 # Where the test programs will go
 test_bin_prefix = $(bin_prefix)tests/
+# Where the benchmark code lives
+bench_prefix = $(base_prefix)benchmarks/
+# Where the benchmark program will go
+bench_bin_prefix = $(bin_prefix)benchmarks/
 # Where header (interface) files are stored
 hdr_prefix = $(base_prefix)header/
 # Where the source code (implementation) files are stored
@@ -285,7 +289,10 @@ macos: PsSp.app
 exp: tree_exp
 
 # Tests
-tests: sacio_tests sacstream_tests pssp_test
+tests: sacio_tests sacstream_tests pssp_tests
+
+# Benchmarks
+benchmarks: sacio_bench sacstream_bench
 #------------------------------------------------------------------------------
 # End program definitions
 #------------------------------------------------------------------------------
@@ -428,6 +435,21 @@ sacio_tests: $(test_prefix)sacio_tests.cpp $(sf_obj) catch2
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# SacIO Benchmarks
+#------------------------------------------------------------------------------
+sacio_bench: $(bench_prefix)sacio_bench.cpp $(sf_obj) catch2
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(bench_bin_prefix) || mkdir -p $(bench_bin_prefix)
+	$(compiler) -o $(bench_bin_prefix)$@ $< $(catch2_full_params)
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(bench_bin_prefix)$@
+#------------------------------------------------------------------------------
+# End SacIO Benchmarks
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # SacStream Tests
 #------------------------------------------------------------------------------
 sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
@@ -440,6 +462,21 @@ sacstream_tests: $(test_prefix)sacstream_tests.cpp $(sf_obj) catch2
 	$(test_bin_prefix)$@ $(test_options)
 #------------------------------------------------------------------------------
 # End SacStream Tests
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# SacStream Benchmarks
+#------------------------------------------------------------------------------
+sacstream_bench: $(bench_prefix)sacstream_bench.cpp $(sf_obj) catch2
+	@echo "Building $@"
+	@echo "Build start:  $$(date)"
+	@test -d $(bench_bin_prefix) || mkdir -p $(bench_bin_prefix)
+	$(compiler) -o $(bench_bin_prefix)$@ $< $(catch2_full_params)
+	@echo -e "Build finish: $$(date)\n"
+	@echo -e "Running test $@\n"
+	$(bench_bin_prefix)$@
+#------------------------------------------------------------------------------
+# End SacStream Benchmarks
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
