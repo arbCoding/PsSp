@@ -266,6 +266,10 @@ In my own testing, the resolution was fixable by modifying the GLFW backend to s
 
 Assuming you want to take full advantage of the High-DPI retina display you have, you can fix this by simply adjusting the resolution of your computer. Click the Apple icon in the upper-left of your screen and select `System Settings`. From there select `Displays`. Select `Show all resolutions` and then choose the resolution you desire. PsSp will scale accordingly with that, as can be seen from this [screenshot](screenshots/pssp_main_windows_24June2023_MacOS_Retina_unscaled.png).
 
+## libc musl support
+
+This project is **not compatible** with [libc musl](https://musl.libc.org/). sac-format seems to work fine with libc musl, but PsSp does not.
+
 ---
 
 For more details, checkout the [Makefile](Makefile). It is heavily commented to make it more accessible.

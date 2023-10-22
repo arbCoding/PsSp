@@ -37,13 +37,15 @@ common_debug = -Wextra -Werror -Wshadow -ggdb
 # MacOS = Darwin (__APPLE__ and __MACH__)
 # Linux = Linux (__linux__)
 # Windows with MSYS2 = MSYS_NT-10.0-22621 (__MINGW32__)
-ifeq ($(uname_s), Darwin)
-  	compiler = clang++
+ifeq ($(uname_s), Darwin) # macOS
+  compiler = clang++
 	debug_param = $(common_debug) -Wsign-conversion -Weffc++
-else ifeq ($(uname_s), Linux)
-  	compiler = g++-13
+else ifeq ($(uname_s), Linux) # Linux
+	# It works fine with g++-12, which Void linux has (Void doesn't have g++-13)
+  compiler = g++
+	#compiler = g++-13
 	debug_param = $(common_debug) -fanalyzer -Wsign-conversion -Weffc++
-else
+else # Windows
 	compiler = g++
 	debug_param = $(common_debu) -fanalyzer -Wsign-conversion -Weffc++
 endif
