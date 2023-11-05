@@ -60,15 +60,19 @@ PsSp is being developed to solve these problems; to empower the seismologist wit
 
 This is extremely early in development.
 
-### Current Focus: Unit and Integration Testing for Improved Stability
+### Current Focus: Migrate to [Qt5](https://doc.qt.io/qt-5.15/)
+
+It has been a while! I'm going to be getting back into the swing of developing this project more regularly (dedicate at least a few hours a week).
+
+That being said, it is time for a new focus: to date, this project has used Dear ImGui to provide the graphical user interface; that is okay, but doesn't play well with musl (see below) and isn't really necessary for this sort of project (immediate mode graphics is better for other types of applications). Qt5 is stable, popular, cross platform, and ideally will not be very resource intensive. Plus, it'll provide a more natural look for the program that I think will be greatly appreciated. I think it is better to do this now, than to wait until the program is more complex as this will have a large effect on how the program itself is designed.
+
+I will be continuing to add more testing to improve code coverage, though will pass on using Valgrind at present as premature optimization is the root of all evil.
+
+### Last Focus: Unit and Integration Testing for Improved Stability
 
 This project has gone too far without proper testing. Bugs are hard to find, they disrupt the mental flow when working on a given problem via distraction with a new, different, and annoying problem. Testing will help mitigate these issues. As the code-base grows, this will become progressively more important and more difficult to freshly introduce to the workflow. To that end I am extending the freeze on new analysis functionality. If this is going to be used it cannot cause the analyst headaches due to being unstable.
 
 To that end, the focus will be on implementing [unit testing](https://en.wikipedia.org/wiki/Unit_testing) and [integration testing](https://en.wikipedia.org/wiki/Integration_testing). I will be using [Catch2](https://github.com/catchorg/Catch2) to setup and execute the tests. Once that is all said and done, another round of bug squashing will need to occur. After that, there will finally be a sufficiently stable base to justify building upon. I'm also looking into using [Valgrind](https://valgrind.org/) to incorporate some more advanced dynamic analysis tools into the development workflow.
-
-### Last Focus: Memory Management
-
-All data used to be maintained in memory all at once. Assuming that will be the case for all possible projects would be beyond naive. To that end, I implemented a data-pool object that handles distributing smart-pointers to data objects in memory. If a requested object is not in memory, it gets loaded in. Only a finite number are allowed to be in the memory and the user can change that amount (currently limited to a minimum of `n_threads` to prevent deadlock and a maximum of INT_MAX, which is simply absurd and should be updated in the future). If the pool is full, an unused data object in memory is migrated to a temporary data table in the sqlite3 database for the project. The data-pool must allow at least as many objects as the number of threads in the thread-pool, otherwise the ensueing competition for data from each thread will result in deadlock. Smaller data-pools result in slower operations, having as much data in memory as possible is fastest. There is a lot more work to do on memory management, but I'd like to build a more stable base through unit/integration testing.
 
 ## ToDo
 

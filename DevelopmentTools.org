@@ -1,0 +1,118 @@
+* Development Tools
+  :PROPERTIES:
+  :CUSTOM_ID: development-tools
+  :END:
+** Purpose
+   :PROPERTIES:
+   :CUSTOM_ID: purpose
+   :END:
+The purpose of this document is to provide a list of the tools that are
+being used in the development of PsSp as well as some information on why
+they are being used. This is an evolving document that will likely grow
+as I include more and more tools into the workflow.
+
+** Compilers
+   :PROPERTIES:
+   :CUSTOM_ID: compilers
+   :END:
+1) [[https://gcc.gnu.org/][g++]] - This is the C++ compiler from the GNU
+   Compiler Collection (GCC). I use it to compile on Linux (in
+   particular, g++-12).
+2) [[https://clang.llvm.org/][clang++]] - This is C++ compiler from the
+   Low-Level Virtual Machine (LLVM) compiler infrastructure. I use it to
+   compile on MacOS.
+
+** Integrated Development Environment (IDE)
+   :PROPERTIES:
+   :CUSTOM_ID: integrated-development-environment-ide
+   :END:
+1) [[https://vscodium.com/][VSCodium]] - This is essentially
+   [[https://code.visualstudio.com/][VSCode]], with the
+   monitoring/telemetry from Microsoft removed.
+
+*** VSCodium Extensions
+    :PROPERTIES:
+    :CUSTOM_ID: vscodium-extensions
+    :END:
+1) [[https://open-vsx.org/extension/jbenden/c-cpp-flylint][C/C++
+   Advanced Lint]] - This automatically runs most of the various
+   [[#static-analysis][static analysis tools]] within VSCodium.
+2) [[https://open-vsx.org/extension/vadimcn/vscode-lldb][CodeLLDB]] -
+   Debugger that integrates with VSCodium.
+3) [[https://open-vsx.org/extension/sugatoray/vscode-git-extension-pack][Git
+   Extension Pack]] - Convenience package that provides git integration
+   to VS Codium.
+4) [[https://open-vsx.org/extension/sndst00m/markdown-github-dark-pack][Dark
+   Github Markdown Pack]]
+5) [[https://open-vsx.org/extension/llvm-vs-code-extensions/vscode-clangd][clangd]] -
+   Provides auto-complete functionality for VSCodium (language server).
+6) [[https://open-vsx.org/extension/SonarSource/sonarlint-vscode][SonarLint]] -
+   Additional static analysis tool.
+7) [[https://open-vsx.org/vscode/item?itemName=sugatoray.vscode-markdown-extension-pack][Markdown
+   Extension Pack]]
+8) [[https://open-vsx.org/vscode/item?itemName=James-Yu.latex-workshop][LaTeX
+   Workshop]] - LaTeX typesetting efficiency with preview, compile,
+   autocomplete, colorize, etc.
+9) [[https://open-vsx.org/vscode/item?itemName=valentjn.vscode-ltex][LTeX
+   -- LanguageTool grammar/spell checking]]
+
+** Static Analysis
+   :PROPERTIES:
+   :CUSTOM_ID: static-analysis
+   :END:
+1) [[https://clangd.llvm.org/][clangd]]
+2) [[https://cppcheck.sourceforge.io/][CppCheck]]
+3) [[https://dwheeler.com/flawfinder/][FlawFinder]]
+4) [[https://docs.sonarcloud.io/improving/sonarlint/][SonarLint]]
+
+** Dynamic Analysis
+   :PROPERTIES:
+   :CUSTOM_ID: dynamic-analysis
+   :END:
+1) [[https://github.com/google/sanitizers/wiki/ThreadSanitizerCppManual][Thread
+   Sanitizer]] - Check for data races
+2) [[https://github.com/google/sanitizers/wiki/AddressSanitizer][Address
+   Sanitizer]] - Check for memory errors
+3) [[https://github.com/google/sanitizers/wiki/MemorySanitizer][Memory
+   Sanitizer]] - Check for memory errors
+
+** Testing
+   :PROPERTIES:
+   :CUSTOM_ID: testing
+   :END:
+1) [[https://github.com/catchorg/Catch2][Catch2]]
+
+** Miscellaneous
+   :PROPERTIES:
+   :CUSTOM_ID: miscellaneous
+   :END:
+1) [[https://github.com/rizsotto/Bear][Bear]] - Used to generate
+   compile_commands.json on Linux/MacOS
+2) [[https://github.com/nickdiego/compiledb][compilelib]] - Used to
+   generate compile_commands.json on Windows (Not working...)
+
+** C++ References
+   :PROPERTIES:
+   :CUSTOM_ID: c-references
+   :END:
+1) [[https://en.cppreference.com/w/][cppreference.com]]
+2) [[https://isocpp.org/][isocpp.org]]
+3) [[https://www.learncpp.com/][learncpp.com]]
+4) [[https://www.reddit.com/r/cpp][r/cpp]]
+5) [[https://en.cppreference.com/w/cpp/compiler_support/20][C++20
+   Compiler Support]]
+6) [[https://libcxx.llvm.org/Status/Cxx20.html][LibC++20 Status]]
+7) [[https://github.com/analysis-tools-dev/static-analysis#cpp][Incomplete
+   List of Static Analysis Tools]]
+8) [[https://github.com/analysis-tools-dev/dynamic-analysis#cpp][Incomplete
+   List of Dynamic Analysis Tools]]
+9) [[https://stackoverflow.com/questions/31449769/distribute-a-program-compiled-with-mingw-g][Making
+   portable executables for Windows]]
+
+** Other References
+   :PROPERTIES:
+   :CUSTOM_ID: other-references
+   :END:
+1) [[https://en.wikibooks.org/wiki/LaTeX][Latex documentation]]
+2) [[https://mirror.mwt.me/ctan/macros/latex/contrib/mathtools/mathtools.pdf][Latex
+   mathtools documentation]]
