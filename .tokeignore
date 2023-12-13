@@ -1,0 +1,6 @@
+*.sh
+*.el
+*.html
+*.json
+*.txt
+*.org
