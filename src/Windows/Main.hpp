@@ -6,12 +6,13 @@
 /* fltk */
 // Needed for all fltk
 #include <FL/Fl.H>
-// Fl_Window widget
+#include <FL/Fl_Sys_Menu_Bar.H>
 #include <FL/Fl_Window.H>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
 // std::string
 #include <string>
+#include <iostream>
 
 namespace pssp {
 constexpr int mw_width{500};
@@ -22,6 +23,8 @@ public:
   Main_Window();
 
 private:
+  Fl_Sys_Menu_Bar menu{0, 0, mw_width, 15, nullptr};
+  static void quit_cb(Fl_Widget *, void*) { exit(0); }
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       name_{"PsSp - Passive-source Seismic-processing"};

@@ -14,25 +14,24 @@
 #include <string>
 
 namespace pssp {
-constexpr int hw_x{10};
-constexpr int hw_y{10};
-constexpr int hw_width{200};
-constexpr int hw_height{50};
+constexpr int hw_x{1500 / 2};
+constexpr int hw_y{900 / 2};
+constexpr int hw_width{400};
+constexpr int hw_height{80};
 
 class Welcome_Window : public Fl_Window {
 public:
   Welcome_Window();
-  Fl_Box message{hw_x + (hw_width / 2), hw_y + 10, hw_width, hw_height / 2};
-  Fl_Return_Button continue_button{hw_x + (hw_width / 2) + 30,
-                                   hw_y + hw_height, 150,
-                                   hw_height / 2, "Continue"};
+  Fl_Box message{0, 0, hw_width, 50};
+  Fl_Return_Button continue_button{(hw_width - 150) / 2, 50, 150, 25,
+                                   "Continue"};
 
 private:
   static void continue_cb(Fl_Widget *btn);
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       message_{"Welcome to Post-seismic Processing-software (PsSp)!\n"
-      "This program is very early in development..."};
+               "This program is very early in development..."};
 };
 }  // namespace pssp
 #endif
