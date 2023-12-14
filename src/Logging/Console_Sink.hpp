@@ -49,43 +49,11 @@ protected:
     // If needed (very likely, but not madatory), the sink formats the message
     spdlog::memory_buf_t formatted{};
     spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, formatted);
-    std::string message{fmt::to_string(formatted)};
-    format_log(&message);
-    tty_->append(message.c_str());
+    tty_->append(fmt::to_string(formatted).c_str());
   }
   void flush_() override { tty_->clear(); }
 
 private:
-  void format_log(std::string *log_msg) {
-    // Message comes in as
-    // [YYYY-MM-DD HH:MM:SS] [name] [level] [thread #####] Message
-    // I want to add color
-    std::ostringstream oss{};
-    // Date Time
-    size_t start{log_msg->find('[')};
-    size_t end{log_msg->find(']')};
-    oss << "[\033[1m\33[32m";
-    oss << log_msg->substr(start + 1, end - 1);
-    oss << "\033[0m]";
-    // Log-level
-    *log_msg = log_msg->substr(end + 2);
-    start = log_msg->find('[');
-    end = log_msg->find(']');
-    oss << "[\033[1m\033[33m";
-    oss << log_msg->substr(start + 1, end - 1);
-    oss << "\033[0m]";
-    // Thread
-    *log_msg = log_msg->substr(end + 2);
-    start = log_msg->find('[');
-    end = log_msg->find(']');
-    oss << "[\033[1m\033[36m";
-    oss << log_msg->substr(start + 1, end - 1);
-    oss << "\033[0m] ";
-    // Message
-    *log_msg = log_msg->substr(end + 2);
-    oss << *log_msg;
-    *log_msg = oss.str();
-  }
   Fl_Terminal *tty_{};
 };
 
