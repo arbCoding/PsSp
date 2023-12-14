@@ -21,15 +21,18 @@ Main_Window::Main_Window() : Fl_Window(0, 0, name_.c_str()) {
   plot =
       std::make_unique<Fl_Chart>(10, menu_shift + 10, width - 20, 400, "Chart");
   plot->color(FL_WHITE);
-  plot->type(FL_LINE_CHART);
-  plot->bounds(0, 1000);
-  for (int i{0}; i < 1000; ++i) {
-    plot->add(i, nullptr, FL_GREEN);
-  }
-  plot->redraw();
+  //plot->type(FL_LINE_CHART);
+  //plot->bounds(0, 1000);
+  //for (int i{0}; i < 1000; ++i) {
+  //  plot->add(i, nullptr, FL_GREEN);
+  //}
+  //plot->redraw();
+  plot->hide();
   menu.resize(0, 0, width, menu.h());
   make_tty();
   this->end();
+  about_window_ = std::make_unique<About_Window>();
+  about_window_->hide();
 }
 
 void Main_Window::make_tty() {
@@ -95,7 +98,7 @@ void Main_Window::make_menu() {
   // Help
   menu.add("&Help", 0, nullptr, this, FL_MENU_INACTIVE);
   // About
-  menu.add("&About", 0, nullptr, this, FL_MENU_INACTIVE);
+  menu.add("&About", 0, about_cb, this);
 }
 
 void Main_Window::append_tty(const char *msg) { debug_tty->append(msg); }
@@ -105,5 +108,13 @@ void Main_Window::quit_cb(Fl_Widget *menu, void *junk) {
   // reinterpret_cast is unnecessary, but I wanted to figure it out
   auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
   window->hide();
+}
+
+void Main_Window::show_about() { about_window_->show(); }
+
+void Main_Window::about_cb(Fl_Widget *menu, void *junk) {
+  (void)junk;
+  auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
+  window->show_about();
 }
 }  // namespace pssp

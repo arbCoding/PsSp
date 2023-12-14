@@ -3,6 +3,7 @@
 #ifndef PSSP_WELCOME_WINDOW_HPP_20231213_1019
 #define PSSP_WELCOME_WINDOW_HPP_20231213_1019
 #pragma once
+
 /* fltk https://www.fltk.org/doc-1.4 */
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
@@ -16,11 +17,14 @@
 #include <string>
 
 namespace pssp {
-constexpr int welcome_width{400};
-constexpr int welcome_height{80};
-constexpr int button_width{150};
+namespace welcome {
+constexpr int button_width{125};
 constexpr int button_height{25};
 constexpr int text_height{50};
+constexpr int height{text_height + button_height + 10};
+constexpr int text_width{380};
+constexpr int width{text_width + 20};
+} // namespace welcome
 
 class Welcome_Window : public Fl_Window {
 public:

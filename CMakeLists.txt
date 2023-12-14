@@ -39,6 +39,7 @@ include_directories(${PsSp_SOURCE_DIR}/src)
 #-------------------------------------------------------------------------------
 add_executable(PsSp
   src/main.cpp
+  src/Windows/About.cpp
   src/Windows/Main.cpp
   src/Windows/Welcome.cpp
   src/Application/Application.cpp
