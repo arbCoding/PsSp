@@ -49,6 +49,9 @@ add_executable(PsSp WIN32 MACOSX_BUNDLE
   src/Application/Application.cpp
 )
 
+install(TARGETS PsSp RUNTIME DESTINATION .
+  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
+
 if (APPLE)
   target_link_libraries(PsSp PRIVATE "-framework cocoa")
 endif()
@@ -67,6 +70,13 @@ if (UNIX AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
     COMMAND strip "$<TARGET_FILE:PsSp>"
     VERBATIM)
 endif()
+#===============================================================================
+# macOS Bundle
+#===============================================================================
+#set(MACOSX_BUNDLE_BUNDLE_NAME "PsSp")
+#set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
+#set(MACOSX_BUNDLE_COPYRIGHT
+#  "2023 Alexander R. Blanchette <arbCoding@gmail.com>")
 #===============================================================================
 # CPack Installation
 #===============================================================================
