@@ -19,9 +19,10 @@ FetchContent_Declare(spdlog
   GIT_TAG v1.12.0)
 # GUI
 set(FLTK_BUILD_TEST OFF CACHE BOOL " " FORCE)
-if(UNIX AND NOT APPLE)
-    set(OPTION_USE_PANGO ON CACHE BOOL " " FORCE)
-endif()
+# Doesn't work on GitHub
+#if(UNIX AND NOT APPLE)
+#    set(OPTION_USE_PANGO ON CACHE BOOL " " FORCE)
+#endif()
 FetchCOntent_Declare(fltk
   GIT_REPOSITORY https://github.com/fltk/fltk
   # v1.4.0, doesn't have a release tag yet
