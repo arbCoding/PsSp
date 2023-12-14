@@ -17,13 +17,12 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 FetchContent_Declare(spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog
   GIT_TAG v1.12.0)
-FetchContent_MakeAvailable(spdlog)
-#-------------------------------------------------------------------------------
-# Include
-#-------------------------------------------------------------------------------
-# fltk must be installed separately
-# This uses fltk 1.4.0 (download from github and compile)
-find_package(FLTK CONFIG REQUIRED)
+# GUI
+FetchCOntent_Declare(fltk
+  GIT_REPOSITORY https://github.com/fltk/fltk
+  # v1.4.0, doesn't have a release tag yet
+  GIT_TAG bbafcafbe1e69ab03a751343465f4a8e7435dc34)
+FetchContent_MakeAvailable(spdlog fltk)
 #===============================================================================
 # PsSp project
 #===============================================================================
@@ -50,10 +49,14 @@ if (APPLE)
 endif()
 
 # System prevents warnings from fltk!
-target_include_directories(PsSp SYSTEM PRIVATE ${FLTK_INCLUDE_DIRS})
+target_include_directories(PsSp SYSTEM PRIVATE ${fltk_BINARY_DIR}
+  ${fltk_SOURCE_DIR} ${fltk_INCLUDE_DIRS})
 target_link_libraries(PsSp PRIVATE
   fltk
   spdlog::spdlog_header_only)
+# If (macOS or Linux) and Release build
+# then strip the binary of debug symbols to make it smaller
+# Windows doesn't need this
 if (UNIX AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
   add_custom_command(TARGET PsSp
     COMMAND strip "$<TARGET_FILE:PsSp>"
