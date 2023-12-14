@@ -49,9 +49,6 @@ add_executable(PsSp WIN32 MACOSX_BUNDLE
   src/Application/Application.cpp
 )
 
-install(TARGETS PsSp RUNTIME DESTINATION .
-  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
-
 if (APPLE)
   target_link_libraries(PsSp PRIVATE "-framework cocoa")
 endif()
@@ -80,7 +77,9 @@ endif()
 #===============================================================================
 # CPack Installation
 #===============================================================================
-install(TARGETS PsSp)
+install(TARGETS PsSp
+  RUNTIME DESTINATION .
+  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
 # In the future I want to build a app-directory that this then installs in
 # /Applications
 if(CPACK_GENERATOR MATCHES "productbuild")
