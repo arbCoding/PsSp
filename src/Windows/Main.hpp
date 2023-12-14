@@ -17,17 +17,13 @@
 #include <string>
 
 namespace pssp {
-static int mw_width{500};
-static int mw_height{500};
-static int term_height{100};
-
 class Main_Window : public Fl_Window {
 public:
   Main_Window();
   void append_tty(const char *msg);
 
 private:
-  Fl_Sys_Menu_Bar menu{0, 0, mw_width, 15, nullptr};
+  Fl_Sys_Menu_Bar menu{0, 0, 0, 25, nullptr};
   void make_menu();
   void make_tty();
   // cppcheck-suppress unusedStructMember

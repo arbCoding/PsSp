@@ -14,16 +14,18 @@
 #include <string>
 
 namespace pssp {
-static int hw_x{1500 / 2};
-static int hw_y{900 / 2};
-constexpr int hw_width{400};
-constexpr int hw_height{80};
+constexpr int welcome_width{400};
+constexpr int welcome_height{80};
+constexpr int button_width{150};
+constexpr int button_height{25};
+constexpr int text_height{50};
 
 class Welcome_Window : public Fl_Window {
 public:
   Welcome_Window();
-  Fl_Box message{0, 0, hw_width, 50};
-  Fl_Return_Button continue_button{(hw_width - 150) / 2, 50, 150, 25,
+  Fl_Box message{0, 0, welcome_width, text_height};
+  Fl_Return_Button continue_button{(welcome_width - button_width) / 2,
+                                   text_height, button_width, button_height,
                                    "Continue"};
 
 private:

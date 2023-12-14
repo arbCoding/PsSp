@@ -3,14 +3,16 @@
 #include "Welcome.hpp"
 
 namespace pssp {
-Welcome_Window::Welcome_Window()
-    : Fl_Window(hw_x, hw_y, hw_width, hw_height, "Welcome!") {
+Welcome_Window::Welcome_Window() : Fl_Window(0, 0, 0, 0, "Welcome!") {
   this->begin();
-  int x, y, w, h;
-  Fl::screen_work_area(x, y, w, h);
-  hw_x = ((w - hw_width) / 2);
-  hw_y = ((h - hw_height) / 2);
-  this->resize(hw_x, hw_y, hw_width, hw_height);
+  int x_start{};
+  int y_start{};
+  int width{};
+  int height{};
+  Fl::screen_work_area(x_start, y_start, width, height);
+  x_start = ((width - welcome_width) / 2);
+  y_start = ((height - welcome_height) / 2);
+  this->resize(x_start, y_start, welcome_width, welcome_height);
   this->box(FL_BORDER_BOX);
   set_modal();
   message.label(message_.c_str());
