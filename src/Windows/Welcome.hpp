@@ -14,8 +14,8 @@
 #include <string>
 
 namespace pssp {
-constexpr int hw_x{1500 / 2};
-constexpr int hw_y{900 / 2};
+static int hw_x{1500 / 2};
+static int hw_y{900 / 2};
 constexpr int hw_width{400};
 constexpr int hw_height{80};
 

@@ -6,6 +6,9 @@ namespace pssp {
 Main_Window::Main_Window() : Fl_Window(mw_width, mw_height, name_.c_str()) {
   this->begin();
   resizable(this);
+  int x, y;
+  Fl::screen_work_area(x, y, mw_width, mw_height);
+  this->resize(x, y, mw_width, mw_height);
   make_menu();
   make_tty();
   this->end();
@@ -21,7 +24,7 @@ void Main_Window::make_tty() {
   debug_tty->display_columns(400);
   append_tty("\033[31mDebug terminal\033[0m\n");
   append_tty("\033[33mStarting Passive-source Seismic-processing!\033[0m\n");
-  append_tty("Awaiting Commands...\n\n\n\n\n\n\n\n");
+  append_tty("Awaiting Commands...\n");
   debug_tty->end();
 }
 

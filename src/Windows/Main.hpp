@@ -17,9 +17,9 @@
 #include <string>
 
 namespace pssp {
-constexpr int mw_width{500};
-constexpr int mw_height{500};
-constexpr int term_height{100};
+static int mw_width{500};
+static int mw_height{500};
+static int term_height{100};
 
 class Main_Window : public Fl_Window {
 public:
