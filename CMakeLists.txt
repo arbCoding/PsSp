@@ -41,6 +41,7 @@ add_executable(PsSp
 
 if (APPLE)
   target_link_libraries(PsSp PRIVATE "-framework cocoa")
+  target_include_directories(PsSp SYSTEM PRIVATE "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk")
 endif()
 
 # System prevents warnings from fltk!

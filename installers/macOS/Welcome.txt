@@ -3,9 +3,9 @@ on your macOS computer.
 
 ----------------------------------------------------------------------
 
-Thank you for trying out sac-format!
+Thank you for trying out PsSp!
 
-If you have any questions, please ask it on the sac-format community
+If you have any questions, please ask it on the PsSp community
 forum:
 
 https://github.com/arbCoding/PsSp/discussions/
