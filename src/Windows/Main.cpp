@@ -13,8 +13,13 @@ Main_Window::Main_Window() : Fl_Window(0, 0, name_.c_str()) {
   Fl::screen_work_area(x_start, y_start, width, height);
   this->resize(x_start, y_start, width, height);
   make_menu();
+#if defined(__APPLE__)
+  int menu_shift{0};
+#else
+  int menu_shift{menu.h()};
+#endif
   plot =
-      std::make_unique<Fl_Chart>(10, menu.h() + 10, width - 20, 400, "Chart");
+      std::make_unique<Fl_Chart>(10, menu_shift + 10, width - 20, 400, "Chart");
   plot->color(FL_WHITE);
   plot->type(FL_LINE_CHART);
   plot->bounds(0, 1000);

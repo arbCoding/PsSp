@@ -3,8 +3,7 @@
 #ifndef PSSP_MAIN_WINDOW_HPP_20231213_1003
 #define PSSP_MAIN_WINDOW_HPP_20231213_1003
 #pragma once
-/* fltk */
-// Needed for all fltk
+/* fltk https://www.fltk.org/doc-1.4 */
 #include <FL/Fl.H>
 #include <FL/Fl_Chart.H>
 #include <FL/Fl_Group.H>

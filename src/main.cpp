@@ -2,7 +2,7 @@
 
 // Program main window
 #include "Application/Application.hpp"
-/* fltk */
+/* fltk https://www.fltk.org/doc-1.4 */
 #include <FL/Fl.H>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
