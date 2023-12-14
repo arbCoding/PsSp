@@ -1,0 +1,19 @@
+name: Ubuntu
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake
+      run: cmake --preset gh-coverage
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build/debug/gh-coverage

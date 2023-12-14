@@ -1,0 +1,49 @@
+name: Ubuntu Release Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prep License File for Distribution
+      run: |
+        fold -s LICENSE > LICENSE2
+        mv LICENSE2 LICENSE
+
+    - name: Configure CMake
+      run: cmake --preset gh-ubuntu-release
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build/release/gh-ubuntu
+
+    - name: Package tar.gz
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: cpack
+
+    - name: Package .deb
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: |
+        cmake -DCPACK_GENERATOR=DEB .
+        cpack -G DEB
+
+    - name: Package .rpm
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: |
+        cmake -DCPACK_GENERATOR=RPM .
+        sudo cpack -G RPM
+
+    - name: Archive Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ubuntu-22.04
+        path: |
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp-?.?.?-Linux-*.tar.gz*
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp-?.?.?-Linux-*.sh*
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp.deb*
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp.rpm*
+        retention-days: 1

@@ -1,0 +1,42 @@
+name: macOS Release Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prep License file
+      run: |
+        cp LICENSE License2.txt
+        fold -s LICENSE > License.txt
+
+    - name: Configure CMake
+      run: cmake --preset gh-ubuntu-release
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build/release/gh-ubuntu
+
+    - name: Package CLI Installers
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: cpack
+
+    - name: Package GUI Installer
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: |
+        cmake -DCPACK_GENERATOR=productbuild -DCMAKE_INSTALL_PREFIX=/opt/PsSp .
+        cpack -G productbuild
+
+    - name: Archive Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-13
+        path: |
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp-?.?.?-Darwin-*.tar.gz*
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp-?.?.?-Darwin-*.sh*
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp.pkg*
+        retention-days: 1

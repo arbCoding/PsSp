@@ -1,0 +1,34 @@
+name: cpp-linter
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make compile_commands.json
+        run: |
+          cmake --preset gh-coverage
+
+      - name: cpp-lint
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+          version: 15
+          files-changed-only: false
+          tidy-checks: "bugprone-*,performance-*,readability-*,portability-*,clang-analyzer-*,cpp-coreguidelines-*,modernize-a*,modernize-c*,modernize-d*,modernize-l*,modernize-m*,modernize-p*,modernize-r*,modernize-s*,modernize-t*,modernize-un*,modernize-use-a*,modernize-use-b*,modernize-use-c*,modernize-use-d*,modernize-use-e*,modernize-use-n*,modernize-use-o*,modernize-use-s*,modernize-use-tran*,modernize-use-u*"
+          database: "build/debug/gh-coverage/compile_commands.json"
+          ignore: "build/debug/gh-coverage/_deps | build/debug/gh-coverage/CMakeFiles | src/utests.cpp | src/benchmark.cpp | src/util.hpp | .github"
+          extra-args: "-O0 -Wall -Werror -Wshadow -Wextra -pedantic-errors -std=c++20"
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+
+      - name: Fail?
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1
