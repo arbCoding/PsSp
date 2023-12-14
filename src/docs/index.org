@@ -1,0 +1,17 @@
+#+include: ./misc/settings.org
+
+* Introduction
+
+* Quickstart
+
+* Installation
+
+* Projects
+
+* Seismic Data
+
+* Plotting
+
+* Filtering
+
+* Stacking

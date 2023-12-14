@@ -1,0 +1,11 @@
+This will install the Passive-source Seismic-processing (PsSp)
+on your macOS computer.
+
+----------------------------------------------------------------------
+
+Thank you for trying out sac-format!
+
+If you have any questions, please ask it on the sac-format community
+forum:
+
+https://github.com/arbCoding/PsSp/discussions/
