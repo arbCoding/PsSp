@@ -40,7 +40,7 @@ void Main_Window::make_tty() {
   sink = std::make_shared<Console_Sink_mt>(debug_tty.get());
   logger = std::make_shared<spdlog::logger>("tty logger", sink);
   spdlog::set_default_logger(logger);
-  spdlog::set_pattern("[%Y-%m-%d %r %z] [%^%l%$] [thread %t] %v");
+  spdlog::set_pattern("[%Y-%m-%d %T] [%l] [thread %t] %v");
   spdlog::info("Logger started");
   debug_tty->begin();
   constexpr int font_size{14};

@@ -45,7 +45,7 @@ cpplint "$dir"*.?pp
 
 dir="$base/src/Logging/"
 ct_cmd "$dir"*.?pp
-cppling "$dir"*.?pp
+cpplint "$dir"*.?pp
 
 shellcheck "$scripts/"*.sh
 cd "$scripts" || exit
