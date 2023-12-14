@@ -4,7 +4,9 @@
 
 namespace pssp {
 Application::Application() {
-  main_window.show();
-  welcome_window.show();
+  main_window = std::make_unique<Main_Window>();
+  main_window->show();
+  welcome_window = std::make_unique<Welcome_Window>();
+  welcome_window->show();
 }
 }  // namespace pssp

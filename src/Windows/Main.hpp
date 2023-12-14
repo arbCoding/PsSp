@@ -13,6 +13,8 @@
 #include <FL/Fl_Window.H>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
+// std::unique_ptr
+#include <memory>
 // std::string
 #include <string>
 
@@ -20,16 +22,14 @@ namespace pssp {
 class Main_Window : public Fl_Window {
 public:
   Main_Window();
-  ~Main_Window();
   void append_tty(const char *msg);
 
 private:
   Fl_Sys_Menu_Bar menu{0, 0, 0, 25, nullptr};
-  Fl_Chart *plot{};
+  std::unique_ptr<Fl_Chart> plot{};
   void make_menu();
   void make_tty();
-  // cppcheck-suppress unusedStructMember
-  Fl_Terminal *debug_tty{};
+  std::unique_ptr<Fl_Terminal> debug_tty{};
   static void quit_cb(Fl_Widget *menu, void *junk);
   inline static const std::string
       // cppcheck-suppress unusedStructMember

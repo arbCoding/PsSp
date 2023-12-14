@@ -5,6 +5,10 @@
 namespace pssp {
 Welcome_Window::Welcome_Window() : Fl_Window(0, 0, 0, 0, "Welcome!") {
   this->begin();
+  message = std::make_unique<Fl_Box>(0, 0, welcome_width, text_height);
+  continue_button = std::make_unique<Fl_Return_Button>(
+      (welcome_width - button_width) / 2, text_height, button_width,
+      button_height, "Continue");
   int x_start{};
   int y_start{};
   int width{};
@@ -15,8 +19,8 @@ Welcome_Window::Welcome_Window() : Fl_Window(0, 0, 0, 0, "Welcome!") {
   this->resize(x_start, y_start, welcome_width, welcome_height);
   this->box(FL_BORDER_BOX);
   set_modal();
-  message.label(message_.c_str());
-  continue_button.callback(continue_cb);
+  message->label(message_.c_str());
+  continue_button->callback(continue_cb);
   this->end();
 }
 

@@ -10,6 +10,8 @@
 #include <FL/Fl_Window.H>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
+// std::unique_ptr
+#include <memory>
 // std::string
 #include <string>
 
@@ -23,10 +25,8 @@ constexpr int text_height{50};
 class Welcome_Window : public Fl_Window {
 public:
   Welcome_Window();
-  Fl_Box message{0, 0, welcome_width, text_height};
-  Fl_Return_Button continue_button{(welcome_width - button_width) / 2,
-                                   text_height, button_width, button_height,
-                                   "Continue"};
+  std::unique_ptr<Fl_Box> message{};
+  std::unique_ptr<Fl_Return_Button> continue_button{};
 
 private:
   static void continue_cb(Fl_Widget *btn);

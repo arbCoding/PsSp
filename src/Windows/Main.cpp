@@ -13,12 +13,13 @@ Main_Window::Main_Window() : Fl_Window(0, 0, name_.c_str()) {
   Fl::screen_work_area(x_start, y_start, width, height);
   this->resize(x_start, y_start, width, height);
   make_menu();
-  plot = new Fl_Chart(10, menu.h() + 10, width - 20, 400, "Chart");
+  plot =
+      std::make_unique<Fl_Chart>(10, menu.h() + 10, width - 20, 400, "Chart");
   plot->color(FL_WHITE);
   plot->type(FL_LINE_CHART);
   plot->bounds(0, 1000);
   for (int i{0}; i < 1000; ++i) {
-    plot->add(i, 0, FL_GREEN);
+    plot->add(i, nullptr, FL_GREEN);
   }
   plot->redraw();
   menu.resize(0, 0, width, menu.h());
@@ -26,15 +27,11 @@ Main_Window::Main_Window() : Fl_Window(0, 0, name_.c_str()) {
   this->end();
 }
 
-Main_Window::~Main_Window() {
-  delete debug_tty;
-  delete plot;
-}
-
 void Main_Window::make_tty() {
   // Debug terminal
   constexpr int height{200};
-  debug_tty = new Fl_Terminal(0, this->h() - height, this->w(), height);
+  debug_tty =
+      std::make_unique<Fl_Terminal>(0, this->h() - height, this->w(), height);
   debug_tty->begin();
   constexpr int font_size{14};
   debug_tty->textsize(font_size);

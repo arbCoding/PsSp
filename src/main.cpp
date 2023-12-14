@@ -4,8 +4,12 @@
 #include "Application/Application.hpp"
 /* fltk */
 #include <FL/Fl.H>
+/* Standard library
+   https://en.cppreference.com/w/cpp/standard_library */
+// std::unique_ptr
+#include <memory>
 
 int main() {
-  pssp::Application app{};
+  std::unique_ptr<pssp::Application> app{std::make_unique<pssp::Application>()};
   return Fl::run();
 }
