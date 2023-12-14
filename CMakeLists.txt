@@ -53,6 +53,11 @@ target_include_directories(PsSp SYSTEM PRIVATE ${FLTK_INCLUDE_DIRS})
 target_link_libraries(PsSp PRIVATE
   fltk
   spdlog::spdlog_header_only)
+if (UNIX AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
+  add_custom_command(TARGET PsSp
+    COMMAND strip "$<TARGET_FILE:PsSp>"
+    VERBATIM)
+endif()
 #===============================================================================
 # CPack Installation
 #===============================================================================
