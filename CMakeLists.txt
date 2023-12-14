@@ -18,10 +18,14 @@ FetchContent_Declare(spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog
   GIT_TAG v1.12.0)
 # GUI
+set(FLTK_BUILD_TEST OFF CACHE BOOL " " FORCE)
+if(UNIX AND NOT APPLE)
+    set(OPTION_USE_PANGO ON CACHE BOOL " " FORCE)
+endif()
 FetchCOntent_Declare(fltk
   GIT_REPOSITORY https://github.com/fltk/fltk
   # v1.4.0, doesn't have a release tag yet
-  GIT_TAG bbafcafbe1e69ab03a751343465f4a8e7435dc34)
+  GIT_TAG ed5ee81ccd042f08373da1f49486075ec0e40480)
 FetchContent_MakeAvailable(spdlog fltk)
 #===============================================================================
 # PsSp project
@@ -36,7 +40,7 @@ include_directories(${PsSp_SOURCE_DIR}/src)
 #-------------------------------------------------------------------------------
 # PsSp program
 #-------------------------------------------------------------------------------
-add_executable(PsSp
+add_executable(PsSp WIN32 MACOSX_BUNDLE
   src/main.cpp
   src/Windows/About.cpp
   src/Windows/Main.cpp
