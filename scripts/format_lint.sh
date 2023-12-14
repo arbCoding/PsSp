@@ -13,15 +13,22 @@ ct_cmd () {
         "$base/compile_commands.json" "$1"
 }
 
+cf_cmd() {
+    clang-format -style=file -i "$1"
+}
+
 echo "Formatting files..."
 dir="$base/src/"
-clang-format -style=file -i "$dir"*.?pp
+cf_cmd "$dir"*.?pp
 
 dir="$base/src/Windows/"
-clang-format -style=file -i "$dir"*.?pp
+cf_cmd "$dir"*.?pp
 
 dir="$base/src/Application/"
-clang-format -style=file -i "$dir"*.?pp
+cf_cmd "$dir"*.?pp
+
+dir="$base/src/Logging/"
+cf_cmd "$dir"*.?pp
 # Excluded checks:
 #   modernize-use-trailing-return-type
 #   Because I don't like that style
@@ -35,6 +42,10 @@ cpplint "$dir"*.?pp
 dir="$base/src/Windows/"
 ct_cmd "$dir"*.?pp
 cpplint "$dir"*.?pp
+
+dir="$base/src/Logging/"
+ct_cmd "$dir"*.?pp
+cppling "$dir"*.?pp
 
 shellcheck "$scripts/"*.sh
 cd "$scripts" || exit

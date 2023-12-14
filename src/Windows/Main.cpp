@@ -37,15 +37,17 @@ void Main_Window::make_tty() {
   constexpr int height{200};
   debug_tty =
       std::make_unique<Fl_Terminal>(0, this->h() - height, this->w(), height);
+  sink = std::make_shared<Console_Sink_mt>(debug_tty.get());
+  logger = std::make_shared<spdlog::logger>("tty logger", sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_pattern("[%Y-%m-%d %r %z] [%^%l%$] [thread %t] %v");
+  spdlog::info("Logger started");
   debug_tty->begin();
   constexpr int font_size{14};
   debug_tty->textsize(font_size);
   debug_tty->redraw_style(Fl_Terminal::NO_REDRAW);
   constexpr int num_columns{80};
   debug_tty->display_columns(num_columns);
-  append_tty("\033[31mDebug terminal\033[0m\n");
-  append_tty("\033[33mStarting Passive-source Seismic-processing!\033[0m\n");
-  append_tty("Awaiting Commands...\n");
   debug_tty->end();
 }
 

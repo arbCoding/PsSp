@@ -95,7 +95,7 @@
             "displayName": "GCC-Clang Release",
             "description": "GCC-Clang release options.",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -s -Wno-unused-command-line-argument"
+                "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -s -Wno-unused-command-line-argument -pthread"
             }
         },
         {
@@ -125,7 +125,7 @@
             "displayName": "GCC-Clang Debug",
             "description": "GCC-Clang Debug options",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-O0 -ggdb -Werror -Wshadow -Wextra -Wall -pedantic-errors"
+                "CMAKE_CXX_FLAGS": "-O0 -ggdb -Werror -Wshadow -Wextra -Wall -pedantic-errors -pthread"
             }
         },
         {

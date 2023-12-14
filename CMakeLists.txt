@@ -13,6 +13,11 @@ endif()
 #-------------------------------------------------------------------------------
 include(FetchContent)
 set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
+# Logging
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.12.0)
+FetchContent_MakeAvailable(spdlog)
 #-------------------------------------------------------------------------------
 # Include
 #-------------------------------------------------------------------------------
@@ -41,12 +46,13 @@ add_executable(PsSp
 
 if (APPLE)
   target_link_libraries(PsSp PRIVATE "-framework cocoa")
-  target_include_directories(PsSp SYSTEM PRIVATE "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk")
 endif()
 
 # System prevents warnings from fltk!
 target_include_directories(PsSp SYSTEM PRIVATE ${FLTK_INCLUDE_DIRS})
-target_link_libraries(PsSp PRIVATE fltk)
+target_link_libraries(PsSp PRIVATE
+  fltk
+  spdlog::spdlog_header_only)
 #===============================================================================
 # CPack Installation
 #===============================================================================
