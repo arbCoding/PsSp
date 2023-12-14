@@ -6,6 +6,7 @@
 /* fltk */
 // Needed for all fltk
 #include <FL/Fl.H>
+#include <FL/Fl_Chart.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Sys_Menu_Bar.H>
 #include <FL/Fl_Terminal.H>
@@ -13,17 +14,18 @@
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
 // std::string
-#include <iostream>
 #include <string>
 
 namespace pssp {
 class Main_Window : public Fl_Window {
 public:
   Main_Window();
+  ~Main_Window();
   void append_tty(const char *msg);
 
 private:
   Fl_Sys_Menu_Bar menu{0, 0, 0, 25, nullptr};
+  Fl_Chart *plot{};
   void make_menu();
   void make_tty();
   // cppcheck-suppress unusedStructMember
