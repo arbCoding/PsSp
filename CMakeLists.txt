@@ -78,29 +78,24 @@ set(MACOSX_BUNDLE_COPYRIGHT
 # CPack Installation
 #===============================================================================
 # In the future I want to build a app-directory that this then installs in
+install(TARGETS PsSp RUNTIME DESTINATION .
+  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR} COMPONENT program)
 # /Applications
-if (APPLE)
-  install(TARGETS PsSp RUNTIME DESTINATION .
-  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR} COMPONENT Program)
-else()
-  # Windows/Linux
-  install(TARGETS PsSp COMPONENT Program)
-  install(FILES ${PsSp_SOURCE_DIR}/LICENSE DESTINATION .
-    COMPONENT license)
-  set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/LICENSE)
-endif()
+install(FILES ${PsSp_SOURCE_DIR}/LICENSE DESTINATION .
+  COMPONENT license)
+set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/LICENSE)
 # Group components
-cpack_add_component(license DISPLAY_NAME "license"
-  DESCRIPTON "PsSp license file.")
-cpack_add_component(Program DISPLAY_NAME "PsSp"
-  DESCRIPTION "Passive-source Seismic-processing")
-set(CPACK_COMPONENT_license_HIDDEN TRUE)
-set(CPACK_COMPONENT_license_REQUIRED TRUE)
-set(CPACK_COMPONENT_Program_REQUIRED TRUE)
+#cpack_add_component(license DISPLAY_NAME "License"
+#  DESCRIPTION "PsSp license file.")
+#cpack_add_component(Program DISPLAY_NAME "PsSp"
+#  DESCRIPTION "Passive-source Seismic-processing")
+#set(CPACK_COMPONENT_license_HIDDEN TRUE)
+#set(CPACK_COMPONENT_license_REQUIRED TRUE)
+#set(CPACK_COMPONENT_Program_REQUIRED TRUE)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "PsSp")
 set(CPACK_PACKAGE_VENDOR "Alexander R. Blanchette <arbCoding@gmail.com>")
 # Allow separating components instead of monolithic
-set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
 # Meta-data
 set(CPACK_PACKAGE_NAME "PsSp")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
