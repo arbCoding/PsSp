@@ -1,0 +1,47 @@
+* Bug fix :bugs:
+** TODO Fix installers :installers:
+For some reason, cpack_add_component is not a recognized command (worked for sac-format)
+*** TODO Windows
+Doesn't include the actual file, only the license.
+*** TODO macOS
+The Application is zero bytes.
+*** TODO Linux
+Doesn't provide the .tar.gz nor the .sh
+** System Menu Tray :macOS:
+Doesn't show surficial options (e.g. About and Help).
+* Documentation :documentation:
+** TODO Introduction
+** TODO Quickstart
+** TODO Installation
+*** TODO Dependencies
+** TODO Projects
+** TODO Seismic Data
+** TODO Plotting
+** TODO Filtering
+** TODO Stacking
+* Functionality :functionality:
+** TODO GUI :gui:ui:
+*** Drag Resize children of main window
+**** TODO Debug TTY
+**** TODO File List
+**** TODO Tab Pane
+***** TODO Plots
+***** TODO Project database explorer
+***** TODO Project Notes
+***** TODO Bookmark Notes
+** TODO Processing :processing:
+** TODO Projects :projects:
+* GitHub :github:
+** TODO Readme
+** TODO Release workflows
+** TODO Pull request workflows
+** TODO CodeQL
+** TODO Coverity
+* Design :design:
+** TODO Logo
+** TODO Icon
+* Testing :test:
+** SQLite :sqlite:
+*** TODO Open database
+*** TODO Close database
+*** TODO Update database

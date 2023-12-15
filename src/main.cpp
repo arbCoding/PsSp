@@ -12,7 +12,6 @@
 
 int main() {
   std::unique_ptr<pssp::Application> app{std::make_unique<pssp::Application>()};
-  spdlog::info("Ready to run.");
   int return_value{Fl::run()};
   return return_value;
 }

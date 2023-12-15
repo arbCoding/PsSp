@@ -41,13 +41,15 @@ include_directories(${PsSp_SOURCE_DIR}/src)
 #-------------------------------------------------------------------------------
 # PsSp program
 #-------------------------------------------------------------------------------
-add_executable(PsSp WIN32 MACOSX_BUNDLE
+set(Sources
   src/main.cpp
   src/Windows/About.cpp
   src/Windows/Main.cpp
   src/Windows/Welcome.cpp
   src/Application/Application.cpp
 )
+
+add_executable(PsSp WIN32 MACOSX_BUNDLE ${Sources})
 
 if (APPLE)
   target_link_libraries(PsSp PRIVATE "-framework cocoa")
@@ -68,18 +70,14 @@ if (UNIX AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
     VERBATIM)
 endif()
 #===============================================================================
-# macOS Bundle
-#===============================================================================
-set(MACOSX_BUNDLE_BUNDLE_NAME "PsSp")
-set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
-set(MACOSX_BUNDLE_COPYRIGHT
-  "2023 Alexander R. Blanchette <arbCoding@gmail.com>")
-#===============================================================================
 # CPack Installation
 #===============================================================================
 # In the future I want to build a app-directory that this then installs in
-install(TARGETS PsSp RUNTIME DESTINATION .
-  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR} COMPONENT program)
+if (APPLE)
+  install(TARGETS PsSp BUNDLE DESTINATION . COMPONENT program)
+else()
+  install(TARGETS PsSp RUNTIME DESTINATION bin COMPONENT program)
+endif()
 # /Applications
 install(FILES ${PsSp_SOURCE_DIR}/LICENSE DESTINATION .
   COMPONENT license)
@@ -87,7 +85,7 @@ set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/LICENSE)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "PsSp")
 set(CPACK_PACKAGE_VENDOR "Alexander R. Blanchette <arbCoding@gmail.com>")
 # Allow separating components instead of monolithic
-set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 # Meta-data
 set(CPACK_PACKAGE_NAME "PsSp")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
@@ -103,7 +101,7 @@ ${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 # Make checksum
 set(CPACK_PACKAGE_CHECKSUM SHA512)
 # Only specified components
-set(CPACK_COMPONENTS_ALL license Program)
+set(CPACK_COMPONENTS_ALL license program)
 set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
 # Windows Specific NSIS installer
 set(CPACK_NSIS_HELP_LINK "https://arbCoding.github.io/PsSp/")
@@ -111,12 +109,12 @@ set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 # Debian Specific
 # Installs into /usr/bin
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
-set(CPACK_DEB_COMPONENT_INSTALL OFF)
+set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Alexander R. Blanchette \
 <arbCoding@gmail.com>")
 # RedHat Specific
 # Installs into /usr/bin
-set(CPACK_RPM_COMPONENT_INSTALL OFF)
+set(CPACK_RPM_COMPONENT_INSTALL ON)
 # Don't strip binaries
 set(CPACK_RPM_SPEC_MORE_DEFINE "%define __spec_install_post /bin/true")
 include(CPack)
