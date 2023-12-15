@@ -16,10 +16,15 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build/release/gh-ubuntu
 
+    - name: Package
+      working-directory: ${{github.workspace}}/build/release/gh-ubuntu
+      run: |
+        tar -czf PsSp.tar.gz PsSp.app
+
     - name: Archive Build Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: macos-13
         path: |
-          ${{github.workspace}}/build/release/gh-ubuntu/PsSp.app
+          ${{github.workspace}}/build/release/gh-ubuntu/PsSp.tar.gz
         retention-days: 1
