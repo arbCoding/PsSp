@@ -33,7 +33,13 @@ Doesn't show surficial options (e.g. About and Help).
 ** TODO Projects :projects:
 * GitHub :github:
 ** TODO Readme
-** TODO Release workflows
+** TODO Workfows :continuous:
+*** TODO Fix fltk dependency
+fltk cannot be handled via FetchContent anymore. It breaks too often (especially the debug build). I need to separate use git to download fltk to a designated location, switch to the correct commit hash, build, then build PsSp.
+
+To speed this up, cache fltk for future uses. [[https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows][information on caching]]
+*** TODO Debug workflows
+*** TODO Release workflows
 ** TODO Pull request workflows
 ** TODO CodeQL
 ** TODO Coverity

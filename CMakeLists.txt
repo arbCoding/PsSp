@@ -1,7 +1,7 @@
 #===============================================================================
 # Basic Setup
 #===============================================================================
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -16,18 +16,15 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 # Logging
 FetchContent_Declare(spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog
-  GIT_TAG v1.12.0)
-# GUI
-set(FLTK_BUILD_TEST OFF CACHE BOOL " " FORCE)
-# Doesn't work on GitHub
-#if(UNIX AND NOT APPLE)
-#    set(OPTION_USE_PANGO ON CACHE BOOL " " FORCE)
-#endif()
-FetchCOntent_Declare(fltk
-  GIT_REPOSITORY https://github.com/fltk/fltk
-  # v1.4.0, doesn't have a release tag yet
-  GIT_TAG ed5ee81ccd042f08373da1f49486075ec0e40480)
-FetchContent_MakeAvailable(spdlog fltk)
+  GIT_TAG v1.12.0
+  GIT_PROGRESS TRUE
+  SYSTEM)
+FetchContent_MakeAvailable(spdlog)
+#-------------------------------------------------------------------------------
+# Manual
+#-------------------------------------------------------------------------------
+set(FLTK_DIR $ENV{HOME}/other_git/fltk)
+find_package(FLTK CONFIG REQUIRED)
 #===============================================================================
 # PsSp project
 #===============================================================================
@@ -56,8 +53,8 @@ if (APPLE)
 endif()
 
 # System prevents warnings from fltk!
-target_include_directories(PsSp SYSTEM PRIVATE ${fltk_BINARY_DIR}
-  ${fltk_SOURCE_DIR} ${fltk_INCLUDE_DIRS})
+target_include_directories(PsSp SYSTEM PRIVATE ${FLTK_INCLUDE_DIRS})
+
 target_link_libraries(PsSp PRIVATE
   fltk
   spdlog::spdlog_header_only)
