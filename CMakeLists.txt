@@ -70,42 +70,37 @@ endif()
 #===============================================================================
 # macOS Bundle
 #===============================================================================
-#set(MACOSX_BUNDLE_BUNDLE_NAME "PsSp")
-#set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
-#set(MACOSX_BUNDLE_COPYRIGHT
-#  "2023 Alexander R. Blanchette <arbCoding@gmail.com>")
+set(MACOSX_BUNDLE_BUNDLE_NAME "PsSp")
+set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
+set(MACOSX_BUNDLE_COPYRIGHT
+  "2023 Alexander R. Blanchette <arbCoding@gmail.com>")
 #===============================================================================
 # CPack Installation
 #===============================================================================
-install(TARGETS PsSp
-  RUNTIME DESTINATION .
-  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
 # In the future I want to build a app-directory that this then installs in
 # /Applications
-if(CPACK_GENERATOR MATCHES "DragNDrop")
-  # macOS
-  set(CPACK_RESOURCE_FILE_README
-    ${PsSp_SOURCE_DIR}/installers/macOS/Readme.txt)
-  set(CPACK_RESOURCE_FILE_WELCOME
-    ${PsSp_SOURCE_DIR}/installers/macOS/Welcome.txt)
-  install(FILES ${PsSp_SOURCE_DIR}/License.txt DESTINATION .
-    COMPONENT license)
+if (APPLE)
   install(TARGETS PsSp RUNTIME DESTINATION .
-    BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
-  set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/License2.txt)
-  set(CPACK_SET_DESTDIR "ON")
+  BUNDLE DESTINATION ${CMAKE_SOURCE_DIR} COMPONENT Program)
 else()
   # Windows/Linux
+  install(TARGETS PsSp COMPONENT Program)
   install(FILES ${PsSp_SOURCE_DIR}/LICENSE DESTINATION .
     COMPONENT license)
   set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/LICENSE)
 endif()
+# Group components
+cpack_add_component(license DISPLAY_NAME "license"
+  DESCRIPTON "PsSp license file.")
+cpack_add_component(Program DISPLAY_NAME "PsSp"
+  DESCRIPTION "Passive-source Seismic-processing")
 set(CPACK_COMPONENT_license_HIDDEN TRUE)
 set(CPACK_COMPONENT_license_REQUIRED TRUE)
+set(CPACK_COMPONENT_Program_REQUIRED TRUE)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "PsSp")
 set(CPACK_PACKAGE_VENDOR "Alexander R. Blanchette <arbCoding@gmail.com>")
 # Allow separating components instead of monolithic
-set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 # Meta-data
 set(CPACK_PACKAGE_NAME "PsSp")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
@@ -120,6 +115,9 @@ set(CPACK_ARCHIVE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-\
 ${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 # Make checksum
 set(CPACK_PACKAGE_CHECKSUM SHA512)
+# Only specified components
+set(CPACK_COMPONENTS_ALL license Program)
+set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
 # Windows Specific NSIS installer
 set(CPACK_NSIS_HELP_LINK "https://arbCoding.github.io/PsSp/")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
