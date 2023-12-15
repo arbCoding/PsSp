@@ -29,6 +29,9 @@ cf_cmd "$dir"*.?pp
 
 dir="$base/src/Logging/"
 cf_cmd "$dir"*.?pp
+
+dir="$base/src/Widgets/"
+cf_cmd "$dir"*.?pp
 # Excluded checks:
 #   modernize-use-trailing-return-type
 #   Because I don't like that style
@@ -44,6 +47,10 @@ ct_cmd "$dir"*.?pp
 cpplint "$dir"*.?pp
 
 dir="$base/src/Logging/"
+ct_cmd "$dir"*.?pp
+cpplint "$dir"*.?pp
+
+dir="$base/src/Widgets/"
 ct_cmd "$dir"*.?pp
 cpplint "$dir"*.?pp
 

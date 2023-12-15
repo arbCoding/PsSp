@@ -7,7 +7,7 @@ Doesn't include the actual file, only the license.
 The Application is zero bytes.
 *** TODO Linux
 Doesn't provide the .tar.gz nor the .sh
-** System Menu Tray :macOS:
+** TODO System Menu Tray :macOS:
 Doesn't show surficial options (e.g. About and Help).
 * Documentation :documentation:
 ** TODO Introduction

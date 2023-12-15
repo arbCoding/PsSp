@@ -8,23 +8,16 @@ endif()
 #===============================================================================
 # Dependencies
 #===============================================================================
-#-------------------------------------------------------------------------------
-# Fetch
-#-------------------------------------------------------------------------------
-include(FetchContent)
-set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
-# Logging
-FetchContent_Declare(spdlog
-  GIT_REPOSITORY https://github.com/gabime/spdlog
-  GIT_TAG v1.12.0
-  GIT_PROGRESS TRUE
-  SYSTEM)
-FetchContent_MakeAvailable(spdlog)
+# No longer using FetchContent -> faster builds
+# and can cache on github
+# FLTK 1.4.0 commit hash ed5ee81ccd042f08373da1f49486075ec0e40480
+# spdlog v1.12.0 commit hash ac55e60488032b9acde8940a5de099541c4515da
 #-------------------------------------------------------------------------------
 # Manual
 #-------------------------------------------------------------------------------
 set(FLTK_DIR $ENV{HOME}/other_git/fltk)
 find_package(FLTK CONFIG REQUIRED)
+set(spdlog_DIR $ENV{HOME}/other_git/spdlog)
 #===============================================================================
 # PsSp project
 #===============================================================================
@@ -40,6 +33,8 @@ include_directories(${PsSp_SOURCE_DIR}/src)
 #-------------------------------------------------------------------------------
 set(Sources
   src/main.cpp
+  src/Widgets/Datasheet.cpp
+  src/Widgets/Status_Bar.cpp
   src/Windows/About.cpp
   src/Windows/Main.cpp
   src/Windows/Welcome.cpp
@@ -54,10 +49,10 @@ endif()
 
 # System prevents warnings from fltk!
 target_include_directories(PsSp SYSTEM PRIVATE ${FLTK_INCLUDE_DIRS})
+target_include_directories(PsSp SYSTEM PRIVATE ${spdlog_DIR}/include)
 
 target_link_libraries(PsSp PRIVATE
-  fltk
-  spdlog::spdlog_header_only)
+  fltk)
 # If (macOS or Linux) and Release build
 # then strip the binary of debug symbols to make it smaller
 # Windows doesn't need this
