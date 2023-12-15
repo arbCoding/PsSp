@@ -82,7 +82,7 @@ install(TARGETS PsSp
   BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
 # In the future I want to build a app-directory that this then installs in
 # /Applications
-if(CPACK_GENERATOR MATCHES "productbuild")
+if(CPACK_GENERATOR MATCHES "DragNDrop")
   # macOS
   set(CPACK_RESOURCE_FILE_README
     ${PsSp_SOURCE_DIR}/installers/macOS/Readme.txt)
@@ -90,6 +90,8 @@ if(CPACK_GENERATOR MATCHES "productbuild")
     ${PsSp_SOURCE_DIR}/installers/macOS/Welcome.txt)
   install(FILES ${PsSp_SOURCE_DIR}/License.txt DESTINATION .
     COMPONENT license)
+  install(TARGETS PsSp RUNTIME DESTINATION .
+    BUNDLE DESTINATION ${CMAKE_SOURCE_DIR})
   set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/License2.txt)
   set(CPACK_SET_DESTDIR "ON")
 else()
