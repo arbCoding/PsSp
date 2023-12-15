@@ -84,14 +84,6 @@ install(TARGETS PsSp RUNTIME DESTINATION .
 install(FILES ${PsSp_SOURCE_DIR}/LICENSE DESTINATION .
   COMPONENT license)
 set(CPACK_RESOURCE_FILE_LICENSE ${PsSp_SOURCE_DIR}/LICENSE)
-# Group components
-#cpack_add_component(license DISPLAY_NAME "License"
-#  DESCRIPTION "PsSp license file.")
-#cpack_add_component(Program DISPLAY_NAME "PsSp"
-#  DESCRIPTION "Passive-source Seismic-processing")
-#set(CPACK_COMPONENT_license_HIDDEN TRUE)
-#set(CPACK_COMPONENT_license_REQUIRED TRUE)
-#set(CPACK_COMPONENT_Program_REQUIRED TRUE)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "PsSp")
 set(CPACK_PACKAGE_VENDOR "Alexander R. Blanchette <arbCoding@gmail.com>")
 # Allow separating components instead of monolithic
