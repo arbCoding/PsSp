@@ -17,14 +17,14 @@
 #include <string>
 
 namespace pssp {
-namespace about{
+namespace about {
 constexpr int button_width{75};
 constexpr int button_height{25};
 constexpr int text_height{90};
 constexpr int height{text_height + button_height + 10};
 constexpr int text_width{330};
 constexpr int width{text_width + 50};
-} // namespace abt_button
+}  // namespace about
 
 class About_Window : public Fl_Window {
 public:
@@ -35,11 +35,11 @@ public:
 private:
   static void okay_cb(Fl_Widget *btn);
   inline static const std::string
-  // cppcheck-suppress unusedStructMember
-  message_{"Website: https://github.io/arbCoding/PsSp/\n"
-           "GitHub: https://github.com/arbCoding/PsSp\n"
-           "Developer: Alexander R. Blanchette <arbCoding@gmail.com>"
-           "License: MIT"};
+      // cppcheck-suppress unusedStructMember
+      message_{"Website: https://arbCoding.github.io/PsSp/\n"
+               "GitHub: https://arbCoding.github.com/PsSp\n"
+               "Developer: Alexander R. Blanchette <arbCoding@gmail.com>"
+               "License: MIT"};
 };
-} // namespace pssp
+}  // namespace pssp
 #endif

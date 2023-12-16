@@ -24,7 +24,7 @@ constexpr int text_height{50};
 constexpr int height{text_height + button_height + 10};
 constexpr int text_width{380};
 constexpr int width{text_width + 20};
-} // namespace welcome
+}  // namespace welcome
 
 class Welcome_Window : public Fl_Window {
 public:
@@ -36,7 +36,7 @@ private:
   static void continue_cb(Fl_Widget *btn);
   inline static const std::string
       // cppcheck-suppress unusedStructMember
-      message_{"Welcome to Post-seismic Processing-software (PsSp)!\n"
+      message_{"Welcome to Passive-source Seismic-processing (PsSp)!\n"
                "This program is very early in development..."};
 };
 }  // namespace pssp

@@ -4,20 +4,20 @@
 #define PSSP_MAIN_WINDOW_HPP_20231213_1003
 #pragma once
 
-#include "About.hpp"
 #include "../Logging/Console_Sink.hpp"
 #include "../Widgets/Datasheet.hpp"
 #include "../Widgets/Status_Bar.hpp"
+#include "About.hpp"
 /* fltk https://www.fltk.org/doc-1.4 */
 #include <FL/Fl.H>
-#include <FL/Fl_Button.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Grid.H>
 #include <FL/Fl_Sys_Menu_Bar.H>
 #include <FL/Fl_Terminal.H>
+#include <FL/fl_ask.H>
 /* spdlog https://github.com/gabime/spdlog */
-#include <spdlog/spdlog.h>
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
 // std::unique_ptr, std::shared_ptr
@@ -31,6 +31,7 @@ public:
   Main_Window();
   void append_tty(const char *msg);
   void show_about();
+
 private:
   Fl_Sys_Menu_Bar menu{0, 0, 0, 25, nullptr};
   void make_menu();
@@ -48,7 +49,7 @@ private:
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       name_{"PsSp - Passive-source Seismic-processing"};
-  static void prevent_escape(Fl_Widget*, void*); // MwuaHaHaha
+  static void prevent_escape(Fl_Widget *, void *);  // MwuaHaHaha
 };
 }  // namespace pssp
 #endif

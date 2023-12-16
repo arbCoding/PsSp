@@ -19,11 +19,12 @@ namespace pssp {
 class Status_Bar : public Fl_Grid {
 public:
   Status_Bar(int container_height, int width, int height);
+
 private:
   std::unique_ptr<Fl_Box> left_box_{};
   std::unique_ptr<Fl_Box> middle_box_{};
   std::unique_ptr<Fl_Box> right_box_{};
 };
-} // namespace pssp
+}  // namespace pssp
 
 #endif

@@ -1,7 +1,13 @@
-#!/bin/dash
+#!/bin/bash
 scripts=$(pwd)
 base=$(pwd)/..
 cd "$base" || exit
+# Excluded checks:
+#   modernize-use-trailing-return-type
+#   Because I don't like that style
+#       float my_function(int number) {}
+#   is better than
+#       auto my_function(int number) -> float {}
 ct_cmd () {
     clang-tidy --checks="bugprone-*,performance-*,readability-*,portability-*,\
         clang-analyzer-*,cpp-coreguidelines-*,modernize-a*,modernize-c*,\
@@ -11,48 +17,39 @@ ct_cmd () {
         modernize-use-n*,modernize-use-o*,modernize-use-s*,modernize-use-tran*,\
         modernize-use-u*" --extra-arg="-std=c++20" -p \
         "$base/compile_commands.json" "$1"
+    echo ""
 }
 
 cf_cmd() {
     clang-format -style=file -i "$1"
+    echo ""
 }
 
-echo "Formatting files..."
-dir="$base/src/"
-cf_cmd "$dir"*.?pp
+cl_cmd() {
+    cpplint "$1"
+    echo ""
+}
 
-dir="$base/src/Windows/"
-cf_cmd "$dir"*.?pp
+format_lint_dir() {
+    for file in "$1"/*.?pp; do
+        echo "Formatting file: $file"
+        cf_cmd "$file"
+        echo "clang-tidy: $file"
+        ct_cmd "$file"
+        echo "cpplint: $file"
+        cl_cmd "$file"
+        echo ""
+    done
+}
 
-dir="$base/src/Application/"
-cf_cmd "$dir"*.?pp
+dir_list=("$base/src" "$base/src/Windows" "$base/src/Application" \
+    "$base/src/Logging" "$base/src/Widgets")
 
-dir="$base/src/Logging/"
-cf_cmd "$dir"*.?pp
+for dir in "${dir_list[@]}"; do
+    echo -e "Scanning $dir\n"
+    format_lint_dir "$dir"
+done
 
-dir="$base/src/Widgets/"
-cf_cmd "$dir"*.?pp
-# Excluded checks:
-#   modernize-use-trailing-return-type
-#   Because I don't like that style
-#       float my_function(int number) {}
-#   is better than
-#       auto my_function(int number) -> float {}
-dir="$base/src/"
-ct_cmd "$dir"*.?pp
-cpplint "$dir"*.?pp
-
-dir="$base/src/Windows/"
-ct_cmd "$dir"*.?pp
-cpplint "$dir"*.?pp
-
-dir="$base/src/Logging/"
-ct_cmd "$dir"*.?pp
-cpplint "$dir"*.?pp
-
-dir="$base/src/Widgets/"
-ct_cmd "$dir"*.?pp
-cpplint "$dir"*.?pp
-
+echo "Shellcheck"
 shellcheck "$scripts/"*.sh
 cd "$scripts" || exit

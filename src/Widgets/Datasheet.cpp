@@ -6,8 +6,8 @@ namespace pssp {
 Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Making \033[1mDatasheet\033[0m.");
   this->begin();
-  //this->color(FL_CYAN);
-  tab_cell_nav(1); // enable tab navigation
+  // this->color(FL_CYAN);
+  tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
   row_header(1);
@@ -24,8 +24,8 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Done making \033[1mDatasheet\033[0m.");
 }
 
-void Datasheet::draw_col_header_cell(int col, int x_pos, int y_pos,
-                                     int width, int height) {
+void Datasheet::draw_col_header_cell(int col, int x_pos, int y_pos, int width,
+                                     int height) {
   fl_font(FL_HELVETICA | FL_BOLD, 14);
   fl_push_clip(x_pos, y_pos, width, height);
   fl_draw_box(FL_THIN_UP_BOX, x_pos, y_pos, width, height, col_header_color());
@@ -39,8 +39,8 @@ void Datasheet::draw_col_header_cell(int col, int x_pos, int y_pos,
   fl_pop_clip();
 }
 
-void Datasheet::draw_row_header_cell(int row, int x_pos, int y_pos,
-                                     int width, int height) {
+void Datasheet::draw_row_header_cell(int row, int x_pos, int y_pos, int width,
+                                     int height) {
   fl_font(FL_HELVETICA | FL_BOLD, 14);
   fl_push_clip(x_pos, y_pos, width, height);
   fl_draw_box(FL_THIN_UP_BOX, x_pos, y_pos, width, height, row_header_color());
@@ -74,21 +74,19 @@ void Datasheet::draw_interior_cell(int row, int col, int x_pos, int y_pos,
 void Datasheet::draw_cell(TableContext context, int row, int col, int x_pos,
                           int y_pos, int width, int height) {
   switch (context) {
-    case CONTEXT_STARTPAGE:  // table about to redraw
-      break;
-    case CONTEXT_COL_HEADER:  // table wants us to draw a column heading
-      draw_col_header_cell(col, x_pos, y_pos, width, height);
-      return;
-    case CONTEXT_ROW_HEADER: // table wants us to draw a row heading
-      draw_row_header_cell(row, x_pos, y_pos, width, height);
-      return;
-    case CONTEXT_CELL:
-      draw_interior_cell(row, col, x_pos, y_pos, width, height);
-      return;
-    case CONTEXT_RC_RESIZE:
-      return;
-    default:
-      return;
+  case CONTEXT_COL_HEADER:  // table wants us to draw a column heading
+    draw_col_header_cell(col, x_pos, y_pos, width, height);
+    break;
+  case CONTEXT_ROW_HEADER:  // table wants us to draw a row heading
+    draw_row_header_cell(row, x_pos, y_pos, width, height);
+    break;
+  case CONTEXT_CELL:
+    draw_interior_cell(row, col, x_pos, y_pos, width, height);
+    break;
+  case CONTEXT_STARTPAGE:  // table about to redraw
+  case CONTEXT_RC_RESIZE:
+  default:
+    return;
   }
 }
-} // namespace pssp
+}  // namespace pssp

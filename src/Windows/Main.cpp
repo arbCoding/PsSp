@@ -29,7 +29,7 @@ Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
                                          this->h() - menu_shift - menu.h());
   gridspace_->begin();
   gridspace_->add(debug_tty.get());
-  gridspace_->show_grid(1); // 1 to show guide lines
+  gridspace_->show_grid(0);  // 1 to show guide lines
   gridspace_->layout(10, 10, 1, 1);
   list_ = std::make_unique<Fl_Box>(0, 0, 0, 0, "List");
   list_->box(FL_BORDER_BOX);
@@ -56,7 +56,8 @@ void Main_Window::make_tty() {
   spdlog::set_default_logger(logger);
   // levels are critical, error, warn, info, debug, trace
   spdlog::set_level(spdlog::level::trace);
-  spdlog::set_pattern("\33[1m\33[32m[%Y-%m-%d %T]\33[33m[%l]\33[36m[thread %t]\33[0m %v");
+  spdlog::set_pattern(
+      "\33[1m\33[32m[%Y-%m-%d %T]\33[33m[%l]\33[36m[thread %t]\33[0m %v");
   debug_tty->begin();
   constexpr int font_size{14};
   debug_tty->textsize(font_size);
@@ -123,7 +124,10 @@ void Main_Window::quit_cb(Fl_Widget *menu, void *junk) {
   (void)junk;
   // reinterpret_cast is unnecessary, but I wanted to figure it out
   auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
-  window->hide();
+  if (fl_choice("Are you sure you want to quit?", "cancel", "quit", nullptr) !=
+      0) {
+    window->hide();
+  }
 }
 
 void Main_Window::show_about() { about_window_->show(); }
@@ -135,9 +139,9 @@ void Main_Window::about_cb(Fl_Widget *menu, void *junk) {
 }
 
 // Disable escape key closing this window
-void Main_Window::prevent_escape(Fl_Widget*, void*) {
+void Main_Window::prevent_escape(Fl_Widget *, void *) {
   if ((Fl::event() == FL_SHORTCUT) && (Fl::event_key() == FL_Escape)) {
-    return; // ignore Escape
+    return;  // ignore Escape
   }
   exit(0);
 }

@@ -3,9 +3,8 @@
 #include "Status_Bar.hpp"
 
 namespace pssp {
-Status_Bar::Status_Bar(int container_height, int width,
-                       int height) :
-  Fl_Grid(0, container_height - height, width, height) {
+Status_Bar::Status_Bar(int container_height, int width, int height)
+    : Fl_Grid(0, container_height - height, width, height) {
   spdlog::trace("Making \033[1mStatus_Bar\033[0m.");
   this->begin();
   this->layout(1, 10, 1, 1);
@@ -21,4 +20,4 @@ Status_Bar::Status_Bar(int container_height, int width,
   this->end();
   spdlog::trace("Done making \033[1mStatus_Bar\033[0m.");
 }
-} // namespace pssp
+}  // namespace pssp
