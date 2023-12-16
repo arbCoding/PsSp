@@ -4,13 +4,13 @@
 #define PSSP_ABOUT_WINDOW_HPP_20231214_1411
 #pragma once
 
-/* fltk https://www.fltk.org/doc-1.4 */
+// fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Window.H>
-/* Standard library
-   https://en.cppreference.com/w/cpp/standard_library */
+// Standard library
+//   https://en.cppreference.com/w/cpp/standard_library
 // std::unique_ptr
 #include <memory>
 // std::string

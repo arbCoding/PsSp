@@ -6,10 +6,10 @@
 // Windows
 #include "../Windows/Main.hpp"
 #include "../Windows/Welcome.hpp"
-/* spdlog  https://github.com/gabime/spdlog */
+// spdlog  https://github.com/gabime/spdlog
 #include <spdlog/spdlog.h>
-/* Standard library
-   https://en.cppreference.com/w/cpp/standard_library */
+// Standard library
+//   https://en.cppreference.com/w/cpp/standard_library
 // std::unique_ptr
 #include <memory>
 

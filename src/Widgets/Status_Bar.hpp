@@ -4,14 +4,14 @@
 #define PSSP_STATUS_BAR_HPP_20231215_1002
 #pragma once
 
-/* fltk https://www.fltk.org/doc-1.4 */
+// fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Grid.H>
-/* spdlog https://github.com/gabime/spdlog */
+// spdlog https://github.com/gabime/spdlog
 #include <spdlog/spdlog.h>
-/* Standard library
-   https://en.cppreference.com/w/cpp/standard_library */
+// Standard library
+//   https://en.cppreference.com/w/cpp/standard_library
 // std::unique_ptr
 #include <memory>
 

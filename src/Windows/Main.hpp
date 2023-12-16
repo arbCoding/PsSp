@@ -8,18 +8,18 @@
 #include "../Widgets/Datasheet.hpp"
 #include "../Widgets/Status_Bar.hpp"
 #include "About.hpp"
-/* fltk https://www.fltk.org/doc-1.4 */
+// fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Grid.H>
 #include <FL/Fl_Sys_Menu_Bar.H>
 #include <FL/Fl_Terminal.H>
 #include <FL/fl_ask.H>
-/* spdlog https://github.com/gabime/spdlog */
+// spdlog https://github.com/gabime/spdlog
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
-/* Standard library
-   https://en.cppreference.com/w/cpp/standard_library */
+// Standard library
+//   https://en.cppreference.com/w/cpp/standard_library
 // std::unique_ptr, std::shared_ptr
 #include <memory>
 // std::string
