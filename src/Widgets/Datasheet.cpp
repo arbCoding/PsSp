@@ -6,7 +6,6 @@ namespace pssp {
 Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Making \033[1mDatasheet\033[0m.");
   this->begin();
-  // this->color(FL_CYAN);
   tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
@@ -24,67 +23,52 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Done making \033[1mDatasheet\033[0m.");
 }
 
-void Datasheet::draw_col_header_cell(int col, int x_pos, int y_pos, int width,
-                                     int height) {
-  fl_font(FL_HELVETICA | FL_BOLD, 14);
-  fl_push_clip(x_pos, y_pos, width, height);
-  fl_draw_box(FL_THIN_UP_BOX, x_pos, y_pos, width, height, col_header_color());
-  fl_color(FL_BLACK);
-  static std::ostringstream oss{};
-  oss << 'A';
-  oss << col;
-  fl_draw(oss.str().c_str(), x_pos, y_pos, width, height, FL_ALIGN_CENTER);
-  oss.str("");
-  oss.clear();
+void Datasheet::draw_generic_cell(const Cell &cell) {
+  fl_font(cell.font, 14);
+  fl_draw_box(cell.box_type, cell.full_box.x_pos, cell.full_box.y_pos,
+              cell.full_box.width, cell.full_box.height, cell.box_color);
+  fl_push_clip(cell.text_box.x_pos, cell.text_box.y_pos, cell.text_box.width,
+               cell.text_box.height);
+  fl_color(cell.text_color);
+  fl_draw(cell.text.c_str(), cell.text_box.x_pos, cell.text_box.y_pos,
+          cell.text_box.width, cell.text_box.height, cell.alignment);
   fl_pop_clip();
 }
 
-void Datasheet::draw_row_header_cell(int row, int x_pos, int y_pos, int width,
-                                     int height) {
-  fl_font(FL_HELVETICA | FL_BOLD, 14);
-  fl_push_clip(x_pos, y_pos, width, height);
-  fl_draw_box(FL_THIN_UP_BOX, x_pos, y_pos, width, height, row_header_color());
-  fl_color(FL_BLACK);
-  static std::ostringstream oss{};
-  oss << row + 1;
-  fl_draw(oss.str().c_str(), x_pos, y_pos, width, height, FL_ALIGN_CENTER);
-  oss.str("");
-  oss.clear();
-  fl_pop_clip();
+void Datasheet::draw_header_cell(const int x_pos, const int y_pos,
+                                 const int width, const int height,
+                                 const std::string &text) {
+  Cell cell{};
+  cell.full_box = {x_pos, y_pos, width, height};
+  cell.text_box = cell.full_box;
+  cell.font = FL_HELVETICA | FL_BOLD;
+  cell.text = text;
+  draw_generic_cell(cell);
 }
 
-void Datasheet::draw_interior_cell(int row, int col, int x_pos, int y_pos,
-                                   int width, int height) {
-  // Background
-  fl_draw_box(FL_THIN_UP_BOX, x_pos, y_pos, width, height,
-              is_selected(row, col) ? FL_YELLOW : FL_WHITE);
-  // Text
-  fl_push_clip(x_pos + 3, y_pos + 3, width - 6, height - 6);
-  fl_color(FL_BLACK);
-  fl_font(FL_HELVETICA, 14);
-  static std::ostringstream oss{};
-  oss << 100;
-  fl_draw(oss.str().c_str(), x_pos + 3, y_pos + 3, width - 6, height - 6,
-          FL_ALIGN_RIGHT);
-  oss.str("");
-  oss.clear();
-  fl_pop_clip();
-}
-
-void Datasheet::draw_cell(TableContext context, int row, int col, int x_pos,
-                          int y_pos, int width, int height) {
+void Datasheet::draw_cell(const TableContext context, const int row,
+                          const int col, const int x_pos, const int y_pos,
+                          const int width, const int height) {
   switch (context) {
-  case CONTEXT_COL_HEADER:  // table wants us to draw a column heading
-    draw_col_header_cell(col, x_pos, y_pos, width, height);
+  case CONTEXT_COL_HEADER: {
+    std::ostringstream oss{};
+    oss << 'A';
+    oss << col;
+    draw_header_cell(x_pos, y_pos, width, height, oss.str());
+  } break;
+  case CONTEXT_ROW_HEADER:
+    draw_header_cell(x_pos, y_pos, width, height, std::to_string(row + 1));
     break;
-  case CONTEXT_ROW_HEADER:  // table wants us to draw a row heading
-    draw_row_header_cell(row, x_pos, y_pos, width, height);
-    break;
-  case CONTEXT_CELL:
-    draw_interior_cell(row, col, x_pos, y_pos, width, height);
-    break;
-  case CONTEXT_STARTPAGE:  // table about to redraw
-  case CONTEXT_RC_RESIZE:
+  case CONTEXT_CELL: {
+    Cell cell{};
+    cell.full_box = {x_pos, y_pos, width, height};
+    cell.text_box = {x_pos + 3, y_pos + 3, width - 6, height - 6};
+    // Eventually there will be logic to generate this value
+    cell.text = "100";
+    cell.box_color = (is_selected(row, col) ? FL_YELLOW : FL_WHITE);
+    cell.alignment = FL_ALIGN_RIGHT;
+    draw_generic_cell(cell);
+  } break;
   default:
     return;
   }

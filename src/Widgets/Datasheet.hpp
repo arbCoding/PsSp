@@ -12,12 +12,37 @@
 #include <spdlog/spdlog.h>
 /* Standard library
    https://en.cppreference.com/w/cpp/standard_library */
-// std::unique_ptr
-// #include <memory>
 // std::ostringstream
 #include <sstream>
+// std::string
+#include <string>
 
 namespace pssp {
+struct Geometry {
+  // cppcheck-suppress unusedStructMember
+  int x_pos{0};
+  // cppcheck-suppress unusedStructMember
+  int y_pos{0};
+  // cppcheck-suppress unusedStructMember
+  int width{0};
+  // cppcheck-suppress unusedStructMember
+  int height{0};
+};
+
+struct Cell {
+  // cppcheck-suppress unusedStructMember
+  Geometry full_box{};
+  // cppcheck-suppress unusedStructMember
+  Geometry text_box{};
+  Fl_Font font{FL_HELVETICA};
+  Fl_Color text_color{FL_BLACK};
+  Fl_Color box_color{FL_GRAY};
+  Fl_Boxtype box_type{FL_THIN_UP_BOX};
+  Fl_Align alignment{FL_ALIGN_CENTER};
+  // cppcheck-suppress unusedStructMember
+  std::string text{""};
+};
+
 class Datasheet : public Fl_Table {
 public:
   Datasheet();
@@ -27,12 +52,9 @@ protected:
                  int y_pos = 0, int width = 0, int height = 0) FL_OVERRIDE;
 
 private:
-  void draw_col_header_cell(int col, int x_pos, int y_pos, int width,
-                            int height);
-  void draw_row_header_cell(int row, int x_pos, int y_pos, int width,
-                            int height);
-  void draw_interior_cell(int row, int col, int x_pos, int y_pos, int width,
-                          int height);
+  void draw_generic_cell(const Cell &cell);
+  void draw_header_cell(int x_pos, int y_pos, int width, int height,
+                        const std::string &text);
 };
 }  // namespace pssp
 
