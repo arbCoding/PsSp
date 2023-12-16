@@ -48,6 +48,7 @@ private:
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       name_{"PsSp - Passive-source Seismic-processing"};
+  static void prevent_escape(Fl_Widget*, void*); // MwuaHaHaha
 };
 }  // namespace pssp
 #endif

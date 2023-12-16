@@ -4,6 +4,7 @@
 
 namespace pssp {
 Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
+  this->callback(prevent_escape);
   make_tty();
   spdlog::trace("Building \033[1mMain_Window\033[0m.");
   this->begin();
@@ -131,5 +132,13 @@ void Main_Window::about_cb(Fl_Widget *menu, void *junk) {
   (void)junk;
   auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
   window->show_about();
+}
+
+// Disable escape key closing this window
+void Main_Window::prevent_escape(Fl_Widget*, void*) {
+  if ((Fl::event() == FL_SHORTCUT) && (Fl::event_key() == FL_Escape)) {
+    return; // ignore Escape
+  }
+  exit(0);
 }
 }  // namespace pssp
