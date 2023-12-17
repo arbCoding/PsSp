@@ -27,7 +27,7 @@ project(PsSp
   HOMEPAGE_URL https://arbCoding.github.io/PsSp
   VERSION 0.2.0)
 
-include_directories(${PsSp_SOURCE_DIR}/src)
+include_directories(${PsSp_SOURCE_DIR}/include)
 #-------------------------------------------------------------------------------
 # PsSp program
 #-------------------------------------------------------------------------------

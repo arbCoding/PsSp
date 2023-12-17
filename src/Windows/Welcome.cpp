@@ -1,6 +1,6 @@
 // Copyright 2023 Alexander R. Blanchette
 
-#include "Welcome.hpp"
+#include "PsSp/Windows/Welcome.hpp"
 
 namespace pssp {
 Welcome_Window::Welcome_Window() : Fl_Window(0, 0, 0, 0, "Welcome!") {

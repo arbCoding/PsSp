@@ -3,9 +3,9 @@
 #ifndef PSSP_ABOUT_WINDOW_HPP_20231214_1411
 #define PSSP_ABOUT_WINDOW_HPP_20231214_1411
 #pragma once
-
+// PsSp
+#include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
-#include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Window.H>

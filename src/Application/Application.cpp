@@ -1,6 +1,6 @@
 // Copyright 2023 Alexander R. Blanchette
 
-#include "Application.hpp"
+#include "PsSp/Application/Application.hpp"
 
 namespace pssp {
 Application::Application() {

@@ -1,18 +1,15 @@
 // Copyright 2023 Alexander R. Blanchette
 
-#include "About.hpp"
+#include "PsSp/Windows/About.hpp"
 
 namespace pssp {
 About_Window::About_Window() : Fl_Window(0, 0, 0, 0, "About") {
   this->begin();
-  int x_start{};
-  int y_start{};
-  int width{};
-  int height{};
-  Fl::screen_work_area(x_start, y_start, width, height);
-  x_start = ((width - about::width) / 2);
-  y_start = ((height - about::height) / 2);
-  this->resize(x_start, y_start, about::width, about::height);
+  structs::Geometry geo{};
+  Fl::screen_work_area(geo.x_pos, geo.y_pos, geo.width, geo.height);
+  geo.x_pos = ((geo.width - about::width) / 2);
+  geo.y_pos = ((geo.height - about::height) / 2);
+  this->resize(geo.x_pos, geo.y_pos, about::width, about::height);
   this->box(FL_BORDER_BOX);
   set_modal();
   message = std::make_unique<Fl_Box>(about::width - about::text_width, 0,

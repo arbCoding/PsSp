@@ -3,13 +3,13 @@
 #ifndef PSSP_MAIN_WINDOW_HPP_20231213_1003
 #define PSSP_MAIN_WINDOW_HPP_20231213_1003
 #pragma once
-
-#include "../Logging/Console_Sink.hpp"
-#include "../Widgets/Datasheet.hpp"
-#include "../Widgets/Status_Bar.hpp"
-#include "About.hpp"
+// PsSp
+#include "PsSp/Logging/Console_Sink.hpp"
+#include "PsSp/Utility/Structs.hpp"
+#include "PsSp/Widgets/Datasheet.hpp"
+#include "PsSp/Widgets/Status_Bar.hpp"
+#include "PsSp/Windows/About.hpp"
 // fltk https://www.fltk.org/doc-1.4
-#include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Grid.H>
 #include <FL/Fl_Sys_Menu_Bar.H>
@@ -26,6 +26,11 @@
 #include <string>
 
 namespace pssp {
+namespace mw {
+constexpr int minimum_x{300};
+constexpr int minimum_y{300};
+constexpr int menu_height{25};
+}  // namespace mw
 class Main_Window : public Fl_Double_Window {
 public:
   Main_Window();
@@ -33,7 +38,7 @@ public:
   void show_about();
 
 private:
-  Fl_Sys_Menu_Bar menu{0, 0, 0, 25, nullptr};
+  Fl_Sys_Menu_Bar menu{0, 0, 0, mw::menu_height, nullptr};
   void make_menu();
   void make_tty();
   std::unique_ptr<Status_Bar> status_bar_{};

@@ -3,9 +3,9 @@
 #ifndef PSSP_STATUS_BAR_HPP_20231215_1002
 #define PSSP_STATUS_BAR_HPP_20231215_1002
 #pragma once
-
+// PsSp
+#include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
-#include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Grid.H>
 // spdlog https://github.com/gabime/spdlog

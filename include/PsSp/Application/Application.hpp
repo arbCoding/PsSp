@@ -3,9 +3,9 @@
 #ifndef PSSP_APPLICATION_HPP_20231213_1048
 #define PSSP_APPLICATION_HPP_20231213_1048
 #pragma once
-// Windows
-#include "../Windows/Main.hpp"
-#include "../Windows/Welcome.hpp"
+// PsSp
+#include "PsSp/Windows/Main.hpp"
+#include "PsSp/Windows/Welcome.hpp"
 // spdlog  https://github.com/gabime/spdlog
 #include <spdlog/spdlog.h>
 // Standard library

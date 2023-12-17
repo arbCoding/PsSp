@@ -42,8 +42,12 @@ format_lint_dir() {
     done
 }
 
-dir_list=("$base/src" "$base/src/Windows" "$base/src/Application" \
-    "$base/src/Logging" "$base/src/Widgets")
+dir_list=("$base/src" \
+    "$base/src/Application" "$base/include/PsSp/Application" \
+    "$base/src/Widgets" "$base/include/PsSp/Widgets" \
+    "$base/src/Windows" "$base/include/PsSp/Windows" \
+    "$base/include/PsSp/Logging" \
+    "$base/include/PsSp/Utility")
 
 for dir in "${dir_list[@]}"; do
     echo -e "Scanning $dir\n"

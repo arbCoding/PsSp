@@ -1,10 +1,8 @@
 // Copyright 2023 Alexander R. Blanchette
 
-// Program main window
-#include "Application/Application.hpp"
-// #include "Logging/Console_Sink.hpp"
+// PsSp
+#include "PsSp/Application/Application.hpp"
 // fltk https://www.fltk.org/doc-1.4
-#include <FL/Fl.H>
 // spdlog https://github.com/gabime/spdlog
 #include <spdlog/spdlog.h>
 // Standard library

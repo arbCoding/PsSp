@@ -4,7 +4,6 @@
 #define PSSP_CONSOLE_SINK_HPP_20231214_0805
 #pragma once
 // fltk https://www.fltk.org/doc-1.4
-#include <FL/Fl.H>
 #include <FL/Fl_Terminal.H>
 // spdlog https://github.com/gabime/spdlog
 #include <spdlog/details/null_mutex.h>

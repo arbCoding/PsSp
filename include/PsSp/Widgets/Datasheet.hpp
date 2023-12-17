@@ -3,7 +3,8 @@
 #ifndef PSSP_DATASHEET_HPP_20231215_1255
 #define PSSP_DATASHEET_HPP_20231215_1255
 #pragma once
-
+// PsSp
+#include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
@@ -16,6 +17,7 @@
 #include <spdlog/spdlog.h>
 // Standard library
 //   https://en.cppreference.com/w/cpp/standard_library
+#include <array>
 // std::unique_ptr
 #include <memory>
 // std::ostringstream
@@ -25,34 +27,36 @@
 
 namespace pssp {
 namespace datasheet {
-// Temporary limits for prototyping the datasheet
-constexpr int max_row{30};
-constexpr int max_col{30};
-const std::string edit_chars{"0123456789+-\r\n"};
-// May want to move Geometry object into full pssp namespace at some point
-struct Geometry {
+struct Spec {
   // cppcheck-suppress unusedStructMember
-  int x_pos{0};
+  int height{0};
   // cppcheck-suppress unusedStructMember
-  int y_pos{0};
+  int header_height{0};
   // cppcheck-suppress unusedStructMember
   int width{0};
   // cppcheck-suppress unusedStructMember
-  int height{0};
+  int header_width{0};
 };
-
+constexpr Spec spec{25, 25, 25, 70};
+constexpr int font_size{14};
+constexpr int cell_buffer{3};
+// Temporary limits for prototyping the datasheet
+constexpr int max_row{30};
+constexpr int max_col{30};
+constexpr int max_chars{5};
+const std::string edit_chars{"0123456789+-\r\n"};
 struct Cell {
   // cppcheck-suppress unusedStructMember
-  Geometry full_box{};
+  structs::Geometry full_box{};
   // cppcheck-suppress unusedStructMember
-  Geometry text_box{};
+  structs::Geometry text_box{};
   Fl_Font font{FL_HELVETICA};
   Fl_Color text_color{FL_BLACK};
   Fl_Color box_color{FL_GRAY};
   Fl_Boxtype box_type{FL_THIN_UP_BOX};
   Fl_Align alignment{FL_ALIGN_CENTER};
   // cppcheck-suppress unusedStructMember
-  std::string text{""};
+  std::string text{};
 };
 }  // namespace datasheet
 
@@ -71,13 +75,15 @@ protected:
   void event_callback2();
 
   // table event callback (static) [trick to use event_callback2]
-  static void event_callback(Fl_Widget *, void *v) {
-    reinterpret_cast<Datasheet *>(v)->event_callback2();
+  static void event_callback(Fl_Widget *widget, void *datasheet) {
+    (void)widget;
+    reinterpret_cast<Datasheet *>(datasheet)->event_callback2();
   }
 
   // Input callback to hide value
-  static void input_cb(Fl_Widget *, void *v) {
-    reinterpret_cast<Datasheet *>(v)->set_value_hide();
+  static void input_cb(Fl_Widget *widget, void *datasheet) {
+    (void)widget;
+    reinterpret_cast<Datasheet *>(datasheet)->set_value_hide();
   }
 
 private:
@@ -86,12 +92,11 @@ private:
   // cppcheck-suppress unusedStructMember
   int edit_col{0};
   std::unique_ptr<Fl_Int_Input> input{};
-  // cppcheck-suppress unusedStructMember
   // Temporary while proto-typing editing
-  int values[datasheet::max_row][datasheet::max_col];
-  void draw_generic_cell(const datasheet::Cell &cell);
-  void draw_header_cell(int x_pos, int y_pos, int width, int height,
-                        const std::string &text);
+  // cppcheck-suppress unusedStructMember
+  std::array<std::array<int, datasheet::max_row>, datasheet::max_col> values{};
+  static void draw_generic_cell(const datasheet::Cell &cell);
+  static void draw_header_cell(structs::Geometry *geo, const std::string &text);
 };
 }  // namespace pssp
 

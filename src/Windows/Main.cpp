@@ -1,6 +1,6 @@
 // Copyright 2023 Alexander R. Blanchette
 
-#include "Main.hpp"
+#include "PsSp/Windows/Main.hpp"
 
 namespace pssp {
 Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
@@ -10,34 +10,38 @@ Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
   this->begin();
   resizable(this);
   // Minimum window size width/height
-  this->size_range(300, 300);
-  int x_start{};
-  int y_start{};
-  int width{};
-  int height{};
-  Fl::screen_work_area(x_start, y_start, width, height);
-  this->resize(x_start, y_start, width, height);
+  this->size_range(mw::minimum_x, mw::minimum_y);
+  structs::Geometry geo{};
+  Fl::screen_work_area(geo.x_pos, geo.y_pos, geo.width, geo.height);
+  this->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
   make_menu();
-  menu.resize(0, 0, width, menu.h());
+  menu.resize(0, 0, geo.width, menu.h());
   status_bar_ = std::make_unique<Status_Bar>(this->h(), this->w(), menu.h());
 #if defined(__APPLE__)
-  int menu_shift{0};
+  const int menu_shift{0};
 #else
-  int menu_shift{menu.h()};
+  const int menu_shift{menu.h()};
 #endif
   gridspace_ = std::make_unique<Fl_Grid>(0, menu_shift, this->w(),
                                          this->h() - menu_shift - menu.h());
   gridspace_->begin();
   gridspace_->add(debug_tty.get());
   gridspace_->show_grid(0);  // 1 to show guide lines
-  gridspace_->layout(10, 10, 1, 1);
+  constexpr structs::Grid layout{10, 10, 1, 1};
+  gridspace_->layout(layout.row, layout.col, layout.row_span, layout.col_span);
   list_ = std::make_unique<Fl_Box>(0, 0, 0, 0, "List");
   list_->box(FL_BORDER_BOX);
   list_->color(FL_WHITE);
   datasheet_ = std::make_unique<Datasheet>();
-  gridspace_->widget(debug_tty.get(), 7, 0, 3, 10);
-  gridspace_->widget(list_.get(), 0, 0, 7, 2);
-  gridspace_->widget(datasheet_.get(), 0, 2, 7, 8);
+  constexpr structs::Grid tty_grid{7, 0, 3, 10};
+  gridspace_->widget(debug_tty.get(), tty_grid.row, tty_grid.col,
+                     tty_grid.row_span, tty_grid.col_span);
+  constexpr structs::Grid list_grid{0, 0, 7, 2};
+  gridspace_->widget(list_.get(), list_grid.row, list_grid.col,
+                     list_grid.row_span, list_grid.col_span);
+  constexpr structs::Grid ds_grid{0, 2, 7, 8};
+  gridspace_->widget(datasheet_.get(), ds_grid.row, ds_grid.col,
+                     ds_grid.row_span, ds_grid.col_span);
   gridspace_->end();
   this->end();
   this->resizable(status_bar_.get());
@@ -139,7 +143,9 @@ void Main_Window::about_cb(Fl_Widget *menu, void *junk) {
 }
 
 // Disable escape key closing this window
-void Main_Window::prevent_escape(Fl_Widget *, void *) {
+void Main_Window::prevent_escape(Fl_Widget *caller, void *data) {
+  (void)caller;
+  (void)data;
   if ((Fl::event() == FL_SHORTCUT) && (Fl::event_key() == FL_Escape)) {
     return;  // ignore Escape
   }
