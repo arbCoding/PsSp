@@ -8,7 +8,7 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   // trick to use event_callback2
   callback(&event_callback, reinterpret_cast<void *>(this));
   this->begin();
-  this->when(FL_WHEN_NOT_CHANGED | when());
+  this->when(FL_WHEN_NOT_CHANGED | this->when());
   input = std::make_unique<Fl_Int_Input>(0, 0, 0, 0);
   // Hide until needed
   input->hide();
@@ -25,14 +25,19 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
       values[row][col] = col + (row * datasheet::max_row);
     }
   }
+  constexpr datasheet::Spec spec{25, 25, 25, 70};
   row_header(1);
-  row_header_width(datasheet::spec.header_width);
-  row_height_all(datasheet::spec.height);
-  rows(datasheet::max_row);
+  row_header_width(spec.header_width);
+  row_height_all(spec.height);
+  // I know this seems backwards, but this is defining the size of the rows
+  // (the number of columns)
+  rows(datasheet::max_col);
   col_header(1);
-  col_header_height(datasheet::spec.header_height);
-  col_width_all(datasheet::spec.width);
-  cols(datasheet::max_col);
+  col_header_height(spec.header_height);
+  col_width_all(spec.width);
+  // I know this seems backwards, but this is defining the size of the columns
+  // (the number of rows)
+  cols(datasheet::max_row);
   row_resize(1);
   col_resize(1);
   set_selection(0, 0, 0, 0);
@@ -147,6 +152,8 @@ void Datasheet::event_callback2() {
           start_editing(row, col);
         }
       }
+      break;
+    default:
       break;
     }
   } break;

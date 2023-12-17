@@ -25,6 +25,16 @@
 // std::string
 #include <string>
 
+// Note: the debug build of this on my old hp laptop
+// can easily handle a datasheet 138*1'000'000 (all integers!)
+// (138 is an upper-limit on the number of sac values
+// that would be in the datasheet for a trace) (~1 second startup)
+//
+// With 10'000'000 rows (all itnegers!) ~12 second startup (release ~3 seconds)
+//
+// That is far larger than any project is likely to be (on the upper-end
+// I expect maybe 100'000, which would be a HUGE project).
+
 namespace pssp {
 namespace datasheet {
 struct Spec {
@@ -37,13 +47,14 @@ struct Spec {
   // cppcheck-suppress unusedStructMember
   int header_width{0};
 };
-constexpr Spec spec{25, 25, 25, 70};
 constexpr int font_size{14};
 constexpr int cell_buffer{3};
+// This is raw number of header + footer + one for each data vector
+// in sac-format (which is an over-estimate of the number of rows!)
+constexpr int max_row{39 + 22 + 26 + 4 + 23 + 2 + 22};
 // Temporary limits for prototyping the datasheet
-constexpr int max_row{30};
-constexpr int max_col{30};
-constexpr int max_chars{5};
+constexpr int max_col{100'000};
+constexpr int max_chars{10};
 const std::string edit_chars{"0123456789+-\r\n"};
 struct Cell {
   // cppcheck-suppress unusedStructMember

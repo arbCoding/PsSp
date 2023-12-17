@@ -8,6 +8,6 @@ Application::Application() {
   main_window->show();
   welcome_window = std::make_unique<Welcome_Window>();
   welcome_window->show();
-  spdlog::info("Application ready.");
+  spdlog::trace("Application ready.");
 }
 }  // namespace pssp
