@@ -4,6 +4,8 @@
 #define PSSP_DATASHEET_HPP_20231215_1255
 #pragma once
 // PsSp
+#include "PsSp/Utility/Constants.hpp"
+#include "PsSp/Utility/Enums.hpp"
 #include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
@@ -11,6 +13,8 @@
 // This is needed for the window() function to prevent
 // disappearing cursors
 #include <FL/Fl_Double_Window.H>
+#include <FL/Fl_Float_Input.H>
+#include <FL/Fl_Input.H>
 #include <FL/Fl_Int_Input.H>
 #include <FL/Fl_Table.H>
 // spdlog https://github.com/gabime/spdlog
@@ -30,10 +34,18 @@
 // (138 is an upper-limit on the number of sac values
 // that would be in the datasheet for a trace) (~1 second startup)
 //
-// With 10'000'000 rows (all itnegers!) ~12 second startup (release ~3 seconds)
+// With 10'000'000 rows (all integers!) ~12 second startup (release ~3 seconds)
 //
 // That is far larger than any project is likely to be (on the upper-end
 // I expect maybe 100'000, which would be a HUGE project).
+
+// Updated Notes:
+// With things split between string, int, float, double, bool the way it will
+// be in the actual workflow
+// It takes roughly 10 seconds for the debug version (clang) to boot up
+// (and about as long to close)
+// (When everything was strings it wouldn't boot, not enough ram)
+// Release version (clang) is ~5 seconds to boot up, almost instant close
 
 namespace pssp {
 namespace datasheet {
@@ -51,9 +63,9 @@ constexpr int font_size{14};
 constexpr int cell_buffer{3};
 // This is raw number of header + footer + one for each data vector
 // in sac-format (which is an over-estimate of the number of rows!)
-constexpr int max_row{39 + 22 + 26 + 4 + 23 + 2 + 22};
-// Temporary limits for prototyping the datasheet
-constexpr int max_col{100'000};
+constexpr int max_row{10'000'000};
+// Number of parameter for a sac trace
+constexpr int max_col{num_fields};
 constexpr int max_chars{10};
 const std::string edit_chars{"0123456789+-\r\n"};
 struct Cell {
@@ -102,10 +114,29 @@ private:
   int edit_row{0};
   // cppcheck-suppress unusedStructMember
   int edit_col{0};
-  std::unique_ptr<Fl_Int_Input> input{};
+  // cppcheck-suppress unusedStructMember
+  std::unique_ptr<Fl_Input> input{};
+  std::unique_ptr<Fl_Int_Input> input_int{};
+  std::unique_ptr<Fl_Float_Input> input_float{};
   // Temporary while proto-typing editing
   // cppcheck-suppress unusedStructMember
-  std::array<std::array<int, datasheet::max_row>, datasheet::max_col> values{};
+  std::array<std::array<std::string, constants::sac_string>, datasheet::max_row>
+      values_string{};
+  // cppcheck-suppress unusedStructMember
+  std::array<std::array<float, constants::sac_float>, datasheet::max_row>
+      values_float{};
+  // cppcheck-suppress unusedStructMember
+  std::array<std::array<double, constants::sac_double>, datasheet::max_row>
+      values_double{};
+  // cppcheck-suppress unusedStructMember
+  std::array<std::array<int, constants::sac_int>, datasheet::max_row>
+      values_int{};
+  // cppcheck-suppress unusedStructMember
+  std::array<std::array<bool, constants::sac_bool>, datasheet::max_row>
+      values_bool{};
+  // cppcheck-suppress unusedStructMember
+  // std::array<std::array<std::string, datasheet::max_col>, datasheet::max_row>
+  // values{};
   static void draw_generic_cell(const datasheet::Cell &cell);
   static void draw_header_cell(structs::Geometry *geo, const std::string &text);
 };

@@ -9,6 +9,12 @@ The Application is zero bytes.
 Doesn't provide the .tar.gz nor the .sh
 ** TODO System Menu Tray :macOS:
 Doesn't show surficial options (e.g. About and Help).
+** DONE Table swallows all event input (blocks shortcuts)
+When in a cell context, the table takes ALL keyboard input (disables shortcuts).
+Partial fix (works on linux, not macOS, unknown on Windows) is from
+checking event_state() == FL_CTRL. Maybe I need to check if it is also FL_COMMAND? That shouldn't be necessary because they're suppossed to be aliases for each other.
+
+Turns out that FL_COMMAND wa indeed the fix. Need to test on Windows.
 * Documentation :documentation:
 ** TODO Introduction
 ** TODO Quickstart

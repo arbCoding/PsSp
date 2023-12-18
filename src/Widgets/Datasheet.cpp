@@ -9,10 +9,16 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   callback(&event_callback, reinterpret_cast<void *>(this));
   this->begin();
   this->when(FL_WHEN_NOT_CHANGED | this->when());
-  input = std::make_unique<Fl_Int_Input>(0, 0, 0, 0);
+  input = std::make_unique<Fl_Input>(0, 0, 0, 0);
+  input_int = std::make_unique<Fl_Int_Input>(0, 0, 0, 0);
+  input_float = std::make_unique<Fl_Float_Input>(0, 0, 0, 0);
   // Hide until needed
   input->hide();
+  input_int->hide();
+  input_float->hide();
   input->callback(input_cb, reinterpret_cast<void *>(this));
+  input_int->callback(input_cb, reinterpret_cast<void *>(this));
+  input_float->callback(input_cb, reinterpret_cast<void *>(this));
   // callback trigger condition
   input->when(FL_WHEN_ENTER_KEY_ALWAYS);
   input->maximum_size(datasheet::max_chars);
@@ -21,23 +27,40 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
   for (int col{0}; col < datasheet::max_col; ++col) {
-    for (int row{0}; row < datasheet::max_row; ++row) {
-      values[row][col] = col + (row * datasheet::max_row);
+    const trace_info &info{field_info.at(field_num.at(col))};
+    if (info.type == type_map_string.at("string")) {
+      for (int row{0}; row < constants::sac_string; ++row) {
+        std::ostringstream oss{};
+        oss << col + (row * datasheet::max_col);
+        values_string[row][info.array_col] = oss.str();
+      }
+    } else if (info.type == type_map_string.at("int")) {
+      for (int row{0}; row < constants::sac_int; ++row) {
+        values_int[row][info.array_col] = col + (row * datasheet::max_col);
+      }
+    } else if (info.type == type_map_string.at("float")) {
+      for (int row{0}; row < constants::sac_float; ++row) {
+        values_float[row][info.array_col] = col + (row * datasheet::max_col);
+      }
+    } else if (info.type == type_map_string.at("double")) {
+      for (int row{0}; row < constants::sac_double; ++row) {
+        values_double[row][info.array_col] = col + (row * datasheet::max_col);
+      }
+    } else if (info.type == type_map_string.at("bool")) {
+      for (int row{0}; row < constants::sac_bool; ++row) {
+        values_bool[row][info.array_col] = false;
+      }
     }
   }
   constexpr datasheet::Spec spec{25, 25, 25, 70};
   row_header(1);
   row_header_width(spec.header_width);
   row_height_all(spec.height);
-  // I know this seems backwards, but this is defining the size of the rows
-  // (the number of columns)
-  rows(datasheet::max_col);
+  rows(datasheet::max_row);
   col_header(1);
   col_header_height(spec.header_height);
   col_width_all(spec.width);
-  // I know this seems backwards, but this is defining the size of the columns
-  // (the number of rows)
-  cols(datasheet::max_row);
+  cols(datasheet::max_col);
   row_resize(1);
   col_resize(1);
   set_selection(0, 0, 0, 0);
@@ -46,11 +69,29 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
 }
 
 void Datasheet::set_value_hide() {
-  values[edit_row][edit_col] = std::stoi(input->value());
-  input->hide();
+  const trace_info &info{field_info.at(field_num.at(edit_col))};
+  if (info.type == type_map_string.at("string")) {
+    values_string[edit_row][info.array_col] = input->value();
+    input->hide();
+  } else if (info.type == type_map_string.at("int")) {
+    values_int[edit_row][info.array_col] = std::stoi(input_int->value());
+    input_int->hide();
+  } else if (info.type == type_map_string.at("float")) {
+    values_float[edit_row][info.array_col] = std::stof(input_float->value());
+    input_float->hide();
+  } else if (info.type == type_map_string.at("double")) {
+    values_double[edit_row][info.array_col] = std::stod(input_float->value());
+    input_float->hide();
+  } else if (info.type == type_map_string.at("bool")) {
+    values_bool[edit_row][info.array_col] = input->value();
+    input->hide();
+  }
   window()->cursor(FL_CURSOR_DEFAULT);  // deals with disappearing cursor
 }
 
+// This technically works, but using exclusively std::string is super
+// inefficient. I should have arrays for each unique type (int, float, double,
+// bool, string) to make things more efficient (bool should be a checkbox...)
 void Datasheet::start_editing(int row, int col) {
   edit_row = row;
   edit_col = col;
@@ -58,17 +99,52 @@ void Datasheet::start_editing(int row, int col) {
   structs::Geometry geo{};
   find_cell(CONTEXT_CELL, row, col, geo.x_pos, geo.y_pos, geo.width,
             geo.height);
-  input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
-  std::ostringstream oss{};
-  oss << values[row][col];
-  input->value(oss.str().c_str());
-  input->insert_position(0, static_cast<int>(oss.str().size()));
-  input->show();
-  input->take_focus();
+  const trace_info &info{field_info.at(field_num.at(col))};
+  if (info.type == type_map_string.at("string")) {
+    input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
+    input->value(values_string[row][info.array_col].c_str());
+    input->insert_position(
+        0, static_cast<int>(values_string[row][info.array_col].size()));
+    input->show();
+    input->take_focus();
+  } else if (info.type == type_map_string.at("int")) {
+    input_int->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
+    std::ostringstream oss{};
+    oss << values_int[row][info.array_col];
+    input_int->value(oss.str().c_str());
+    input_int->insert_position(0, static_cast<int>(oss.str().size()));
+    input_int->show();
+    input_int->take_focus();
+  } else if (info.type == type_map_string.at("float")) {
+    input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
+    std::ostringstream oss{};
+    oss << values_float[row][info.array_col];
+    input_float->value(oss.str().c_str());
+    input_float->insert_position(0, static_cast<int>(oss.str().size()));
+    input_float->show();
+    input_float->take_focus();
+  } else if (info.type == type_map_string.at("double")) {
+    input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
+    std::ostringstream oss{};
+    oss << values_double[row][info.array_col];
+    input_float->value(oss.str().c_str());
+    input_float->insert_position(0, static_cast<int>(oss.str().size()));
+    input_float->show();
+    input_float->take_focus();
+  } else if (info.type == type_map_string.at("bool")) {
+    input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
+    std::ostringstream oss{};
+    oss << values_bool[row][info.array_col];
+    input->value(oss.str().c_str());
+    input->insert_position(0, static_cast<int>(oss.str().size()));
+    input->show();
+    input->take_focus();
+  }
 }
 
 void Datasheet::done_editing() {
-  if (input->visible() != 0) {
+  if (input->visible() != 0 || input_int->visible() != 0 ||
+      input_float->visible() != 0) {
     set_value_hide();
     edit_row = 0;
     edit_col = 0;
@@ -105,10 +181,7 @@ void Datasheet::draw_cell(const TableContext context, const int row,
   switch (context) {
   case CONTEXT_COL_HEADER: {
     structs::Geometry geo{x_pos, y_pos, width, height};
-    std::ostringstream oss{};
-    oss << 'A';
-    oss << col;
-    draw_header_cell(&geo, oss.str());
+    draw_header_cell(&geo, field_info.at(field_num.at(col)).name);
   } break;
   case CONTEXT_ROW_HEADER: {
     structs::Geometry geo{x_pos, y_pos, width, height};
@@ -121,8 +194,26 @@ void Datasheet::draw_cell(const TableContext context, const int row,
                      y_pos + datasheet::cell_buffer,
                      width - (2 * datasheet::cell_buffer),
                      height - (2 * datasheet::cell_buffer)};
-    // Eventually there will be logic to generate this value
-    cell.text = std::to_string(values[row][col]);
+    const trace_info &info{field_info.at(field_num.at(col))};
+    if (info.type == type_map_string.at("string")) {
+      cell.text = values_string[row][info.array_col];
+    } else if (info.type == type_map_string.at("int")) {
+      std::ostringstream oss{};
+      oss << values_int[row][info.array_col];
+      cell.text = oss.str();
+    } else if (info.type == type_map_string.at("float")) {
+      std::ostringstream oss{};
+      oss << values_float[row][info.array_col];
+      cell.text = oss.str();
+    } else if (info.type == type_map_string.at("double")) {
+      std::ostringstream oss{};
+      oss << values_double[row][info.array_col];
+      cell.text = oss.str();
+    } else if (info.type == type_map_string.at("bool")) {
+      std::ostringstream oss{};
+      oss << values_bool[row][info.array_col];
+      cell.text = oss.str();
+    }
     cell.box_color = ((is_selected(row, col) != 0) ? FL_YELLOW : FL_WHITE);
     cell.alignment = FL_ALIGN_RIGHT;
     draw_generic_cell(cell);
@@ -144,10 +235,10 @@ void Datasheet::event_callback2() {
       break;
     case FL_KEYBOARD:
       done_editing();
-      if (Fl::event_state() == FL_CTRL) {
+      if (Fl::event_state() == FL_COMMAND) {
         parent()->take_focus();
-      } else if (datasheet::edit_chars.find(Fl::e_text[0])
-                 != std::string::npos) {
+      } else if (datasheet::edit_chars.find(Fl::e_text[0]) !=
+                 std::string::npos) {
         start_editing(row, col);
       }
       break;
