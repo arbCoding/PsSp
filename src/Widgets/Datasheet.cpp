@@ -17,7 +17,7 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   input->when(FL_WHEN_ENTER_KEY_ALWAYS);
   input->maximum_size(datasheet::max_chars);
   input->color(FL_YELLOW);
-  tab_cell_nav(1);  // enable tab navigation
+  this->tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
   for (int col{0}; col < datasheet::max_col; ++col) {
@@ -132,9 +132,6 @@ void Datasheet::draw_cell(const TableContext context, const int row,
   }
 }
 
-// Gets called when someone clicks somewhere on the table
-// This blocks shortcuts from reaching the main app if it is the focus
-// This needs to be broken up into more organized functions
 void Datasheet::event_callback2() {
   int row{callback_row()};
   int col{callback_col()};
@@ -147,10 +144,11 @@ void Datasheet::event_callback2() {
       break;
     case FL_KEYBOARD:
       done_editing();
-      if (Fl::event() != FL_SHORTCUT || Fl::event_key() != FL_Escape) {
-        if (datasheet::edit_chars.find(Fl::e_text[0]) != std::string::npos) {
-          start_editing(row, col);
-        }
+      if (Fl::event_state() == FL_CTRL) {
+        parent()->take_focus();
+      } else if (datasheet::edit_chars.find(Fl::e_text[0])
+                 != std::string::npos) {
+        start_editing(row, col);
       }
       break;
     default:

@@ -49,12 +49,13 @@ private:
   std::unique_ptr<Fl_Terminal> debug_tty{};
   std::unique_ptr<About_Window> about_window_{};
   std::unique_ptr<Datasheet> datasheet_{};
-  static void quit_cb(Fl_Widget *menu, void *junk);
   static void about_cb(Fl_Widget *menu, void *junk);
+  static void quit_cb(Fl_Widget *menu, void *junk);
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       name_{"PsSp - Passive-source Seismic-processing"};
   static void prevent_escape(Fl_Widget *, void *);  // MwuaHaHaha
 };
 }  // namespace pssp
+
 #endif
