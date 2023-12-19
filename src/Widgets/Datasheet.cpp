@@ -13,16 +13,18 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   this->tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
-  make_sheet();
+  sheet_manager = std::make_unique<SheetManager>();
+  max_col = sheet_manager->cols();
+  max_row = sheet_manager->rows();
   constexpr datasheet::Spec spec{25, 25, 25, 70};
   row_header(1);
   row_header_width(spec.header_width);
   row_height_all(spec.height);
-  rows(datasheet::max_row);
+  rows(max_row);
   col_header(1);
   col_header_height(spec.header_height);
   col_width_all(spec.width);
-  cols(datasheet::max_col);
+  cols(max_col);
   row_resize(1);
   col_resize(1);
   set_selection(0, 0, 0, 0);
@@ -58,84 +60,32 @@ void Datasheet::make_inputs() {
   input_float->color(FL_YELLOW);
 }
 
-void Datasheet::make_string_column(const trace_info &info, const int col) {
-  for (int row{0}; row < constants::sac_string; ++row) {
-    std::ostringstream oss{};
-    oss << col + (row * datasheet::max_col);
-    values_string[row][info.array_col] = oss.str();
-  }
-}
-
-void Datasheet::make_int_column(const trace_info &info, const int col) {
-  for (int row{0}; row < constants::sac_int; ++row) {
-    values_int[row][info.array_col] = col + (row * datasheet::max_col);
-  }
-}
-
-void Datasheet::make_float_column(const trace_info &info, const int col) {
-  for (int row{0}; row < constants::sac_float; ++row) {
-    values_float[row][info.array_col] =
-        static_cast<float>(col + (row * datasheet::max_col));
-  }
-}
-
-void Datasheet::make_double_column(const trace_info &info, const int col) {
-  for (int row{0}; row < constants::sac_double; ++row) {
-    values_double[row][info.array_col] =
-        static_cast<double>(col + (row * datasheet::max_col));
-  }
-}
-
-void Datasheet::make_bool_column(const trace_info &info, const int col) {
-  (void)col;
-  for (int row{0}; row < constants::sac_bool; ++row) {
-    values_bool[row][info.array_col] = false;
-  }
-}
-
-void Datasheet::make_generic_column(const int col) {
-  const trace_info &info{field_info.at(field_num.at(col))};
-  if (info.type == Type::string_) {
-    make_string_column(info, col);
-  } else if (info.type == Type::int_) {
-    make_int_column(info, col);
-  } else if (info.type == Type::float_) {
-    make_float_column(info, col);
-  } else if (info.type == Type::double_) {
-    make_double_column(info, col);
-  } else if (info.type == Type::bool_) {
-    make_bool_column(info, col);
-  }
-}
-
-void Datasheet::make_sheet() {
-  for (int col{0}; col < datasheet::max_col; ++col) {
-    make_generic_column(col);
-  }
-}
-
+// The type checking logic should be hidden in SheetManager
+// For now just get functional
+// Since we know the value is always a std::string...
 void Datasheet::set_value_hide() {
-  const trace_info &info{field_info.at(field_num.at(edit_col))};
+  const Field &field{field_num.at(edit_col)};
+  const trace_info &info{field_info.at(field)};
   switch (info.type) {
   case Type::string_:
-    values_string[edit_row][info.array_col] = input->value();
+    sheet_manager->set(edit_row, field, std::string(input->value()));
     input->hide();
     break;
   case Type::int_:
-    values_int[edit_row][info.array_col] = std::stoi(input_int->value());
+    sheet_manager->set(edit_row, field, std::stoi(input_int->value()));
     input_int->hide();
     break;
   case Type::float_:
-    values_float[edit_row][info.array_col] = std::stof(input_float->value());
+    sheet_manager->set(edit_row, field, std::stof(input_float->value()));
     input_float->hide();
     break;
   case Type::double_:
-    values_double[edit_row][info.array_col] = std::stod(input_float->value());
+    sheet_manager->set(edit_row, field, std::stod(input_float->value()));
     input_float->hide();
     break;
   case Type::bool_:
     // This is just junk for prototyping
-    values_bool[edit_row][info.array_col] = (input->value() != nullptr);
+    sheet_manager->set(edit_row, field, (input->value() != nullptr));
     input->hide();
     break;
   default:
@@ -152,18 +102,19 @@ void Datasheet::start_editing(int row, int col) {
   find_cell(CONTEXT_CELL, row, col, geo.x_pos, geo.y_pos, geo.width,
             geo.height);
   // Need to refactor
-  const trace_info &info{field_info.at(field_num.at(col))};
+  const Field &field{field_num.at(col)};
+  const trace_info &info{field_info.at(field)};
   if (info.type == Type::string_) {
     input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
-    input->value(values_string[row][info.array_col].c_str());
+    input->value(sheet_manager->get_string(row, field).c_str());
     input->insert_position(
-        0, static_cast<int>(values_string[row][info.array_col].size()));
+        0, static_cast<int>(sheet_manager->get_string(row, field).size()));
     input->show();
     input->take_focus();
   } else if (info.type == Type::int_) {
     input_int->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
-    oss << values_int[row][info.array_col];
+    oss << sheet_manager->get_int(row, field);
     input_int->value(oss.str().c_str());
     input_int->insert_position(0, static_cast<int>(oss.str().size()));
     input_int->show();
@@ -171,7 +122,7 @@ void Datasheet::start_editing(int row, int col) {
   } else if (info.type == Type::float_) {
     input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
-    oss << values_float[row][info.array_col];
+    oss << sheet_manager->get_float(row, field);
     input_float->value(oss.str().c_str());
     input_float->insert_position(0, static_cast<int>(oss.str().size()));
     input_float->show();
@@ -179,7 +130,7 @@ void Datasheet::start_editing(int row, int col) {
   } else if (info.type == Type::double_) {
     input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
-    oss << values_double[row][info.array_col];
+    oss << sheet_manager->get_double(row, field);
     input_float->value(oss.str().c_str());
     input_float->insert_position(0, static_cast<int>(oss.str().size()));
     input_float->show();
@@ -187,7 +138,7 @@ void Datasheet::start_editing(int row, int col) {
   } else if (info.type == Type::bool_) {
     input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
-    oss << values_bool[row][info.array_col];
+    oss << sheet_manager->get_bool(row, field);
     input->value(oss.str().c_str());
     input->insert_position(0, static_cast<int>(oss.str().size()));
     input->show();
@@ -242,30 +193,32 @@ void Datasheet::draw_cell(const TableContext context, const int row,
     draw_header_cell(&geo, std::to_string(row + 1));
   } break;
   case CONTEXT_CELL: {
+    // This needs to be refactored
     datasheet::Cell cell{};
     cell.full_box = {x_pos, y_pos, width, height};
     cell.text_box = {x_pos + datasheet::cell_buffer,
                      y_pos + datasheet::cell_buffer,
                      width - (2 * datasheet::cell_buffer),
                      height - (2 * datasheet::cell_buffer)};
-    const trace_info &info{field_info.at(field_num.at(col))};
+    const Field &field{field_num.at(col)};
+    const trace_info &info{field_info.at(field)};
     if (info.type == Type::string_) {
-      cell.text = values_string[row][info.array_col];
+      cell.text = sheet_manager->get_string(row, field);
     } else if (info.type == Type::int_) {
       std::ostringstream oss{};
-      oss << values_int[row][info.array_col];
+      oss << sheet_manager->get_int(row, field);
       cell.text = oss.str();
     } else if (info.type == Type::float_) {
       std::ostringstream oss{};
-      oss << values_float[row][info.array_col];
+      oss << sheet_manager->get_float(row, field);
       cell.text = oss.str();
     } else if (info.type == Type::double_) {
       std::ostringstream oss{};
-      oss << values_double[row][info.array_col];
+      oss << sheet_manager->get_double(row, field);
       cell.text = oss.str();
     } else if (info.type == Type::bool_) {
       std::ostringstream oss{};
-      oss << values_bool[row][info.array_col];
+      oss << sheet_manager->get_bool(row, field);
       cell.text = oss.str();
     }
     cell.box_color = ((is_selected(row, col) != 0) ? FL_YELLOW : FL_WHITE);

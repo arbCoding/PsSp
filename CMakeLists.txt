@@ -33,6 +33,7 @@ include_directories(${PsSp_SOURCE_DIR}/include)
 #-------------------------------------------------------------------------------
 set(Sources
   src/main.cpp
+  src/Managers/SheetManager.cpp
   src/Widgets/Datasheet.cpp
   src/Widgets/Status_Bar.cpp
   src/Windows/About.cpp

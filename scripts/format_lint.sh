@@ -44,6 +44,7 @@ format_lint_dir() {
 
 dir_list=("$base/src" \
     "$base/src/Application" "$base/include/PsSp/Application" \
+    "$base/src/Managers" "$base/include/PsSp/Managers" \
     "$base/src/Widgets" "$base/include/PsSp/Widgets" \
     "$base/src/Windows" "$base/include/PsSp/Windows" \
     "$base/include/PsSp/Logging" \
