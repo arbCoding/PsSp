@@ -9,7 +9,7 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   callback(&event_callback, reinterpret_cast<void *>(this));
   this->begin();
   this->when(FL_WHEN_NOT_CHANGED | this->when());
-  make_inputs();
+  input_manager = std::make_unique<InputManager>();
   this->tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
@@ -32,65 +32,48 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Done making \033[1mDatasheet\033[0m.");
 }
 
-// I ought to be able to deal with this using templates.
-void Datasheet::make_inputs() {
-  // Make inputs
-  input = std::make_unique<Fl_Input>(0, 0, 0, 0);
-  input_int = std::make_unique<Fl_Int_Input>(0, 0, 0, 0);
-  input_float = std::make_unique<Fl_Float_Input>(0, 0, 0, 0);
-  // Hide all inputs until needed
-  input->hide();
-  input_int->hide();
-  input_float->hide();
-  // Assign callbacks
-  input->callback(input_cb, reinterpret_cast<void *>(this));
-  input_int->callback(input_cb, reinterpret_cast<void *>(this));
-  input_float->callback(input_cb, reinterpret_cast<void *>(this));
-  // callback trigger condition
-  input->when(FL_WHEN_ENTER_KEY_ALWAYS);
-  input_int->when(FL_WHEN_ENTER_KEY_ALWAYS);
-  input_float->when(FL_WHEN_ENTER_KEY_ALWAYS);
-  // Size limits
-  input->maximum_size(datasheet::max_chars);
-  input_int->maximum_size(datasheet::max_chars);
-  input_float->maximum_size(datasheet::max_chars);
-  // Input color
-  input->color(FL_YELLOW);
-  input_int->color(FL_YELLOW);
-  input_float->color(FL_YELLOW);
-}
-
 // The type checking logic should be hidden in SheetManager
 // For now just get functional
 // Since we know the value is always a std::string...
+// Also, on empty value, the values should be their unset versions defined
+// by the SAC standard (later)
 void Datasheet::set_value_hide() {
   const Field &field{field_num.at(edit_col)};
   const trace_info &info{field_info.at(field)};
   switch (info.type) {
   case Type::string_:
-    sheet_manager->set(edit_row, field, std::string(input->value()));
-    input->hide();
+    sheet_manager->set(edit_row, field, input_manager->value());
     break;
   case Type::int_:
-    sheet_manager->set(edit_row, field, std::stoi(input_int->value()));
-    input_int->hide();
+    if (!input_manager->value().empty()) {
+      sheet_manager->set(edit_row, field, std::stoi(input_manager->value()));
+    } else {
+      sheet_manager->set(edit_row, field, 0);
+    }
     break;
   case Type::float_:
-    sheet_manager->set(edit_row, field, std::stof(input_float->value()));
-    input_float->hide();
+    if (!input_manager->value().empty()) {
+      sheet_manager->set(edit_row, field, std::stof(input_manager->value()));
+    } else {
+      sheet_manager->set(edit_row, field, 0.0F);
+    }
     break;
   case Type::double_:
-    sheet_manager->set(edit_row, field, std::stod(input_float->value()));
-    input_float->hide();
+    if (!input_manager->value().empty()) {
+      sheet_manager->set(edit_row, field, std::stod(input_manager->value()));
+    } else {
+      sheet_manager->set(edit_row, field, 0.0);
+    }
     break;
   case Type::bool_:
     // This is just junk for prototyping
-    sheet_manager->set(edit_row, field, (input->value() != nullptr));
-    input->hide();
+    sheet_manager->set(edit_row, field, !input_manager->value().empty());
     break;
   default:
     break;
   }
+  input_manager->hide();
+  input_manager->modified = false;
   window()->cursor(FL_CURSOR_DEFAULT);  // deals with disappearing cursor
 }
 
@@ -105,50 +88,29 @@ void Datasheet::start_editing(int row, int col) {
   const Field &field{field_num.at(col)};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::string_) {
-    input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
-    input->value(sheet_manager->get_string(row, field).c_str());
-    input->insert_position(
-        0, static_cast<int>(sheet_manager->get_string(row, field).size()));
-    input->show();
-    input->take_focus();
+    input_manager->start_editing(info, geo,
+                                 sheet_manager->get_string(row, field));
   } else if (info.type == Type::int_) {
-    input_int->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
     oss << sheet_manager->get_int(row, field);
-    input_int->value(oss.str().c_str());
-    input_int->insert_position(0, static_cast<int>(oss.str().size()));
-    input_int->show();
-    input_int->take_focus();
+    input_manager->start_editing(info, geo, oss.str());
   } else if (info.type == Type::float_) {
-    input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
     oss << sheet_manager->get_float(row, field);
-    input_float->value(oss.str().c_str());
-    input_float->insert_position(0, static_cast<int>(oss.str().size()));
-    input_float->show();
-    input_float->take_focus();
+    input_manager->start_editing(info, geo, oss.str());
   } else if (info.type == Type::double_) {
-    input_float->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
     oss << sheet_manager->get_double(row, field);
-    input_float->value(oss.str().c_str());
-    input_float->insert_position(0, static_cast<int>(oss.str().size()));
-    input_float->show();
-    input_float->take_focus();
+    input_manager->start_editing(info, geo, oss.str());
   } else if (info.type == Type::bool_) {
-    input->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
     std::ostringstream oss{};
     oss << sheet_manager->get_bool(row, field);
-    input->value(oss.str().c_str());
-    input->insert_position(0, static_cast<int>(oss.str().size()));
-    input->show();
-    input->take_focus();
+    input_manager->start_editing(info, geo, oss.str());
   }
 }
 
 void Datasheet::done_editing() {
-  if (input->visible() != 0 || input_int->visible() != 0 ||
-      input_float->visible() != 0) {
+  if (input_manager->visible() || input_manager->modified) {
     set_value_hide();
     edit_row = 0;
     edit_col = 0;

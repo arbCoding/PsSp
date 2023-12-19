@@ -21,7 +21,6 @@
 // std::vector
 #include <vector>
 
-// This is missing the size of the data-vectors, will add later
 namespace pssp {
 class SheetManager {
 public:

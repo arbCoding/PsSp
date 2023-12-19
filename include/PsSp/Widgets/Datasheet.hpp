@@ -4,8 +4,8 @@
 #define PSSP_DATASHEET_HPP_20231215_1255
 #pragma once
 // PsSp
+#include "PsSp/Managers/InputManager.hpp"
 #include "PsSp/Managers/SheetManager.hpp"
-#include "PsSp/Utility/Constants.hpp"
 #include "PsSp/Utility/Enums.hpp"
 #include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
@@ -98,12 +98,6 @@ protected:
     reinterpret_cast<Datasheet *>(datasheet)->event_callback2();
   }
 
-  // Input callback to hide value
-  static void input_cb(Fl_Widget *widget, void *datasheet) {
-    (void)widget;
-    reinterpret_cast<Datasheet *>(datasheet)->set_value_hide();
-  }
-
 private:
   // cppcheck-suppress unusedStructMember
   int edit_row{0};
@@ -113,11 +107,8 @@ private:
   int max_col{0};
   // cppcheck-suppress unusedStructMember
   int max_row{0};
-  std::unique_ptr<Fl_Input> input{};
-  std::unique_ptr<Fl_Int_Input> input_int{};
-  std::unique_ptr<Fl_Float_Input> input_float{};
   std::unique_ptr<SheetManager> sheet_manager{};
-  void make_inputs();
+  std::unique_ptr<InputManager> input_manager{};
   static void draw_generic_cell(const datasheet::Cell &cell);
   static void draw_header_cell(structs::Geometry *geo, const std::string &text);
 };
