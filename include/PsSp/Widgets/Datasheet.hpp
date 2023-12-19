@@ -40,12 +40,21 @@
 // I expect maybe 100'000, which would be a HUGE project).
 
 // Updated Notes:
+// For 10'000'000 rows (100x ultra-high end for a project)
 // With things split between string, int, float, double, bool the way it will
 // be in the actual workflow
 // It takes roughly 10 seconds for the debug version (clang) to boot up
 // (and about as long to close)
 // (When everything was strings it wouldn't boot, not enough ram)
 // Release version (clang) is ~5 seconds to boot up, almost instant close
+//
+// macOS debug is fine with 10'000'000
+// macOS release seg faults with 10'000'000
+//
+// Question: If I use raw pointers instead of smart pointers, does it close
+// faster? In theory the OS should handle cleanup in that scenario, so exiting
+// the program should be a lot faster, while still safe. Considered bad practice
+// in modern times, but maybe for some things it would be fine.
 
 namespace pssp {
 namespace datasheet {
@@ -61,9 +70,7 @@ struct Spec {
 };
 constexpr int font_size{14};
 constexpr int cell_buffer{3};
-// This is raw number of header + footer + one for each data vector
-// in sac-format (which is an over-estimate of the number of rows!)
-constexpr int max_row{10'000'000};
+constexpr int max_row{100};
 // Number of parameter for a sac trace
 constexpr int max_col{num_fields};
 constexpr int max_chars{10};
@@ -119,24 +126,29 @@ private:
   std::unique_ptr<Fl_Int_Input> input_int{};
   std::unique_ptr<Fl_Float_Input> input_float{};
   // Temporary while proto-typing editing
-  // cppcheck-suppress unusedStructMember
   std::array<std::array<std::string, constants::sac_string>, datasheet::max_row>
+      // cppcheck-suppress unusedStructMember
       values_string{};
-  // cppcheck-suppress unusedStructMember
   std::array<std::array<float, constants::sac_float>, datasheet::max_row>
+      // cppcheck-suppress unusedStructMember
       values_float{};
-  // cppcheck-suppress unusedStructMember
   std::array<std::array<double, constants::sac_double>, datasheet::max_row>
+      // cppcheck-suppress unusedStructMember
       values_double{};
-  // cppcheck-suppress unusedStructMember
   std::array<std::array<int, constants::sac_int>, datasheet::max_row>
+      // cppcheck-suppress unusedStructMember
       values_int{};
-  // cppcheck-suppress unusedStructMember
   std::array<std::array<bool, constants::sac_bool>, datasheet::max_row>
+      // cppcheck-suppress unusedStructMember
       values_bool{};
-  // cppcheck-suppress unusedStructMember
-  // std::array<std::array<std::string, datasheet::max_col>, datasheet::max_row>
-  // values{};
+  void make_inputs();
+  void make_generic_column(int col);
+  void make_string_column(const trace_info &info, int col);
+  void make_int_column(const trace_info &info, int col);
+  void make_float_column(const trace_info &info, int col);
+  void make_double_column(const trace_info &info, int col);
+  void make_bool_column(const trace_info &info, int col);
+  void make_sheet();
   static void draw_generic_cell(const datasheet::Cell &cell);
   static void draw_header_cell(structs::Geometry *geo, const std::string &text);
 };
