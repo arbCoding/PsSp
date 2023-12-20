@@ -23,8 +23,8 @@ InputManager::InputManager() {
 }
 
 bool InputManager::visible() const {
-  return (input_string->visible() || input_int->visible() ||
-          input_float->visible());
+  return ((input_string->visible() != 0) || (input_int->visible() != 0) ||
+          (input_float->visible() != 0));
 }
 
 void InputManager::cleanup() {

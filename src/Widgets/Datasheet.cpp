@@ -14,6 +14,8 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   tooltip("Use keyboard to navigate cells:\n"
           "Arrow keys or Tab/Shift-Tab");
   sheet_manager = std::make_unique<SheetManager>();
+  check_button = std::make_unique<Fl_Check_Button>(0, 0, 0, 0);
+  check_button->hide();
   max_col = sheet_manager->cols();
   max_row = sheet_manager->rows();
   constexpr datasheet::Spec spec{25, 25, 25, 70};
@@ -32,6 +34,9 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Done making \033[1mDatasheet\033[0m.");
 }
 
+// This function likely does not need the logic for booleans once
+// check_box is functional
+//
 // The type checking logic should be hidden in SheetManager
 // For now just get functional
 // Since we know the value is always a std::string...
@@ -72,11 +77,13 @@ void Datasheet::set_value_hide() {
   default:
     break;
   }
-  input_manager->hide();
+  input_manager->cleanup();
   input_manager->modified = false;
   window()->cursor(FL_CURSOR_DEFAULT);  // deals with disappearing cursor
 }
 
+// this function needs logic to handle check_button (or to not handle
+// bools at all here)
 void Datasheet::start_editing(int row, int col) {
   edit_row = row;
   edit_col = col;
@@ -140,6 +147,11 @@ void Datasheet::draw_header_cell(structs::Geometry *geo,
 }
 
 // Need to refactor
+// This function needs logic to handle check_button
+
+// Prior to check_button logic, make a new function
+// make_cell that does all the stuff in the CONTEXT_CELL portion
+// then it'll be easier to break out logic for check_button
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 void Datasheet::draw_cell(const TableContext context, const int row,
                           const int col, const int x_pos, const int y_pos,

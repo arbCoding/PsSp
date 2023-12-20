@@ -10,13 +10,11 @@
 #include "PsSp/Utility/Structs.hpp"
 // fltk https://www.fltk.org/doc-1.4
 #include <FL/Fl.H>
+#include <FL/Fl_Check_Button.H>
 #include <FL/fl_draw.H>
 // This is needed for the window() function to prevent
 // disappearing cursors
 #include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Float_Input.H>
-#include <FL/Fl_Input.H>
-#include <FL/Fl_Int_Input.H>
 #include <FL/Fl_Table.H>
 // spdlog https://github.com/gabime/spdlog
 #include <spdlog/spdlog.h>
@@ -66,18 +64,9 @@ struct Cell {
 };
 }  // namespace datasheet
 
-// This class is getting too busy, the inputs should be broken into a
-// separate class (Fl_Group holding inputs) that handles all the input
-// logic separate from the datasheet
-//
-// I may even want the cell logic to be separated into a cell_drawer or
-// cell_manager class... Need to think more about this.
-//
-// Perhaps manage the arrays separately as well (Array manager or something).
-// SheetManager is a good name (DataManager is too general for what I have in
-// mind).
-//
-// Need to move away from arrays to vectors (so that they are resizable).
+// I want boolean cells to have a checkbox in them
+// table-as-container.cxx does this in an inefficient way
+// So combine with the moving widget setup I've been using to make it efficient
 class Datasheet : public Fl_Table {
 public:
   Datasheet();
@@ -109,6 +98,7 @@ private:
   int max_row{0};
   std::unique_ptr<SheetManager> sheet_manager{};
   std::unique_ptr<InputManager> input_manager{};
+  std::unique_ptr<Fl_Check_Button> check_button{};
   static void draw_generic_cell(const datasheet::Cell &cell);
   static void draw_header_cell(structs::Geometry *geo, const std::string &text);
 };
