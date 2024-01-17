@@ -57,5 +57,4 @@ private:
   std::vector<std::array<bool, constants::sac_bool>> bools{};
 };
 }  // namespace pssp
-
 #endif
