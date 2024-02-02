@@ -1,9 +1,22 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
+
+/*!
+  \file Windows/About.cpp
+  \brief AboutWindow implementation.
+  \author Alexander R. Blanchette
+  This file contains the AboutWindow class implementation.
+  */
 
 #include "PsSp/Windows/About.hpp"
 
 namespace pssp {
-About_Window::About_Window() : Fl_Window(0, 0, 0, 0, "About") {
+/*!
+  \brief AboutWindow constructor.
+
+  This creates the AboutWindow object with all the specified sizes from the
+  pssp::about namespaces and centers the window.
+  */
+AboutWindow::AboutWindow() : Fl_Window(0, 0, 0, 0, "About") {
   this->begin();
   structs::Geometry geo{};
   Fl::screen_work_area(geo.x_pos, geo.y_pos, geo.width, geo.height);
@@ -23,5 +36,11 @@ About_Window::About_Window() : Fl_Window(0, 0, 0, 0, "About") {
   this->end();
 }
 
-void About_Window::okay_cb(Fl_Widget *btn) { btn->parent()->hide(); }
+/*!
+  \brief AboutWindow.okay_button callback
+
+  When the user choses to close the About window, the button tells the parent
+  to hide (how FLTK handles closing a window).
+ */
+void AboutWindow::okay_cb(Fl_Widget *btn) { btn->parent()->hide(); }
 }  // namespace pssp

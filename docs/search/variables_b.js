@@ -1,1 +1,1 @@
-var searchData=[["name_0",["name",["../structpssp_1_1trace__info.html#ad507e8c93bae8f4e0c563ad9b75efc42",1,"pssp::trace_info"]]],["name_5f_1",["name_",["../classpssp_1_1Main__Window.html#a31948806072e88c0a9a78d47453cb804",1,"pssp::Main_Window"]]]]
+var searchData=[["name_0",["name",["../structpssp_1_1trace__info.html#ad507e8c93bae8f4e0c563ad9b75efc42",1,"pssp::trace_info"]]],["name_5f_1",["name_",["../classpssp_1_1MainWindow.html#af58b121fb0a0fd441370d277358fe61b",1,"pssp::MainWindow"]]]]

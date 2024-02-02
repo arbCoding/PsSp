@@ -1,8 +1,20 @@
 // Copyright 2023-2024 Alexander R. Blanchette
 
+/*!
+  \file Widgets/Datasheet.cpp
+  \brief Datasheet implementation.
+  \author Alexander R. Blanchette
+  This file contains the Datasheet class implementation.
+ */
+
 #include "PsSp/Widgets/Datasheet.hpp"
 
 namespace pssp {
+/*!
+  \brief Datasheet constructor.
+
+  Builds the datasheet using the constants from the pssp::datasheet namespace.
+  */
 Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   spdlog::trace("Making \033[1mDatasheet\033[0m.");
   // trick to use event_callback2

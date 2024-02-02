@@ -35,9 +35,9 @@ public:
 
 private:
   //! Unique Pointer to the Main_Window object
-  std::unique_ptr<Main_Window> main_window{};
+  std::unique_ptr<MainWindow> main_window{};
   //! Unique Pointer to the Welcome_Window object
-  std::unique_ptr<Welcome_Window> welcome_window{};
+  std::unique_ptr<WelcomeWindow> welcome_window{};
 };
 }  // namespace pssp
 #endif

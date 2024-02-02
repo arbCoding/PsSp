@@ -30,11 +30,11 @@ namespace pssp {
   \enum Type
  */
 enum class Type {
-  string_, //!< String data-type
-  int_, //!< Integer data-type
-  float_, //!< Float data-type
-  double_, //!< Double data-type
-  bool_, //!< Boolean data-type
+  string_,  //!< String data-type
+  int_,     //!< Integer data-type
+  float_,   //!< Float data-type
+  double_,  //!< Double data-type
+  bool_,    //!< Boolean data-type
 };
 
 /*!
@@ -52,20 +52,23 @@ const std::unordered_map<Type, const std::string> type_names{
     {Type::bool_, "bool"}};
 
 /*!
-  \brief Information for
-  \struct trace_info
+  \brief Information for use in the Datasheet.
+
+  This is information for a specific column (row each row) in teh Datasheet.
 
   \todo Move to PsSp/Utility/Structs.hpp
+
+  \struct trace_info
   */
 struct trace_info {
   // cppcheck-suppress unusedStructMember
-  const size_t col{0};
+  const size_t col{0};  //!< Location of value in Datasheet.
   // cppcheck-suppress unusedStructMember
-  const size_t array_col{0};
+  const size_t array_col{0};  //!< Location of value in internal storage array.
   // cppcheck-suppress unusedStructMember
-  const std::string name{}; //!< Derived from ::type_names
+  const std::string name{};  //!< Data Type name derived from ::type_names
   // cppcheck-suppress unusedStructMember
-  const Type type{};
+  const Type type{};  //!< Data Type.
 };
 
 /*!
@@ -195,7 +198,13 @@ enum class Field {
   data2
 };
 
-// This should be merged with field_map
+/*!
+  \brief Map of column number (Datasheet) to Field.
+
+  Given a column in the Datasheet, get the Field (used as a key in another map).
+
+  \todo Merge into field_Info
+  */
 const std::unordered_map<size_t, Field> field_num{// Floats
                                                   {0, Field::depmin},
                                                   {1, Field::depmax},
@@ -319,6 +328,15 @@ const std::unordered_map<size_t, Field> field_num{// Floats
                                                   {114, Field::data1},
                                                   {115, Field::data2}};
 
+/*!
+  \brief Map Field to trace_info.
+
+  Given a field, get its trace_info (column, array-colun, type-name, and Type).
+
+  This is needed for interacting with the Datasheet.
+
+  \todo Merge field_num into this.
+  */
 const std::unordered_map<Field, trace_info> field_info{
     // Floats
     {Field::depmin, {0, 0, "DepMin", Type::float_}},

@@ -1,0 +1,7 @@
+<map id="pssp::MainWindow::about_cb" name="pssp::MainWindow::about_cb">
+<area shape="rect" id="Node000001" title="Callback function to show the AboutWindow." alt="" coords="566,5,775,33"/>
+<area shape="rect" id="Node000002" href="$classpssp_1_1MainWindow.html#a4b20dad476e26c2804c82f8a5b7ae484" title="Construct and initialize the Menu&#45;bar at the top." alt="" coords="288,5,518,33"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="551,22,518,22,518,17,551,17"/>
+<area shape="rect" id="Node000003" href="$classpssp_1_1MainWindow.html#a6696eb1a8a1b7a77157b6cb257fb8d79" title="MainWindow constructor." alt="" coords="5,5,240,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="273,22,240,22,240,17,273,17"/>
+</map>

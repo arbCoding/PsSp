@@ -1,1 +1,1 @@
-var searchData=[["passive_20source_20seismic_20processing_20pssp_0",["Passive-source Seismic-processing (PsSp)",["../index.html",1,""]]],["processing_20pssp_1",["Passive-source Seismic-processing (PsSp)",["../index.html",1,""]]],["pssp_2",["Passive-source Seismic-processing (PsSp)",["../index.html",1,""]]]]
+var searchData=[["passive_20source_20seismic_20processing_0",["Passive-source Seismic-Processing",["../index.html",1,""]]],["processing_1",["Passive-source Seismic-Processing",["../index.html",1,""]]]]

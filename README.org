@@ -1,0 +1,3 @@
+This is not yet ready for use.
+
+Current status: Prototyping GUI interface.

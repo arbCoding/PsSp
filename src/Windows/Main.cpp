@@ -1,12 +1,26 @@
 // Copyright 2023-2024 Alexander R. Blanchette
 
+/*!
+  \file Windows/Main.cpp
+  \brief MainWindow implementation.
+  \author Alexander R. Blanchette
+  This file contains the MainWindow class implementation.
+  */
+
 #include "PsSp/Windows/Main.hpp"
 
 namespace pssp {
-Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
+
+/*!
+  \brief MainWindow constructor.
+
+  This creates the MainWindow object with all the specified sizes from
+  the pssp::mw namespace and maximizes the window.
+  */
+MainWindow::MainWindow() : Fl_Double_Window(0, 0, name_.c_str()) {
   this->callback(prevent_escape);
   make_tty();
-  spdlog::trace("Building \033[1mMain_Window\033[0m.");
+  spdlog::trace("Building \033[1mMainWindow\033[0m.");
   this->begin();
   resizable(this);
   // Minimum window size width/height
@@ -47,12 +61,15 @@ Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
   this->resizable(status_bar_.get());
   this->resizable(datasheet_.get());
   this->resizable(gridspace_.get());
-  about_window_ = std::make_unique<About_Window>();
+  about_window_ = std::make_unique<AboutWindow>();
   about_window_->hide();
-  spdlog::trace("Done making \033[1mMain_Window\033[0m.");
+  spdlog::trace("Done making \033[1mMainWindow\033[0m.");
 }
 
-void Main_Window::make_tty() {
+/*!
+  \brief Construct and initialize the FL_Terminal log display.
+  */
+void MainWindow::make_tty() {
   // Debug terminal
   debug_tty = std::make_unique<Fl_Terminal>(0, 0, 0, 0);
   sink = std::make_shared<ConsoleSink_mt>(debug_tty.get());
@@ -73,7 +90,21 @@ void Main_Window::make_tty() {
   resizable();
 }
 
-void Main_Window::make_menu() {
+/*!
+  \brief Construct and initialize the Menu-bar at the top.
+
+  On Linux/Windows this is a standard Top-menu bar that takes up some window
+  space.
+
+  On macOS this is a system-menu bar that does not take up any window space.
+
+  This also links all menu options to their respective call_backs (or nullptr
+  if just a placeholder).
+
+  \todo Fix shallow menus that do not display on macOS (all menus must have
+  depth).
+  */
+void MainWindow::make_menu() {
   spdlog::trace("Making \033[1mMenu\033[0m.");
   // Program
   menu.add("&Program/&Quit", FL_COMMAND + 'q', quit_cb, this);
@@ -122,28 +153,51 @@ void Main_Window::make_menu() {
   spdlog::trace("Done making \033[1mMenu\033[0m.");
 }
 
-void Main_Window::append_tty(const char *msg) { debug_tty->append(msg); }
+//! Add a message to the end of the console log.
+void MainWindow::append_tty(const char *msg) { debug_tty->append(msg); }
 
-void Main_Window::quit_cb(Fl_Widget *menu, void *junk) {
+/*!
+  \brief Menu/Hotkey Quit callback command.
+
+  When the user chooses to close the program, pop-up a confirmation window
+  before annihilating the window (wouldn't you like to save first?).
+
+  \todo Request if the user wants to save first (if unsaved work).
+  \todo Doesn't display on macOS when CMD+Q is hit (just closes).
+  \todo BugFix: Doesn't display when keyboard input is captured by Datasheet.
+  */
+void MainWindow::quit_cb(Fl_Widget *menu, void *junk) {
   (void)junk;
   // reinterpret_cast is unnecessary, but I wanted to figure it out
-  auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
+  auto *window = reinterpret_cast<MainWindow *>(menu->parent()->as_window());
   if (fl_choice("Are you sure you want to quit?", "cancel", "quit", nullptr) !=
       0) {
     window->hide();
   }
 }
 
-void Main_Window::show_about() { about_window_->show(); }
+//! Show the AboutWindow
+void MainWindow::show_about() { about_window_->show(); }
 
-void Main_Window::about_cb(Fl_Widget *menu, void *junk) {
+//! Callback function to show the AboutWindow
+void MainWindow::about_cb(Fl_Widget *menu, void *junk) {
   (void)junk;
-  auto *window = reinterpret_cast<Main_Window *>(menu->parent()->as_window());
+  auto *window = reinterpret_cast<MainWindow *>(menu->parent()->as_window());
   window->show_about();
 }
 
-// Disable escape key closing this window
-void Main_Window::prevent_escape(Fl_Widget *caller, void *data) {
+/*!
+  FLTK has the odd-behavior or having a built-in auto-close callback upon
+  either the Escape key or the Q key being hit. Just immediate closure with no
+  questions asked.
+
+  This is silly, both keys are useful for programs and having a program suddenly
+  close due to your pinky pressing down on either key is rather jarring.
+
+  This disables that nonsense for the MainWindow so that we can have some
+  sane functionality instead.
+  */
+void MainWindow::prevent_escape(Fl_Widget *caller, void *data) {
   (void)caller;
   (void)data;
   if ((Fl::event() == FL_SHORTCUT) && (Fl::event_key() == FL_Escape)) {

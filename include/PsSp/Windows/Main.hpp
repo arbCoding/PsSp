@@ -1,7 +1,19 @@
 // Copyright 2023-2024 Alexander R. Blanchette
 
-#ifndef PSSP_MAIN_WINDOW_HPP_20231213_1003
-#define PSSP_MAIN_WINDOW_HPP_20231213_1003
+/*!
+  \file PsSp/Windows/Main.hpp
+  \brief MainWindow interface.
+  \author Alexander R. Blanchette
+  This file contains the MainWindow class interface, which provides the main
+  program window for the PsSp applicaion.
+
+  This includes the debug console (log display), the Datasheet (spreadsheet
+  display), the window menu, and the (currently) prototype data-organization
+  placeholder.
+  */
+
+#ifndef PSSP_MAINWINDOW_HPP_20231213_1003
+#define PSSP_MAINWINDOW_HPP_20231213_1003
 #pragma once
 // PsSp
 #include "PsSp/Logging/ConsoleSink.hpp"
@@ -26,31 +38,60 @@
 #include <string>
 
 namespace pssp {
+/*!
+  \namespace pssp::mw
+
+  Constants specific to the MainWindow.
+
+  \todo Move this to PsSp/Utility/Constants.hpp
+  */
 namespace mw {
+//! Minimum width of the MainWindow.
 constexpr int minimum_x{300};
+//! Minimum height of the MainWindow.
 constexpr int minimum_y{300};
+//! Height of the menubar (Linux/Windows only).
 constexpr int menu_height{25};
 }  // namespace mw
-class Main_Window : public Fl_Double_Window {
+
+/*!
+  \class MainWindow
+  \brief Class to provide the Main Window.
+
+  This provides the main window for the PsSp program.
+
+  \todo Work on record-organization sidebar object.
+  */
+class MainWindow : public Fl_Double_Window {
 public:
-  Main_Window();
+  MainWindow();
   void append_tty(const char *msg);
   void show_about();
 
 private:
+  //! The menubar (Window/Linux) or systembar (macOS).
   Fl_Sys_Menu_Bar menu{0, 0, 0, mw::menu_height, nullptr};
   void make_menu();
   void make_tty();
+  //! PsSp StatusBar.
   std::unique_ptr<StatusBar> status_bar_{};
+  //! Grid to layout window components.
   std::unique_ptr<Fl_Grid> gridspace_{};
+  //! Record-organization sidebar object (prototype).
   std::unique_ptr<Fl_Box> list_{};
+  //! ConsoleSink debug log sink.
   std::shared_ptr<ConsoleSink_mt> sink{};
+  //! spdlog log source
   std::shared_ptr<spdlog::logger> logger{};
+  //! Terminal to display ConsoleSink formatted logs.
   std::unique_ptr<Fl_Terminal> debug_tty{};
-  std::unique_ptr<About_Window> about_window_{};
+  //! The AboutWindow.
+  std::unique_ptr<AboutWindow> about_window_{};
+  //! The Datasheet to display (spreadsheet of records).
   std::unique_ptr<Datasheet> datasheet_{};
   static void about_cb(Fl_Widget *menu, void *junk);
   static void quit_cb(Fl_Widget *menu, void *junk);
+  //! Program name
   inline static const std::string
       // cppcheck-suppress unusedStructMember
       name_{"PsSp - Passive-source Seismic-processing"};

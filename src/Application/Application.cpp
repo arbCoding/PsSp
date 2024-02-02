@@ -18,9 +18,9 @@ namespace pssp {
   Logs status after creation.
   */
 Application::Application() {
-  main_window = std::make_unique<Main_Window>();
+  main_window = std::make_unique<MainWindow>();
   main_window->show();
-  welcome_window = std::make_unique<Welcome_Window>();
+  welcome_window = std::make_unique<WelcomeWindow>();
   welcome_window->show();
   spdlog::trace("Application ready.");
 }
