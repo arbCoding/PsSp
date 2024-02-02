@@ -1,4 +1,4 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #ifndef PSSP_STRUCTS_HPP_20231217_0600
 #define PSSP_STRUCTS_HPP_20231217_0600

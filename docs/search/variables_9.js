@@ -1,0 +1,1 @@
+var searchData=[["left_5fbox_5f_0",["left_box_",["../classpssp_1_1StatusBar.html#ab03a5f150df1e4f89333556a911684eb",1,"pssp::StatusBar"]]],["list_5f_1",["list_",["../classpssp_1_1Main__Window.html#ab179732aa8de60bf0d0dc243e916bc86",1,"pssp::Main_Window"]]],["logger_2",["logger",["../classpssp_1_1Main__Window.html#ae45fe7fcaa3764677d2ffcdbfdd0fc9c",1,"pssp::Main_Window"]]]]

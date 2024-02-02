@@ -2,9 +2,9 @@
 
 /*!
   \file Application.hpp
-  \brief Contains the Application class
+  \brief Application interface.
   \author Alexander R. Blanchette
-  This file contains the application class which is used to handle
+  This file contains the Application class interface which is used to handle
   the main program using RAII.
   */
 
@@ -22,7 +22,13 @@
 #include <memory>
 
 namespace pssp {
-//! Application class
+/*!
+  \brief Main application class.
+
+  This manages the application (created in main()).
+
+  \class Application
+ */
 class Application {
 public:
   Application();

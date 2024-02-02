@@ -1,4 +1,4 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #include "PsSp/Widgets/Datasheet.hpp"
 
@@ -8,7 +8,7 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   // trick to use event_callback2
   callback(&event_callback, reinterpret_cast<void *>(this));
   this->begin();
-  this->when(FL_WHEN_NOT_CHANGED | this->when());
+  this->when(static_cast<uchar>(FL_WHEN_NOT_CHANGED | this->when()));
   input_manager = std::make_unique<InputManager>();
   this->tab_cell_nav(1);  // enable tab navigation
   tooltip("Use keyboard to navigate cells:\n"
@@ -16,17 +16,17 @@ Datasheet::Datasheet() : Fl_Table(0, 0, 0, 0) {
   sheet_manager = std::make_unique<SheetManager>();
   check_button = std::make_unique<Fl_Check_Button>(0, 0, 0, 0);
   check_button->hide();
-  max_col = sheet_manager->cols();
-  max_row = sheet_manager->rows();
+  max_col = static_cast<size_t>(sheet_manager->cols());
+  max_row = static_cast<size_t>(sheet_manager->rows());
   constexpr datasheet::Spec spec{25, 25, 25, 70};
   row_header(1);
   row_header_width(spec.header_width);
   row_height_all(spec.height);
-  rows(max_row);
+  rows(static_cast<int>(max_row));
   col_header(1);
   col_header_height(spec.header_height);
   col_width_all(spec.width);
-  cols(max_col);
+  cols(static_cast<int>(max_col));
   row_resize(1);
   col_resize(1);
   set_selection(0, 0, 0, 0);
@@ -84,13 +84,14 @@ void Datasheet::set_value_hide() {
 
 // this function needs logic to handle check_button (or to not handle
 // bools at all here)
-void Datasheet::start_editing(int row, int col) {
+void Datasheet::start_editing(size_t row, size_t col) {
   edit_row = row;
   edit_col = col;
-  set_selection(row, col, row, col);
+  set_selection(static_cast<int>(row), static_cast<int>(col),
+                static_cast<int>(row), static_cast<int>(col));
   structs::Geometry geo{};
-  find_cell(CONTEXT_CELL, row, col, geo.x_pos, geo.y_pos, geo.width,
-            geo.height);
+  find_cell(CONTEXT_CELL, static_cast<int>(row), static_cast<int>(col),
+            geo.x_pos, geo.y_pos, geo.width, geo.height);
   // Need to refactor
   const Field &field{field_num.at(col)};
   const trace_info &info{field_info.at(field)};
@@ -160,7 +161,8 @@ void Datasheet::draw_cell(const TableContext context, const int row,
   switch (context) {
   case CONTEXT_COL_HEADER: {
     structs::Geometry geo{x_pos, y_pos, width, height};
-    draw_header_cell(&geo, field_info.at(field_num.at(col)).name);
+    draw_header_cell(
+        &geo, field_info.at(field_num.at(static_cast<size_t>(col))).name);
   } break;
   case CONTEXT_ROW_HEADER: {
     structs::Geometry geo{x_pos, y_pos, width, height};
@@ -174,25 +176,25 @@ void Datasheet::draw_cell(const TableContext context, const int row,
                      y_pos + datasheet::cell_buffer,
                      width - (2 * datasheet::cell_buffer),
                      height - (2 * datasheet::cell_buffer)};
-    const Field &field{field_num.at(col)};
+    const Field &field{field_num.at(static_cast<size_t>(col))};
     const trace_info &info{field_info.at(field)};
     if (info.type == Type::string_) {
-      cell.text = sheet_manager->get_string(row, field);
+      cell.text = sheet_manager->get_string(static_cast<size_t>(row), field);
     } else if (info.type == Type::int_) {
       std::ostringstream oss{};
-      oss << sheet_manager->get_int(row, field);
+      oss << sheet_manager->get_int(static_cast<size_t>(row), field);
       cell.text = oss.str();
     } else if (info.type == Type::float_) {
       std::ostringstream oss{};
-      oss << sheet_manager->get_float(row, field);
+      oss << sheet_manager->get_float(static_cast<size_t>(row), field);
       cell.text = oss.str();
     } else if (info.type == Type::double_) {
       std::ostringstream oss{};
-      oss << sheet_manager->get_double(row, field);
+      oss << sheet_manager->get_double(static_cast<size_t>(row), field);
       cell.text = oss.str();
     } else if (info.type == Type::bool_) {
       std::ostringstream oss{};
-      oss << sheet_manager->get_bool(row, field);
+      oss << sheet_manager->get_bool(static_cast<size_t>(row), field);
       cell.text = oss.str();
     }
     cell.box_color = ((is_selected(row, col) != 0) ? FL_YELLOW : FL_WHITE);
@@ -212,7 +214,7 @@ void Datasheet::event_callback2() {
   case CONTEXT_CELL: {
     switch (Fl::event()) {
     case FL_PUSH:
-      start_editing(row, col);
+      start_editing(static_cast<size_t>(row), static_cast<size_t>(col));
       break;
     case FL_KEYBOARD:
       done_editing();
@@ -220,7 +222,7 @@ void Datasheet::event_callback2() {
         parent()->take_focus();
       } else if (datasheet::edit_chars.find(Fl::e_text[0]) !=
                  std::string::npos) {
-        start_editing(row, col);
+        start_editing(static_cast<size_t>(row), static_cast<size_t>(col));
       }
       break;
     default:

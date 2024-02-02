@@ -1,4 +1,4 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #ifndef PSSP_DATASHEET_HPP_20231215_1255
 #define PSSP_DATASHEET_HPP_20231215_1255
@@ -71,7 +71,7 @@ class Datasheet : public Fl_Table {
 public:
   Datasheet();
   void set_value_hide();
-  void start_editing(int row, int col);
+  void start_editing(size_t row, size_t col);
   void done_editing();
 
 protected:
@@ -89,13 +89,13 @@ protected:
 
 private:
   // cppcheck-suppress unusedStructMember
-  int edit_row{0};
+  size_t edit_row{0};
   // cppcheck-suppress unusedStructMember
-  int edit_col{0};
+  size_t edit_col{0};
   // cppcheck-suppress unusedStructMember
-  int max_col{0};
+  size_t max_col{0};
   // cppcheck-suppress unusedStructMember
-  int max_row{0};
+  size_t max_row{0};
   std::unique_ptr<SheetManager> sheet_manager{};
   std::unique_ptr<InputManager> input_manager{};
   std::unique_ptr<Fl_Check_Button> check_button{};

@@ -1,11 +1,11 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #include "PsSp/Managers/SheetManager.hpp"
 
 namespace pssp {
 SheetManager::SheetManager() { resize_data(100); }
 
-void SheetManager::resize_data(const int size) {
+void SheetManager::resize_data(const size_t size) {
   strings.resize(size);
   ints.resize(size);
   floats.resize(size);
@@ -21,7 +21,7 @@ int SheetManager::cols() const {
   return static_cast<int>(num_cols);
 }
 
-void SheetManager::set(const int row, const Field &field,
+void SheetManager::set(const size_t row, const Field &field,
                        const std::string &input) {
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::string_) {
@@ -32,7 +32,7 @@ void SheetManager::set(const int row, const Field &field,
   }
 }
 
-void SheetManager::set(const int row, const Field &field, const int input) {
+void SheetManager::set(const size_t row, const Field &field, const int input) {
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::int_) {
     ints[row][info.array_col] = input;
@@ -42,7 +42,8 @@ void SheetManager::set(const int row, const Field &field, const int input) {
   }
 }
 
-void SheetManager::set(const int row, const Field &field, const float input) {
+void SheetManager::set(const size_t row, const Field &field,
+                       const float input) {
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::float_) {
     floats[row][info.array_col] = input;
@@ -52,7 +53,8 @@ void SheetManager::set(const int row, const Field &field, const float input) {
   }
 }
 
-void SheetManager::set(const int row, const Field &field, const double input) {
+void SheetManager::set(const size_t row, const Field &field,
+                       const double input) {
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::double_) {
     doubles[row][info.array_col] = input;
@@ -62,7 +64,7 @@ void SheetManager::set(const int row, const Field &field, const double input) {
   }
 }
 
-void SheetManager::set(const int row, const Field &field, const bool input) {
+void SheetManager::set(const size_t row, const Field &field, const bool input) {
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::bool_) {
     bools[row][info.array_col] = input;
@@ -72,7 +74,7 @@ void SheetManager::set(const int row, const Field &field, const bool input) {
   }
 }
 
-std::string SheetManager::get(const int row, const Field &field) {
+std::string SheetManager::get(const size_t row, const Field &field) {
   std::string result{};
   const trace_info &info{field_info.at(field)};
   switch (info.type) {
@@ -96,7 +98,7 @@ std::string SheetManager::get(const int row, const Field &field) {
   return result;
 }
 
-std::string SheetManager::get_string(const int row, const Field &field) {
+std::string SheetManager::get_string(const size_t row, const Field &field) {
   std::string result{};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::string_) {
@@ -108,7 +110,7 @@ std::string SheetManager::get_string(const int row, const Field &field) {
   return result;
 }
 
-int SheetManager::get_int(const int row, const Field &field) {
+int SheetManager::get_int(const size_t row, const Field &field) {
   int result{};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::int_) {
@@ -120,7 +122,7 @@ int SheetManager::get_int(const int row, const Field &field) {
   return result;
 }
 
-float SheetManager::get_float(const int row, const Field &field) {
+float SheetManager::get_float(const size_t row, const Field &field) {
   float result{};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::float_) {
@@ -132,7 +134,7 @@ float SheetManager::get_float(const int row, const Field &field) {
   return result;
 }
 
-double SheetManager::get_double(const int row, const Field &field) {
+double SheetManager::get_double(const size_t row, const Field &field) {
   double result{};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::double_) {
@@ -144,7 +146,7 @@ double SheetManager::get_double(const int row, const Field &field) {
   return result;
 }
 
-bool SheetManager::get_bool(const int row, const Field &field) {
+bool SheetManager::get_bool(const size_t row, const Field &field) {
   bool result{};
   const trace_info &info{field_info.at(field)};
   if (info.type == Type::bool_) {

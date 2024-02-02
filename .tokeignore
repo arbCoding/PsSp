@@ -4,3 +4,10 @@
 *.json
 *.txt
 *.org
+*.md
+*.tex
+*.svg
+*.sty
+*.js
+*.css
+Makefile

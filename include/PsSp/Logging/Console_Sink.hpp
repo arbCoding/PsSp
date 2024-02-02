@@ -1,4 +1,4 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #ifndef PSSP_CONSOLE_SINK_HPP_20231214_0805
 #define PSSP_CONSOLE_SINK_HPP_20231214_0805
@@ -30,13 +30,34 @@
 // either compiler
 
 namespace pssp {
+/*!
+  \brief Sink (receiver) of log messages for PsSp console.
 
+  This class receiver logs from spdlog and passes them on to a FLTK terminal
+  (FL_Terminal) object for presentation.
+
+  \todo At present it doesn't do log formatting (formatting is handled with console
+  codes in the logs themselves). Formatting should be moved to here in the
+  future for generality.
+
+  \class Console_Sink
+ */
 template <typename Mutex>
 class Console_Sink : public spdlog::sinks::base_sink<Mutex> {
 public:
+  /*!
+    \brief Default constructor.
+
+    @param[in] tty Fl_Terminal* FLTK Terminal widget that will display the logs.
+    */
   explicit Console_Sink(Fl_Terminal *tty) { tty_ = tty; }
 
 protected:
+  /*!
+    \brief Receives message from spdlog and then passes message to display console.
+
+    @param[in] msg spdlog::details::log_msg& Message to format and pass.
+    */
   void sink_it_(const spdlog::details::log_msg &msg) override {
     // log_msg is a struct containing the log entry info like level, timestamp,
     // msg.raw contains the pre-formatted log
@@ -46,14 +67,16 @@ protected:
     spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, formatted);
     tty_->append(fmt::to_string(formatted).c_str());
   }
+  //! Clear (flush) Fl_Terminal.
   void flush_() override { tty_->clear(); }
 
 private:
-  Fl_Terminal *tty_{};
+  Fl_Terminal *tty_{}; //!< Message receiver (console/terminal/tty).
 };
 
+//! Multi-thread safe Console_Sink
 using Console_Sink_mt = Console_Sink<std::mutex>;
+//! Single-thread Console_Sink
 using Console_Sink_st = Console_Sink<spdlog::details::null_mutex>;
-
 }  // namespace pssp
 #endif

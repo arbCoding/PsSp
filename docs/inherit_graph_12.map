@@ -1,0 +1,7 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,49,185,76"/>
+<area shape="rect" id="Node000001" href="$classpssp_1_1ConsoleSink.html" title="Sink (receiver) of log messages for PsSp console." alt="" coords="233,5,383,50"/>
+<area shape="poly" id="edge6_Node000000_Node000001" title=" " alt="" coords="197,43,232,37,233,43,198,48"/>
+<area shape="rect" id="Node000002" href="$classpssp_1_1Console__Sink.html" title="Sink (receiver) of log messages for PsSp console." alt="" coords="235,75,381,119"/>
+<area shape="poly" id="edge7_Node000000_Node000002" title=" " alt="" coords="198,76,235,82,234,88,198,82"/>
+</map>

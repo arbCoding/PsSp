@@ -1,4 +1,4 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
 
 #include "PsSp/Windows/Main.hpp"
 
@@ -16,7 +16,7 @@ Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
   this->resize(geo.x_pos, geo.y_pos, geo.width, geo.height);
   make_menu();
   menu.resize(0, 0, geo.width, menu.h());
-  status_bar_ = std::make_unique<Status_Bar>(this->h(), this->w(), menu.h());
+  status_bar_ = std::make_unique<StatusBar>(this->h(), this->w(), menu.h());
 #if defined(__APPLE__)
   const int menu_shift{0};
 #else
@@ -55,7 +55,7 @@ Main_Window::Main_Window() : Fl_Double_Window(0, 0, name_.c_str()) {
 void Main_Window::make_tty() {
   // Debug terminal
   debug_tty = std::make_unique<Fl_Terminal>(0, 0, 0, 0);
-  sink = std::make_shared<Console_Sink_mt>(debug_tty.get());
+  sink = std::make_shared<ConsoleSink_mt>(debug_tty.get());
   logger = std::make_shared<spdlog::logger>("tty logger", sink);
   spdlog::set_default_logger(logger);
   // levels are critical, error, warn, info, debug, trace

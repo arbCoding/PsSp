@@ -1,0 +1,1 @@
+var searchData=[["edit_5fchars_0",["edit_chars",["../namespacepssp_1_1datasheet.html#a79a95664305101bd91758e6341b40721",1,"pssp::datasheet"]]],["edit_5fcol_1",["edit_col",["../classpssp_1_1Datasheet.html#a3d361c2c212c7176053da24bbff8fa0f",1,"pssp::Datasheet"]]],["edit_5frow_2",["edit_row",["../classpssp_1_1Datasheet.html#a3d35204aef8b8f8d034e249cbb171a65",1,"pssp::Datasheet"]]]]

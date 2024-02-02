@@ -36,7 +36,7 @@ set(Sources
   src/Managers/InputManager.cpp
   src/Managers/SheetManager.cpp
   src/Widgets/Datasheet.cpp
-  src/Widgets/Status_Bar.cpp
+  src/Widgets/StatusBar.cpp
   src/Windows/About.cpp
   src/Windows/Main.cpp
   src/Windows/Welcome.cpp

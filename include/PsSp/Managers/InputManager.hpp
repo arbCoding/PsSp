@@ -1,4 +1,12 @@
-// Copyright 2023 Alexander R. Blanchette
+// Copyright 2023-2024 Alexander R. Blanchette
+
+/*!
+  \file InputManager.hpp
+  \brief Spreadsheet input-manager interface.
+  \author Alexander R. Blanchette
+  This file contains the InputManager class interface, which handles user-input
+  for the Datasheet (spreadsheet).
+  */
 
 #ifndef PSSP_INPUTMANAGER_HPP_20231219_1323
 #define PSSP_INPUTMANAGER_HPP_20231219_1323
@@ -21,6 +29,19 @@
 #include <string>
 
 namespace pssp {
+/*!
+  \brief Manager of user-input.
+
+  This class handles taking input from the user (text/numerical) that is
+  destined to enter the Datasheet spreadsheet display (and the underlying
+  data-arrays).
+
+  It is designed to handle generic string input, integer input, and float input.
+
+  \todo{Add support for managing boolean switches.}
+
+  \class InputManager
+  */
 class InputManager {
 public:
   InputManager();
